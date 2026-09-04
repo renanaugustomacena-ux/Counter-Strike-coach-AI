@@ -59,7 +59,7 @@ python evals/cs2_coach_bench/score_responses.py summary --input evals/cs2_coach_
 ```
 
 ### 3. Analyze Metrics
-The summary gives a per-category and per-dimension breakdown of rubric scores (5 dimensions, 0-3 each), and `score_responses.py compare a.scored.jsonl b.scored.jsonl` diffs two models. These metrics gate coaching-pipeline changes and guide model fine-tuning efforts.
+The summary gives a per-category and per-dimension breakdown of rubric scores (5 dimensions, 0-3 each), and `score_responses.py compare a.scored.jsonl b.scored.jsonl` diffs two models. These metrics gate coaching-pipeline changes and guide model fine-tuning efforts (the bench itself runs locally; full-scale training and fine-tuning run on the dedicated Linux training machine, not this workstation).
 
 ## When to evaluate
 
@@ -75,3 +75,5 @@ Run the full benchmark before merging any change that touches:
 - Coaching package: `Programma_CS2_RENAN/backend/coaching/README.md`
 - Services layer: `Programma_CS2_RENAN/backend/services/README.md`
 - Quality validator (regression gate): `tools/headless_validator.py`
+- Offline pre-retrain metrics harness (feature drift, RAG recall@k, kNN purity): `tools/eval_harness.py`
+- DB-grounded answer eval through the real dialogue engine: `tools/coach_answer_eval.py`

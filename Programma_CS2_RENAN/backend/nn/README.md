@@ -26,20 +26,21 @@ The training pipeline was validated end-to-end on March 12, 2026: 11 pro demos i
 | `win_probability_trainer.py` | `WinProbabilityTrainerNN` -- lightweight 9-feature model for offline win probability on pro match DataFrames |
 | `dataset.py` | `ProPerformanceDataset` (supervised) and `SelfSupervisedDataset` (JEPA sliding-window context/target pairs) |
 | `factory.py` | `ModelFactory` -- static factory for unified instantiation across all model types (`default`, `jepa`, `vl-jepa`, `rap`, `rap-lite`, `role_head`) |
-| `persistence.py` | `save_nn()`, `load_nn()`, `get_model_path()` with atomic write (`tmp + os.replace`), `.pt.meta.json` feature-schema sidecar, SHA-256 checkpoint hash registry (CTF-1), 4-tier load fallback (user -> global -> factory-bundled -> scratch), `StaleCheckpointError` |
-| `early_stopping.py` | `EarlyStopping` with configurable patience and min-delta thresholds |
+| `persistence.py` | `save_nn()`, `load_nn()`, `get_model_path()` with atomic write (`tmp + os.replace`), `.pt.meta.json` feature-schema sidecar, SHA-256 checkpoint hash registry (CTF-1), 4-tier load fallback (user AppData -> global AppData -> factory-bundled user -> factory-bundled global; a total miss raises `FileNotFoundError`, never a silent random-weight model, NN-14), `StaleCheckpointError` |
+| `early_stopping.py` | `EarlyStopping` with configurable patience and min-delta thresholds; `EmbeddingCollapseDetector` / `EmbeddingCollapseError` -- control-flow gate that aborts training after `patience` collapsed epochs (P9-02) |
 | `training_config.py` | `TrainingConfig` and `JEPATrainingConfig` dataclasses centralizing all hyperparameters |
-| `training_orchestrator.py` | `TrainingOrchestrator` -- unified epoch loop with validation, early stopping, checkpointing, LR scheduling, and callback dispatch |
+| `training_orchestrator.py` | `TrainingOrchestrator` -- unified epoch loop with validation, early stopping, checkpointing, LR scheduling, and callback dispatch; `run_training()` returns an explicit success/failure outcome that the CLI surfaces (F-0043) and supplies the fixed `probe_batch` for collapse telemetry |
 | `training_controller.py` | `TrainingController` -- demo deduplication, diversity checks, monthly quota management, stop-start logic |
-| `coach_manager.py` | `CoachTrainingManager` -- high-level orchestration of the 5 training phases (JEPA pre-training, pro baseline, user tailoring, RAP, role head) with a 3-tier maturity soft gate (CALIBRATING 0-49 / LEARNING 50-199 / MATURE 200+) |
+| `coach_manager.py` | `CoachTrainingManager` -- high-level orchestration of the 5 training phases (JEPA pre-training, pro baseline, user tailoring, RAP, role head) with a 3-tier maturity soft gate (CALIBRATING 0-49 / LEARNING 50-199 / MATURE 200+); builds demo eligibility gates before the 70/15/15 temporal split; operator STOP propagates via `TrainingStopRequested` (F-0032) |
 | `train.py` | `train_nn()` -- legacy training entry point for `AdvancedCoachNN` |
 | `training_callbacks.py` | `TrainingCallback` (ABC, opt-in hooks) and `CallbackRegistry` (event dispatcher with error isolation) |
-| `tensorboard_callback.py` | `TensorBoardCallback` -- logs 9+ scalar signals, parameter/gradient histograms, custom scalar layouts |
+| `tensorboard_callback.py` | `TensorBoardCallback` -- per-batch and per-epoch scalars (loss, LR, RAP/JEPA/gate signals), parameter/gradient histograms, custom scalar layouts, and JEPA collapse telemetry (`embed/*`) measured on a fixed probe batch; `build_run_dir()` gives every run its own log dir `RUNS_DIR/<model_type>/<UTC timestamp>-<device tag>`; degrades to a warning no-op without `tensorboard` unless `CS2_TB_STRICT=1` |
+| `collapse_metrics.py` | Pure-tensor representation-collapse telemetry for JEPA embeddings: `compute_collapse_metrics()` (std_mean, std_min, RankMe `effective_rank`, cosine_offdiag_mean over L2-normalized embeddings) and `compute_ema_drift()`; consumed by `TensorBoardCallback`, never alters control flow |
 | `maturity_observatory.py` | `MaturityObservatory` -- 5-signal conviction index (belief entropy, gate specialization, concept focus, value accuracy, role stability), 5-state machine (doubt / crisis / learning / conviction / mature) |
 | `embedding_projector.py` | `EmbeddingProjector` -- UMAP 2D projections and TensorBoard embedding export for belief/concept space visualization |
 | `training_monitor.py` | `TrainingMonitor` -- JSON-persisted epoch metrics with atomic write for real-time progress tracking |
 | `evaluate.py` | `evaluate_adjustments()` -- SHAP-compatible evaluation of model weight adjustments per feature |
-| `data_quality.py` | `DataQualityReport` -- pre-training data quality checks (NaN rate, zero-position rate, class balance) |
+| `data_quality.py` | `DataQualityReport` -- pre-training data quality checks (NaN rate, zero-position rate, class balance, match completeness) run via `run_pre_training_quality_check()`. Known defect: the match-completeness counters can print `Complete matches: 0, Incomplete: 0` on a green report (OI-1 in `docs/OPEN_ISSUES.md`) |
 
 ## Sub-packages
 
@@ -100,9 +101,11 @@ Extends JEPA with visual-linguistic tactical understanding for concept-level coa
 The training pipeline includes a 4-layer observability stack, implemented as `TrainingCallback` plugins:
 
 1. **Layer 1 -- CallbackRegistry** (`training_callbacks.py`): Plugin architecture with error isolation. Callbacks never crash training.
-2. **Layer 2 -- TensorBoardCallback** (`tensorboard_callback.py`): Scalars (loss, LR, sparsity, gate dynamics), histograms (params, grads, beliefs, concepts), custom dashboard layouts.
+2. **Layer 2 -- TensorBoardCallback** (`tensorboard_callback.py`): Scalars (loss, LR, sparsity, gate dynamics), histograms (params, grads, beliefs, concepts), custom dashboard layouts, and representation-collapse telemetry (`embed/*` scalars from `collapse_metrics.py`, computed each epoch on a fixed probe batch). Both training entry points create per-run, device-tagged log dirs via `build_run_dir()`.
 3. **Layer 3 -- MaturityObservatory** (`maturity_observatory.py`): 5-signal conviction index with EMA smoothing and a 5-state classification machine (doubt / crisis / learning / conviction / mature).
 4. **Layer 4 -- EmbeddingProjector** (`embedding_projector.py`): UMAP 2D projections of belief vectors and concept embeddings, exported to TensorBoard.
+
+The full stack is wired into both training paths: `jepa_train.py` attaches `TensorBoardCallback` and `EmbeddingProjector` directly, while the `TrainingOrchestrator` path receives its callback chain from `run_full_training_cycle.py` (`_build_callbacks()`).
 
 ## Critical Invariants
 

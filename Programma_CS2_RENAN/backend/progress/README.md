@@ -99,19 +99,19 @@ PlayerMatchStats (historical records in database.db)
 |----------|--------|--------------------|
 | Coaching Service | `services/coaching_service.py` | Generates longitudinal coaching insights from slope/confidence |
 | Longitudinal Engine | `coaching/longitudinal_engine.py` | Produces trend-based coaching narratives |
-| Analytics Engine | `reporting/analytics.py` | Feeds dashboard trend graphs |
-| Explanation Generator | `coaching/explainability.py` | Includes trend data in coaching explanations |
+| Ingestion CLI | `run_ingestion.py` | Computes per-feature trends after batch demo ingestion |
 
 ### Data Flow
 
 1. Demo ingestion populates `PlayerMatchStats` rows in `database.db`.
-2. `CoachingService.generate_new_insights()` fetches the player's match history.
-3. For each tracked feature, `compute_trend(values)` is called with the historical
-   series.
+2. `CoachingService.generate_new_insights()` calls `_run_longitudinal_coaching()`,
+   which fetches the player's last 10 matches (minimum 3 required).
+3. For each tracked feature (`avg_kills`, `avg_adr`, `avg_kast`, `accuracy`),
+   `compute_trend(values)` is called with the historical series.
 4. The returned `(slope, volatility, confidence)` triple is wrapped in a
    `FeatureTrend` dataclass.
-5. Trends with `confidence >= 0.6` are passed to `generate_longitudinal_coaching()`
-   to produce human-readable coaching insights.
+5. All trends are passed to `generate_longitudinal_coaching()`, which keeps only
+   those with `confidence >= 0.6` and emits at most 3 insights.
 6. Those insights are persisted as `CoachingInsight` rows in the database.
 
 ## Development Notes

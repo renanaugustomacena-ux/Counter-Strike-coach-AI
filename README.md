@@ -3,7 +3,7 @@
 [![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-42%20phases%20validator%20%7C%20130%20test%20files-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-42%20phases%20validator%20%7C%20166%20test%20files-brightgreen.svg)]()
 
 **AI-Powered Tactical Coach for Counter-Strike 2**
 
@@ -125,8 +125,8 @@ live in `docs/audit/`.
 
 | Component | Minimum | Recommended |
 |-----------|---------|-------------|
-| OS | Windows 10 / Ubuntu 22.04 | Windows 10/11 |
-| Python | 3.10 | 3.10 or 3.12 |
+| OS | Windows 10 / Ubuntu 24.04 | Windows 10/11 |
+| Python | 3.11 | 3.11 or 3.12 |
 | RAM | 8 GB | 16 GB |
 | GPU | None (CPU mode) | NVIDIA GTX 1650+ (CUDA 12.1) |
 | Disk | 3 GB free | 5 GB free |
@@ -176,9 +176,9 @@ pip install playwright && python -m playwright install chromium
 
 ```bash
 sudo apt update
-sudo apt install -y python3.10 python3.10-venv python3.10-dev build-essential
+sudo apt install -y python3.12 python3.12-venv python3.12-dev build-essential
 
-python3.10 -m venv venv_linux
+python3.12 -m venv venv_linux
 source venv_linux/bin/activate
 
 # PyTorch (choose ONE):
@@ -230,7 +230,7 @@ Required only if you enable `USE_RAP_MODEL=True` in settings. The default JEPA m
 ### 8. Launch
 
 ```bash
-# Desktop application (Qt GUI — recommended)
+# Desktop application (Qt GUI -- recommended)
 ./launch.sh
 
 # Or manually:
@@ -291,7 +291,7 @@ COPER (Context Optimized with Prompt, Experience, and Replay) is the primary coa
 
 **RAP Coach (7-Layer Architecture)**
 
-The RAP (Retrieval-Augmented Pedagogical) Coach is the experimental flagship neural model, disabled by default behind `USE_RAP_MODEL`. Its 7 layers process gameplay data through a cognitive pipeline:
+The RAP (Reasoning, Adaptation, Pedagogy) Coach is the experimental flagship neural model, disabled by default behind `USE_RAP_MODEL`. Its 7 layers process gameplay data through a cognitive pipeline:
 
 | Layer | Function | Details |
 |-------|----------|---------|
@@ -394,8 +394,8 @@ Multi-level maps (Nuke, Vertigo) use Z-axis cutoffs to separate upper and lower 
 |----------|---------|---------|---------|
 | **ML Framework** | PyTorch | 2.1+ | Neural network training and inference |
 | **Recurrent Networks** | ncps | 1.0.1+ | Liquid Time-Constant (LTC) networks |
-| **Associative Memory** | hflayers | 1.3.0+ | Hopfield network layers for memory |
-| **Demo Parsing** | demoparser2 | 0.41.1 | Tick-level CS2 demo file parsing |
+| **Associative Memory** | hopfield-layers | git-pinned (provides `hflayers`) | Hopfield network layers for memory |
+| **Demo Parsing** | demoparser2 | 0.41.4 | Tick-level CS2 demo file parsing |
 | **UI Framework (primary)** | PySide6 | 6.11.0 | Qt-based cross-platform desktop GUI |
 | **Database ORM** | SQLAlchemy + SQLModel | 2.0.49 / 0.0.38 | Database models and queries |
 | **Migrations** | Alembic | 1.18.4 | Database schema migrations |
@@ -403,11 +403,14 @@ Multi-level maps (Nuke, Vertigo) use Z-axis cutoffs to separate upper and lower 
 | **HTTP Client** | HTTPX | 0.28.1 | Async HTTP requests |
 | **Data Science** | NumPy, Pandas, SciPy, scikit-learn | 2.4.3 / 2.3.3 / 1.17.1 / 1.8.0 | Numerical computation and analysis |
 | **Visualization** | Matplotlib | 3.10.8 | Chart generation |
+| **Training Observability** | TensorBoard | 2.21.0 | Live training dashboards (`runs/`) |
+| **Vector Search** | faiss-cpu | 1.13.2 | Experience/RAG retrieval (optional; brute-force fallback) |
+| **Text Embeddings** | sentence-transformers | 3.4.1 | Semantic embeddings (optional; hash-based fallback) |
 | **TUI** | Rich | 15.0.0 | Terminal UI for console mode |
 | **API** | FastAPI + Uvicorn | 0.135.3 / 0.44.0 | Internal API server |
 | **Validation** | Pydantic | 2.12.5 | Data validation and settings |
-| **Testing** | pytest + pytest-cov + pytest-timeout | 9.1.1 | Test framework and coverage |
-| **Packaging** | PyInstaller | Latest | Binary distribution |
+| **Testing** | pytest + pytest-cov + pytest-timeout | 8.3.4 / 6.0.0 / 2.4.0 | Test framework and coverage |
+| **Packaging** | PyInstaller | Latest (build-only, not in requirements) | Binary distribution |
 | **HTML Parsing** | BeautifulSoup4 | 4.14.3 | Web content extraction |
 | **Images** | Pillow | 12.3.0 | Image processing |
 | **Keyring** | keyring | 25.7.0 | Secure credential storage |
@@ -480,10 +483,19 @@ Counter-Strike-coach-AI/
 |   |   |   +-- ollama_writer.py        Local LLM integration for language refinement
 |   |   |
 |   |   +-- storage/                   Database layer
-|   |       +-- database.py            SQLite WAL-mode connection management
-|   |       +-- db_models.py           SQLAlchemy/SQLModel ORM definitions
-|   |       +-- backup_manager.py      Automated database backup
-|   |       +-- match_data_manager.py  Per-match SQLite database management
+|   |   |   +-- database.py            SQLite WAL-mode connection management
+|   |   |   +-- db_models.py           SQLAlchemy/SQLModel ORM definitions
+|   |   |   +-- backup_manager.py      Automated database backup
+|   |   |   +-- match_data_manager.py  Per-match SQLite database management
+|   |   |
+|   |   +-- coaching/                  Multi-mode coaching pipeline helpers
+|   |   +-- control/                   Application orchestration and daemon management
+|   |   +-- ingestion/                 File watching and resource governance
+|   |   +-- knowledge_base/            In-app help system content
+|   |   +-- onboarding/                New user flow management
+|   |   +-- progress/                  Longitudinal performance tracking
+|   |   +-- reporting/                 Dashboard analytics engine
+|   |   +-- server.py                  Standalone FastAPI utility server (not wired into the app)
 |   |
 |   +-- core/                          Core application services
 |   |   +-- session_engine.py           4-daemon engine (Scanner, Digester, Teacher, Pulse)
@@ -504,8 +516,11 @@ Counter-Strike-coach-AI/
 |   |   +-- visualizer.py             Chart and diagram rendering
 |   |   +-- report_generator.py       Match report generation
 |   |
-|   +-- tests/                         Test suite (130 test files)
-|   +-- data/                          Static data (seed knowledge base, external datasets)
+|   +-- assets/                        Static resources (themes, i18n, wallpapers)
+|   +-- models/                        Neural network checkpoint storage
+|   +-- tools/                         Package-level tools (integrity manifest sync, diagnostics)
+|   +-- tests/                         Test suite (166 test files)
+|   +-- data/                          Static data (seed knowledge base, map_config.json, external datasets)
 |
 +-- docs/                              Documentation
 |   +-- guides/                        User guides (EN / IT / PT)
@@ -525,10 +540,13 @@ Counter-Strike-coach-AI/
 |
 +-- tests/                            Integration and verification tests
 +-- scripts/                          Setup and deployment scripts
++-- packaging/                        PyInstaller spec + Windows installer
 +-- alembic/                          Database migration scripts
 +-- .github/workflows/build.yml       Cross-platform CI/CD pipeline
 +-- console.py                        Interactive TUI entry point
 +-- goliath.py                        Production CLI orchestrator
++-- batch_ingest.py                   Parallel batch ingestion of pro demos
++-- schema.py                         Database & migration suite
 +-- run_full_training_cycle.py        Standalone training cycle runner
 ```
 
@@ -536,7 +554,7 @@ Counter-Strike-coach-AI/
 
 ## Entry Points
 
-The application provides 6 entry points for different use cases:
+The application provides 7 entry points for different use cases:
 
 ### Desktop Application (Qt GUI — Primary)
 
@@ -544,7 +562,7 @@ The application provides 6 entry points for different use cases:
 python -m Programma_CS2_RENAN.apps.qt_app.app
 ```
 
-Full graphical interface with tactical viewer, match history, performance dashboard, coach chat, and settings. Opens at 1280x720. On first launch, a 5-step wizard configures the Brain Data Root directory.
+Full graphical interface with tactical viewer, match history, performance dashboard, coach chat, and settings. Opens at 1440x900 (minimum window size 1280x720). On first launch, a 5-step wizard configures the Brain Data Root directory.
 
 ### Interactive Console (TUI)
 
@@ -562,6 +580,8 @@ Terminal UI with real-time panels for development and runtime control. Commands 
 | **System** | `sys status`, `sys audit`, `sys baseline`, `sys db`, `sys vacuum`, `sys resources` |
 | **Config** | `set steam`, `set faceit`, `set demo-path /path`, `set config key value` |
 | **Services** | `svc status`, `svc restart hunter` |
+| **Maintenance** | `maint clear-cache`, `maint clear-queue`, `maint sanitize`, `maint prune <match_id>` |
+| **Tools** | `tool demo`, `tool user`, `tool logs`, `tool list` |
 
 ### Production CLI (Goliath)
 
@@ -580,6 +600,22 @@ Master orchestrator for production builds, releases, and diagnostics:
 | `db` | Database schema management | `-y` |
 | `doctor` | Clinical diagnostics | `--dept <name>` |
 | `baseline` | Temporal baseline decay status | |
+
+### Database & Migration Suite (Schema)
+
+```bash
+python schema.py <command>
+```
+
+Unified controller for database lifecycle events:
+
+| Command | Description |
+|---------|-------------|
+| `inspect` | Show DB tables, columns, and indexes |
+| `migrate` | Apply schema changes (Alembic/Auto) |
+| `import` | Import pro data from external sources |
+| `fix` | Hot-patch known schema issues |
+| `reset` | Reset migration state or tables |
 
 ### Training Cycle Runner
 
@@ -603,7 +639,7 @@ Parallel batch ingestion of pro demo files using multiprocessing. Resumable — 
 python -m uvicorn Programma_CS2_RENAN.backend.server:app --host 127.0.0.1 --port 8000
 ```
 
-FastAPI-based internal API for programmatic access to coaching insights, training control, and service status. Not exposed externally by default. Endpoints are defined in `Programma_CS2_RENAN/backend/server.py`.
+FastAPI-based internal API for programmatic access to coaching insights, training control, and service status. A standalone utility server — it is not started by the desktop app and must be launched separately. Not exposed externally by default. Endpoints are defined in `Programma_CS2_RENAN/backend/server.py`.
 
 ---
 
@@ -614,7 +650,7 @@ The project maintains a multi-level validation hierarchy:
 | Tool | Scope | Command | Checks |
 |------|-------|---------|--------|
 | Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 42 phases |
-| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 130 test files |
+| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 166 test files |
 | Feature Audit | Feature engineering integrity | `python tools/Feature_Audit.py` | Vector dimensions, ranges |
 | Portability Test | Cross-platform compatibility | `python tools/portability_test.py` | Import checks, paths |
 | Dev Health | Development environment | `python tools/dev_health.py` | Dependencies, config |
@@ -675,7 +711,7 @@ Language can be changed at runtime from Settings without restarting the applicat
 |------|---------|--------|
 | GPU device | Auto-detected via `get_device()` | CUDA when available, else CPU. Override with `CUDA_VISIBLE_DEVICES` |
 | Training batch size | 32 (`backend/nn/config.py`) | Increase for GPU with >6 GB VRAM. Decrease if OOM |
-| Ingestion workers | CPU count (`batch_ingest.py`) | `--workers N` to limit parallel demo parsing |
+| Ingestion workers | Auto: RAM- and CPU-based, capped at 8 (`batch_ingest.py`) | `--workers N` to override parallel demo parsing |
 | EMA momentum | 0.996 base, cosine-scheduled to 1.0 (`backend/nn/jepa_train.py`) | JEPA target encoder tracking. Lower values track faster but noisier. The standalone EMA helper defaults to 0.999 (`backend/nn/ema.py`) |
 | TensorBoard | `runs/coach_training` | `tensorboard --logdir runs/coach_training` for live metrics |
 | SQLite WAL mode | Enabled by default | Concurrent read/write. No tuning needed for single-user |
@@ -807,7 +843,7 @@ Open [http://localhost:6006](http://localhost:6006) to monitor conviction index,
 |----------|------|---------|
 | Main | `Programma_CS2_RENAN/backend/storage/database.db` | Player stats, coaching state, training data |
 | HLTV | `Programma_CS2_RENAN/backend/storage/hltv_metadata.db` | Professional player metadata |
-| Knowledge | `Programma_CS2_RENAN/data/knowledge_base.db` | RAG knowledge base |
+| Knowledge | `Programma_CS2_RENAN/data/knowledge_base.db` (moves under Brain Data Root when configured) | RAG knowledge base |
 | Per-match | `{PRO_DEMO_PATH}/match_data/match_*.db` | Tick-level match data |
 
 > For complete troubleshooting, see the [User Guide](docs/guides/USER_GUIDE.md).
@@ -857,7 +893,18 @@ Four tri-lingual vision books + one canonical analogy companion book. Each coach
 - [Build and Setup Scripts](scripts/README.md) — [Italiano](scripts/README_IT.md) — [Portugues](scripts/README_PT.md)
 - [Root-Level Verification and Forensic Tests](tests/README.md) — [Italiano](tests/README_IT.md) — [Portugues](tests/README_PT.md)
 - [Root-Level Project Tools](tools/README.md) — [Italiano](tools/README_IT.md) — [Portugues](tools/README_PT.md)
+- [Demo Parser Fuzz Harness](tools/fuzz/README.md) — [Italiano](tools/fuzz/README_IT.md) — [Portugues](tools/fuzz/README_PT.md)
 - [Packaging — Build & Distribution](packaging/README.md) — [Italiano](packaging/README_IT.md) — [Portugues](packaging/README_PT.md)
+- [Security Documentation](SECURITY/README.md) — [Italiano](SECURITY/README_IT.md) — [Portugues](SECURITY/README_PT.md)
+- [Security Policies](SECURITY/policies/README.md) — [Italiano](SECURITY/policies/README_IT.md) — [Portugues](SECURITY/policies/README_PT.md)
+- [Design Atlas](design/README.md) — [Italiano](design/README_IT.md) — [Portugues](design/README_PT.md)
+- [Design Atlas — Upload Bundle](design/cs2/uploads/README.md) — [Italiano](design/cs2/uploads/README_IT.md) — [Portugues](design/cs2/uploads/README_PT.md)
+- [Evaluation Harness & Benchmarking](evals/README.md) — [Italiano](evals/README_IT.md) — [Portugues](evals/README_PT.md)
+- [CS2 Coach Bench](evals/cs2_coach_bench/README.md) — [Italiano](evals/cs2_coach_bench/README_IT.md) — [Portugues](evals/cs2_coach_bench/README_PT.md)
+- [Generated Audit & Evaluation Artifacts](reports/README.md) — [Italiano](reports/README_IT.md) — [Portugues](reports/README_PT.md)
+- [Centralized System Logs](logs/README.md) — [Italiano](logs/README_IT.md) — [Portugues](logs/README_PT.md)
+- [Top-Level Backend — Storage Staging](backend/README.md) — [Italiano](backend/README_IT.md) — [Portugues](backend/README_PT.md)
+- [Legacy Migration Scaffold](backend/storage/README.md) — [Italiano](backend/storage/README_IT.md) — [Portugues](backend/storage/README_PT.md)
 
 ### Main Package
 
@@ -868,11 +915,25 @@ Four tri-lingual vision books + one canonical analogy companion book. Each coach
 - [Models — Neural Network Checkpoint Storage](Programma_CS2_RENAN/models/README.md) — [Italiano](Programma_CS2_RENAN/models/README_IT.md) — [Portugues](Programma_CS2_RENAN/models/README_PT.md)
 - [Validation and Diagnostic Tools](Programma_CS2_RENAN/tools/README.md) — [Italiano](Programma_CS2_RENAN/tools/README_IT.md) — [Portugues](Programma_CS2_RENAN/tools/README_PT.md)
 - [Test Suite](Programma_CS2_RENAN/tests/README.md) — [Italiano](Programma_CS2_RENAN/tests/README_IT.md) — [Portugues](Programma_CS2_RENAN/tests/README_PT.md)
+- [Layered Automated Test Suite](Programma_CS2_RENAN/tests/automated_suite/README.md) — [Italiano](Programma_CS2_RENAN/tests/automated_suite/README_IT.md) — [Portugues](Programma_CS2_RENAN/tests/automated_suite/README_PT.md)
+- [Graphical Assets & UI Themes](Programma_CS2_RENAN/PHOTO_GUI/README.md) — [Italiano](Programma_CS2_RENAN/PHOTO_GUI/README_IT.md) — [Portugues](Programma_CS2_RENAN/PHOTO_GUI/README_PT.md)
+- [Session Runs & Execution Data](Programma_CS2_RENAN/runs/README.md) — [Italiano](Programma_CS2_RENAN/runs/README_IT.md) — [Portugues](Programma_CS2_RENAN/runs/README_PT.md)
+- [Tactics Configuration](Programma_CS2_RENAN/tactics/README.md) — [Italiano](Programma_CS2_RENAN/tactics/README_IT.md) — [Portugues](Programma_CS2_RENAN/tactics/README_PT.md)
 
 ### Apps — User Interface
 
 - [Apps — User Interface Layer](Programma_CS2_RENAN/apps/README.md) — [Italiano](Programma_CS2_RENAN/apps/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/README_PT.md)
 - [Qt Desktop Application (Primary)](Programma_CS2_RENAN/apps/qt_app/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/README_PT.md)
+- [Qt Application Core Utilities](Programma_CS2_RENAN/apps/qt_app/core/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/core/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/core/README_PT.md)
+- [Qt UI Screen Modules](Programma_CS2_RENAN/apps/qt_app/screens/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/screens/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/screens/README_PT.md)
+- [MVVM ViewModels](Programma_CS2_RENAN/apps/qt_app/viewmodels/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/viewmodels/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/viewmodels/README_PT.md)
+- [Custom Qt Widget Library](Programma_CS2_RENAN/apps/qt_app/widgets/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/widgets/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/widgets/README_PT.md)
+- [Dashboard Chart Widgets](Programma_CS2_RENAN/apps/qt_app/widgets/charts/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/widgets/charts/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/widgets/charts/README_PT.md)
+- [Coaching-Specific Visual Components](Programma_CS2_RENAN/apps/qt_app/widgets/coaching/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/widgets/coaching/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/widgets/coaching/README_PT.md)
+- [Generic UI Primitives](Programma_CS2_RENAN/apps/qt_app/widgets/components/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/widgets/components/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/widgets/components/README_PT.md)
+- [Tactical Viewer Widgets](Programma_CS2_RENAN/apps/qt_app/widgets/tactical/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/widgets/tactical/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/widgets/tactical/README_PT.md)
+- [Embedded TypeScript/Vite Frontend](Programma_CS2_RENAN/apps/qt_app/web/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/web/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/web/README_PT.md)
+- [Embedded Tactical Viewer (TypeScript/Vite)](Programma_CS2_RENAN/apps/qt_app/web/tactical-viewer/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/web/tactical-viewer/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/web/tactical-viewer/README_PT.md)
 
 ### Backend
 
@@ -890,18 +951,25 @@ Four tri-lingual vision books + one canonical analogy companion book. Each coach
 - [Reporting — Dashboard Analytics Engine](Programma_CS2_RENAN/backend/reporting/README.md) — [Italiano](Programma_CS2_RENAN/backend/reporting/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/reporting/README_PT.md)
 - [Application Service Layer](Programma_CS2_RENAN/backend/services/README.md) — [Italiano](Programma_CS2_RENAN/backend/services/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/services/README_PT.md)
 - [Database Storage Layer](Programma_CS2_RENAN/backend/storage/README.md) — [Italiano](Programma_CS2_RENAN/backend/storage/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/storage/README_PT.md)
+- [Datasets — Reserved Namespace](Programma_CS2_RENAN/backend/storage/datasets/README.md) — [Italiano](Programma_CS2_RENAN/backend/storage/datasets/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/storage/datasets/README_PT.md)
+- [Storage Models — Reserved Namespace](Programma_CS2_RENAN/backend/storage/models/README.md) — [Italiano](Programma_CS2_RENAN/backend/storage/models/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/storage/models/README_PT.md)
 
 ### Neural Networks
 
 - [Neural Network Subsystem](Programma_CS2_RENAN/backend/nn/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/README_PT.md)
 - [RAP Coach — 7-Layer Recurrent Architecture](Programma_CS2_RENAN/backend/nn/rap_coach/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/rap_coach/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/rap_coach/README_PT.md)
 - [Advanced — Experimental Module Stub](Programma_CS2_RENAN/backend/nn/advanced/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/advanced/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/advanced/README_PT.md)
+- [Experimental Neural Network Sandbox](Programma_CS2_RENAN/backend/nn/experimental/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/experimental/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/experimental/README_PT.md)
+- [RAP Coach — Canonical Experimental Implementation](Programma_CS2_RENAN/backend/nn/experimental/rap_coach/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/experimental/rap_coach/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/experimental/rap_coach/README_PT.md)
+- [Inference-Only Neural Utilities](Programma_CS2_RENAN/backend/nn/inference/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/inference/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/inference/README_PT.md)
+- [Reusable Neural Building Blocks](Programma_CS2_RENAN/backend/nn/layers/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/layers/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/layers/README_PT.md)
 
 ### Processing & Feature Engineering
 
 - [Processing — Data Pipeline & Feature Engineering](Programma_CS2_RENAN/backend/processing/README.md) — [Italiano](Programma_CS2_RENAN/backend/processing/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/processing/README_PT.md)
 - [Professional Baselines & Meta Drift Detection](Programma_CS2_RENAN/backend/processing/baselines/README.md) — [Italiano](Programma_CS2_RENAN/backend/processing/baselines/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/processing/baselines/README_PT.md)
 - [Feature Engineering — Unified Feature Extraction](Programma_CS2_RENAN/backend/processing/feature_engineering/README.md) — [Italiano](Programma_CS2_RENAN/backend/processing/feature_engineering/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/processing/feature_engineering/README_PT.md)
+- [Validation — Data Integrity Gates](Programma_CS2_RENAN/backend/processing/validation/README.md) — [Italiano](Programma_CS2_RENAN/backend/processing/validation/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/processing/validation/README_PT.md)
 
 ### Ingestion Pipelines
 

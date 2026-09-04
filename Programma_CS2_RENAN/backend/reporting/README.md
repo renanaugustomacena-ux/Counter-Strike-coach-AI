@@ -14,8 +14,8 @@ component decomposition. All methods are read-only queries with no mutations.
 
 **Important distinction:** This is `backend/reporting/`, which focuses on data
 computation for the Qt dashboard. It is separate from the top-level
-`Programma_CS2_RENAN/reporting/` directory, which handles PDF generation and
-visualization output files.
+`Programma_CS2_RENAN/reporting/` directory, which generates Markdown match reports
+and heatmap/visualization image files.
 
 ## File Inventory
 
@@ -33,11 +33,17 @@ aggregation. It owns a reference to the database manager (obtained via
 `get_db_manager()`) and exposes eight public methods, each returning a specific
 data shape for a UI widget.
 
+Player-scoped queries share a `_player_filter()` helper: if the player has at
+least one personal match (`is_pro == False`), results are restricted to those
+rows; otherwise the filter falls back to ALL rows (including pro matches) so the
+Performance screen shows a pro overview instead of an empty state.
+`get_skill_radar()` is the exception -- it filters by `player_name` only.
+
 #### `get_player_trends(player_name, limit=20)` -> DataFrame
 
 Fetches historical performance metrics for the trend graph widget:
 
-- Queries `PlayerMatchStats` where `player_name` matches and `is_pro == False`
+- Queries `PlayerMatchStats` through the `_player_filter()` fallback described above
 - Orders by `processed_at DESC`, limits to `limit` records (default 20)
 - Converts results to a pandas DataFrame in chronological order (reversed)
 - Returns an empty DataFrame if no data exists
@@ -48,7 +54,7 @@ Computes normalized skill attributes (0--100) for the radar chart widget:
 
 | Skill Axis | Formula | Ceiling |
 |-----------|---------|---------|
-| **Aim** | `(accuracy * 100 * 0.5) + (HS% * 100 * 0.5)` | 100 |
+| **Aim** | `(accuracy * 100 * 0.5) + (HS% * 100 * 0.5)` | not clamped |
 | **Utility** | `(blind_enemies / 2.0 * 100 * 0.6) + (flash_assists / 1.0 * 100 * 0.4)` | 100 |
 | **Positioning** | `min(100, (KAST / 0.75) * 100)` | 100 |
 | **Map Sense** | `min(100, (ADR / 100.0) * 100)` | 100 |
@@ -63,14 +69,18 @@ session context. Returns epoch, total_epochs, train/val loss, and belief confide
 
 #### `get_rating_history(player_name, limit=50)` -> List
 
-Returns a chronologically ordered list of `{rating, match_date, demo_name}` dicts
-for the rating timeline widget. Filters out pro matches (`is_pro == False`).
+Returns a chronologically ordered list of `{rating, match_date, demo_name,
+kd_ratio, avg_adr, avg_kast}` dicts for the rating timeline widget, using the
+`_player_filter()` fallback. The extra stat fields feed the pro-percentile
+context in `performance_vm.py` (R4 HIGH fix, 2026-07-16).
 
 #### `get_per_map_stats(player_name)` -> Dict
 
 Aggregates per-map performance into `{map_name: {rating, adr, kd, matches}}`:
 
 - Extracts map names from `demo_name` using regex pattern `(de_\w+|cs_\w+|ar_\w+)`
+- Falls back to a known-map name list (mirage, inferno, dust2, ...) for demo
+  filenames like `furia-vs-navi-m1-mirage.dem`, normalized to `de_<name>`
 - Groups matches by map and computes mean rating, ADR, and K/D per map
 - Maps that cannot be identified are grouped under `"unknown"`
 
@@ -89,8 +99,8 @@ Computes Z-score deviations versus the pro baseline for key metrics:
 Per-utility comparison between user and pro averages for 6 utility metrics:
 `he_damage`, `molotov_damage`, `smokes_per_round`, `flash_blind_time`,
 `flash_assists`, `unused_utility`. The pro baseline is queried from real DB data
-(`is_pro == True`). If no pro data exists, the pro dict is returned empty
-(Anti-Fabrication Rule).
+(`is_pro == True`) and carries a `"_provenance": "db"` marker. If no pro data
+exists, the pro dict is returned empty (Anti-Fabrication Rule).
 
 #### `get_hltv2_breakdown(player_name)` -> Dict
 
@@ -113,21 +123,18 @@ testable via direct instantiation.
 ```
 UI Dashboard (Qt MVVM)
     |
-    +-- PerformanceViewModel
-    |       +-- analytics.get_player_trends()    --> trend chart
-    |       +-- analytics.get_skill_radar()      --> radar chart
-    |       +-- analytics.get_rating_history()   --> rating timeline
-    |       +-- analytics.get_per_map_stats()    --> map breakdown
+    +-- PerformanceViewModel (performance_vm.py)
+    |       +-- analytics.get_rating_history()     --> rating timeline
+    |       +-- analytics.get_per_map_stats()      --> map breakdown
+    |       +-- analytics.get_strength_weakness()  --> Z-score cards
+    |       +-- analytics.get_utility_breakdown()  --> user vs pro bars
     |
-    +-- StrengthWeaknessWidget
-    |       +-- analytics.get_strength_weakness() --> Z-score cards
-    |
-    +-- UtilityWidget
-    |       +-- analytics.get_utility_breakdown() --> user vs pro bars
-    |
-    +-- TrainingStatusWidget
-            +-- analytics.get_training_metrics()  --> epoch/loss display
+    +-- MatchDetailViewModel (match_detail_vm.py)
+            +-- analytics.get_hltv2_breakdown()    --> HLTV 2.0 components
 ```
+
+`get_player_trends()`, `get_skill_radar()`, and `get_training_metrics()` currently
+have no wired consumers in the UI.
 
 ### Dependencies
 

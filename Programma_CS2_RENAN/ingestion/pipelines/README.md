@@ -33,11 +33,13 @@ simpler pipelines but the logical order is always preserved:
 
 1. **Discovery** -- glob the source directory for unprocessed files (`.dem` or
    `.json`).
-2. **Validation** -- verify input integrity.  For `.dem` files the acceptance
-   floor (`MIN_DEMO_SIZE = 10 MB`, invariant DS-12) is enforced upstream by
-   `backend/data_sources/demo_format_adapter`.  For JSON files the
-   `_validate_tournament_json()` helper asserts required top-level keys
-   (`id`, `slug`, `match_maps`) and per-map keys (`map_name`, `games`).
+2. **Validation** -- verify input integrity.  The acceptance floor for `.dem`
+   files (`MIN_DEMO_SIZE = 10 MB`, invariant DS-12) lives in
+   `backend/data_sources/demo_format_adapter`; note that `user_ingest.py`
+   itself performs no size check -- `parse_demo()` only checks existence and
+   parseability.  For JSON files the `_validate_tournament_json()` helper
+   asserts required top-level keys (`id`, `slug`, `match_maps`) and logs a
+   warning for missing per-map keys (`map_name`, `games`).
 3. **Parsing** -- extract structured data.  Demo files are parsed by
    `backend/data_sources/demo_parser.parse_demo()` (backed by `demoparser2`).
    JSON files are loaded directly with Python `json.load()`.
@@ -54,7 +56,9 @@ simpler pipelines but the logical order is always preserved:
 ### `user_ingest.py` in Detail
 
 The user ingestion pipeline handles `.dem` files recorded from the local
-player's CS2 matches.  It is the primary pipeline for personal coaching.
+player's CS2 matches.  It is a standalone, simplified pipeline: production
+user-demo ingestion runs through `_ingest_single_demo()` in `run_ingestion.py`,
+and `ingest_user_demos()` currently has no in-code callers.
 
 **Entry point:** `ingest_user_demos(source_dir: Path, processed_dir: Path)`
 
@@ -63,7 +67,8 @@ Internal flow:
 1. Glob `source_dir` for `*.dem` files.
 2. For each file, call `_process_single_user_demo()` which wraps the full
    pipeline in a try/except so one bad file does not abort the batch.
-3. `parse_demo()` returns a `DataFrame` of round-level data.
+3. `parse_demo()` returns a per-player stats `DataFrame` (final scoreboard
+   totals plus per-round averages).
 4. `extract_match_stats()` aggregates into a flat stats dictionary.
 5. A `PlayerMatchStats` ORM object is created with `is_pro=False` and the
    player name read from `get_setting("CS2_PLAYER_NAME")`.
@@ -105,8 +110,8 @@ Internal flow:
 7. Progress is logged every 100 files.
 
 This pipeline is standalone: it can be run as `__main__` with hardcoded paths
-pointing to `new_datasets/csgo_tournament_data/` and outputting to
-`data/external/tournament_advanced_stats.csv`.
+pointing to `new_datasets/csgo_tournament_data/CS_GO_Tournaments/` (repo root)
+and outputting to `Programma_CS2_RENAN/data/external/tournament_advanced_stats.csv`.
 
 ## Integration
 
@@ -143,6 +148,8 @@ pointing to `new_datasets/csgo_tournament_data/` and outputting to
   with JSON format for observability.
 - **Invariant DS-04:** The `_safe_int()` helper in the tournament ingestor
   coerces all numeric fields safely, returning a default of `0` on failure.
-- **Invariant DS-12:** Demo files smaller than `MIN_DEMO_SIZE` (10 MB) are
-  rejected by `demo_format_adapter` validation upstream.  Real CS2 demos are
-  typically 50+ MB.
+- **Invariant DS-12:** The `MIN_DEMO_SIZE` (10 MB) acceptance floor is defined
+  and enforced in `backend/data_sources/demo_format_adapter`
+  (`validate_demo_file()`).  That check is NOT on this pipeline's call path:
+  `user_ingest.py` -> `parse_demo()` performs no size validation.  Real CS2
+  demos are typically 50+ MB.

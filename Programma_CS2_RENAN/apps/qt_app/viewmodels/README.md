@@ -7,14 +7,16 @@
 
 ## Purpose
 
-ViewModels in the Model-View-ViewModel (MVVM) pattern. Every screen has at least one ViewModel that owns:
+ViewModels in the Model-View-ViewModel (MVVM) pattern. Every data-driven screen has at least one ViewModel that owns:
 
 1. **Data loading** from the backend (services, analytics, storage).
 2. **Background work** (long-running queries, ML inference) via `core/worker.Worker` (a `QRunnable` on `QThreadPool`).
 3. **State broadcast** to the screen via PySide6 `Signal`.
-4. **Cancellation** semantics so the user never waits on stale work after navigation.
+4. **Staleness guards** — `_is_loading` re-entry gates on most VMs, plus explicit `cancel()` (Match History) and `cancel_response()` (chat) where in-flight work must be abandoned on navigation.
 
-Screens stay thin and visual; ViewModels stay thick and headless. Tests for business logic happen at the ViewModel level — no Qt event loop required (we use Qt's `QSignalSpy` or plain mocks).
+Not every screen goes through this package: the config / help screens have no VM, and the profile / wizard screens (plus the tactical viewer's match-id lookup) run their few direct DB touches on a `core/worker.Worker` instead (see `screens/README.md`, F-0038).
+
+Screens stay thin and visual; ViewModels stay thick and headless. Business logic is designed to be testable at the ViewModel level — no Qt event loop required (Qt's `QSignalSpy` or plain mocks suffice); today's automated coverage is import-level (`tools/headless_validator.py`).
 
 ## File inventory
 
@@ -22,10 +24,10 @@ Screens stay thin and visual; ViewModels stay thick and headless. Tests for busi
 |------|-----------|---------------|----------------|
 | `__init__.py` | — | — | Package marker. |
 | `coach_vm.py` | `CoachViewModel` | Coach | Loads the latest `CoachingInsight` rows for the active player (`insights_loaded` / `is_loading_changed` / `error_changed`). |
-| `coaching_chat_vm.py` | `CoachingChatViewModel` | Coach (chat panel) | Multi-turn dialogue with `CoachingDialogueEngine`. Thread-safe message list. |
-| `focus_insight_vm.py` | `FocusInsightViewModel` | Home (focus card) | Single-insight carousel for the home page focus card. |
+| `coaching_chat_vm.py` | `CoachingChatViewModel` | Coach (chat panel) | Multi-turn dialogue with `CoachingDialogueEngine` (Ollama). Thread-safe message list; token streaming via `streaming_changed`; `cancel_response()` aborts an in-flight reply. |
+| `focus_insight_vm.py` | `FocusInsightViewModel` | Home (focus card) | Single focus card for the home page. Currently a stub: checks whether analyzed matches exist and emits an honest navigation hint (no measured delta-vs-pro yet). |
 | `match_detail_vm.py` | `MatchDetailViewModel` | Match Detail | Loads `PlayerMatchStats`, `RoundStats`, coaching insights, HLTV 2.0 breakdown. |
-| `match_history_vm.py` | `MatchHistoryViewModel` | Match History | Filterable list of user matches. Cancellation on filter change. |
+| `match_history_vm.py` | `MatchHistoryViewModel` | Match History, Home (recent list) | Loads the user + pro match list (capped at 50 rows); filter chips are applied screen-side. `cancel()` discards stale results on screen leave. |
 | `performance_vm.py` | `PerformanceViewModel` | Performance | Rating trend, per-map stats, strengths / weaknesses, utility breakdown. |
 | `pro_comparison_vm.py` | `ProComparisonViewModel` | Pro Comparison | User-vs-pro stat comparison with role-aware baselines. |
 | `pro_player_detail_vm.py` | `ProPlayerDetailViewModel` | Pro Player Detail | Pro player profile data, recent matches, percentile context. |

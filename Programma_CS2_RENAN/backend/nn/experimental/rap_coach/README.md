@@ -8,15 +8,15 @@
 
 ## Purpose
 
-RAP Coach (**R**easoning + **A**cting + **P**edagogy) is a multi-head policy network that consumes synthesized visual tensors (view / map / motion frames) plus the 25-dim per-tick metadata vector and produces:
+RAP Coach (**R**easoning, **A**daptation, **P**edagogy) is a multi-head policy network that consumes synthesized visual tensors (view / map / motion frames) plus the 25-dim per-tick metadata vector and produces:
 
 - A 10-dimensional **strategy** output (trained against one-hot tactical-role targets).
-- A scalar **value** estimate of round-win probability.
+- A scalar **value** estimate of the current tactical advantage in [0, 1] (0.4 alive-diff + 0.2 HP ratio + 0.2 equipment ratio + 0.2 bomb factor — replaced the binary round-win label, G-04).
 - A 3-dimensional **position** delta forecast for the player.
 - Full strategy **gate probabilities**, fed to an entropy-based sparsity loss (RAP-AUDIT-04) that drives expert specialisation.
 - A 64-dim **belief** state, a 5-concept causal **attribution**, and the recurrent **hidden state** (NN-40).
 
-Architecturally it is a pipeline of perception → memory → strategy → pedagogy (value + causal attribution) → position head, with a template-based communication layer outside the `nn.Module` graph — built on top of `ncps` Liquid Time-Constant (LTC) cells for temporal reasoning across the 32-tick window (`RAP_SEQ_LEN`).
+Architecturally it is perception → memory, with parallel heads off the memory hidden state (MoE strategy, pedagogy value, position delta; causal attribution additionally consumes the position delta) and a template-based communication layer outside the `nn.Module` graph — built on top of `ncps` Liquid Time-Constant (LTC) cells for temporal reasoning across the 32-tick window (`RAP_SEQ_LEN`).
 
 ## File inventory
 
@@ -32,7 +32,7 @@ Architecturally it is a pipeline of perception → memory → strategy → pedag
 | `model.py` | `RAPCoachModel` | Composes perception, memory, strategy, pedagogy, causal attribution, and the position head (`RAPCommunication` stays external). Forward returns 7 outputs incl. `hidden_state` (NN-40) and accepts per-timestep 5D or static 4D visual input (NN-39). Loaded via `ModelFactory.get_model('rap')`. Initialised dimensions: `metadata_dim=25`, `output_dim=10`, `hidden=256`, `perception=128`. |
 | `trainer.py` | `RAPTrainer` | Training driver: composite loss (strategy + value + entropy sparsity + position), Z-axis penalty, AMP, scheduler. Constructed by `TrainingOrchestrator(model_type='rap')`. |
 | `conftest.py` | — | Sets `collect_ignore = ["test_arch.py"]` — excludes the validation utility from pytest collection. |
-| `test_arch.py` | — | Standalone architecture validation utility (forward-pass shapes on a tiny synthetic batch), used by `headless_validator.py` Phase 16; not collected by pytest. |
+| `test_arch.py` | — | Standalone architecture validation utility (forward-pass shapes on a tiny synthetic batch). Import-guarded against pytest; run directly via `python -m Programma_CS2_RENAN.backend.nn.experimental.rap_coach.test_arch`. (`tools/headless_validator.py` Phase 16 runs its own equivalent forward-pass checks.) |
 
 ## Activation
 
@@ -73,15 +73,20 @@ orch.run_training()
 | ID | File / line | Invariant |
 |----|-------------|-----------|
 | RAP-LTC-FIX | `memory.py:70-93` | `_ode_solver` shape patch — must remain in place; future ncps upgrades may make it redundant but should not break it silently. |
-| RAP-AUDIT-01 | `training_orchestrator.py:793` | `RAP_SEQ_LEN = 32` — temporal window for LTC sequence processing. Must match `state_reconstructor.py` default. |
+| RAP-AUDIT-01 | `training_orchestrator.py:799` | `RAP_SEQ_LEN = 32` — temporal window for LTC sequence processing. Must match `state_reconstructor.py` default. |
 | RAP-AUDIT-02 | `training_orchestrator.py:_rap_compute_target_pos` | Per-tick position deltas required for position-head training. |
-| RAP-AUDIT-05 | `training_orchestrator.py:_rap_compute_timespans` | Inter-tick `dt` required for LTC ODE integration. Constant 1/64 s in canonical replays but kept tensorial for future variable-tick support. |
-| LEAK-01 | `training_orchestrator.py:_rap_collect_per_tick` | `val_mask=False` when the round outcome is unavailable, so the value head never trains on the leaked round outcome. |
+| RAP-AUDIT-05 | `training_orchestrator.py:_rap_compute_timespans` | Inter-tick `dt` required for LTC ODE integration. Computed from real tick deltas and the per-demo server tick rate (C1.2 / 26-TICK-03, from `MatchMetadata`, fallback 64) so 128-tick demos feed the correct `dt`. |
+| LEAK-01 | `training_orchestrator.py:_rap_collect_per_tick` | `val_mask=False` when the per-tick advantage inputs (`all_players` + POV knowledge) are unavailable — the leaky end-of-round outcome is never substituted as a value target. |
 | NN-TR-02b | `trainer.py:compute_position_loss` | Z-axis penalty enforced in the position loss to prevent vertical drift on multi-level maps. |
 | POV-RAP-FIX-2 | `training_orchestrator.py:_rap_prefetch_caches` / `_rap_collect_per_tick` | `match_id` fallback from `demo_name_to_match_id` when DB FK is `None`. |
 | T-2 FIX | `training_orchestrator.py:_rap_segment_windows` | ≥ 50% POV density gate per temporal window. |
 
 Tests for these invariants live in `Programma_CS2_RENAN/tests/test_rap_training_dry_run.py` and `Programma_CS2_RENAN/tests/test_rap_coach.py`.
+
+Known open findings (tracked in `docs/OPEN_ISSUES.md`, not yet fixed):
+
+- **F-0025** — the RAP value/strategy label pipeline resolves `team` from an attribute the monolith rows don't carry, so every training sample is currently labeled as CT.
+- **F-0026** — train/inference tensor-resolution skew: training renders tensors at 64² (`TrainingTensorConfig`), while both inference paths (`GhostEngine`, `ChronovisorScanner`) use the default `TensorFactory` config (map 128², view/motion 224²).
 
 ## Boundaries
 
@@ -96,4 +101,5 @@ Tests for these invariants live in `Programma_CS2_RENAN/tests/test_rap_training_
 - Training orchestrator: `backend/nn/training_orchestrator.py`
 - Smoke / regression test: `Programma_CS2_RENAN/tests/test_rap_training_dry_run.py`
 - ncps upstream: <https://github.com/mlech26l/ncps>
-- Original architecture docs: `docs/Studies/` (RAP volumes)
+- RAP-LTC-FIX rationale (resolved): `docs/rap_training_known_issue_2026-05-05.md`
+- Open findings F-0025 / F-0026: `docs/OPEN_ISSUES.md`

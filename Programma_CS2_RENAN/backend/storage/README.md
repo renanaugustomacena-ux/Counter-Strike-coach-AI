@@ -21,7 +21,7 @@ portability across machines.
 | `db_models.py` | 25 SQLModel table classes spanning the full data model |
 | `database.py` | `DatabaseManager` (monolith) + `HLTVDatabaseManager` + singletons |
 | `match_data_manager.py` | Per-match SQLite partitions (Tier 3) with LRU engine cache |
-| `backup_manager.py` | Hot backup via SQLite Online Backup API, retention (latest + 7 daily + 4 weekly) |
+| `backup_manager.py` | Hot backup via SQLite Online Backup API, retention (7 daily incl. the newest + 4 weekly) |
 | `db_backup.py` | SQLite Online Backup API wrapper + tar.gz archival for match data; `rotate_backups()` keeps 5 |
 | `db_migrate.py` | Alembic migration runner for automatic schema upgrades on startup |
 | `maintenance.py` | Metadata pruning: removes old tick data while preserving aggregate stats |
@@ -55,14 +55,14 @@ write-lock contention between daemons and to keep per-match B-tree depth shallow
 |  ProMapRecord                 |
 +-------------------------------+
 
-+-------------------------------+
-|  match_data/{id}.db (Tier 3)  |
-|  Per-match telemetry:         |
-|  MatchTickState,              |
-|  MatchEventState,             |
-|  MatchMetadata                |
-+-------------------------------+
-   One file per match (~1.7M rows each)
++--------------------------------------+
+|  match_data/match_{id}.db (Tier 3)   |
+|  Per-match telemetry:                |
+|  MatchTickState,                     |
+|  MatchEventState,                    |
+|  MatchMetadata                       |
++--------------------------------------+
+   One file per match
 ```
 
 ### Connection PRAGMAs (enforced on every checkout)
@@ -95,7 +95,10 @@ Singleton access: **always** use `get_db_manager()` (double-checked locking).
 
 Dedicated manager for `hltv_metadata.db`, isolated to avoid WAL contention with
 the session engine daemons. Includes `_reconcile_stale_schema()` which drops and
-recreates tables whose column set has drifted from the model definition.
+recreates tables whose column set has drifted from the model definition. Note:
+`hltv_metadata.db` is NOT under Alembic yet — its schema evolves only via
+`create_all()` plus this drop/recreate reconciliation (backlog item #47 in
+`TASKS.md` tracks bringing it under Alembic).
 
 Singleton access: `get_hltv_db_manager()`.
 
@@ -109,6 +112,7 @@ and `MatchMetadata`. Features:
 - Auto-migration via `_ensure_match_schema()` (incremental `ALTER TABLE` steps)
 - `tables=` filter on `create_all()` to prevent monolith tables leaking into match DBs
 - Migration utility `migrate_match_data()` for relocating data to external drives
+  (explicit call only — nothing invokes it implicitly)
 
 ### StateManager (`state_manager.py`)
 
@@ -122,9 +126,12 @@ Tracks daemon status, training progress, heartbeat, and resource limits. Feature
 ### BackupManager (`backup_manager.py`)
 
 Hot backup using SQLite's Online Backup API (`sqlite3.Connection.backup()` at
-`backup_manager.py:80-88`), WAL-safe and non-blocking. Retention policy:
-keep the latest + 7 daily + 4 weekly backups. Every backup is verified with
-`PRAGMA quick_check` before acceptance.
+`backup_manager.py:115-123`), WAL-safe and non-blocking. Retention policy:
+keep 7 daily backups (the newest is always kept) + 4 weekly backups. Every
+backup is verified with `PRAGMA quick_check` before acceptance. Size guard
+(ST-BK-01, 2026-08-03): refuses to back up a database larger than 50 GiB
+(override via `CS2_BACKUP_MAX_DB_BYTES`) or when free space is below 1.2x
+the database size — the monolith can be hundreds of GB.
 
 ### StorageManager (`storage_manager.py`)
 
@@ -157,7 +164,7 @@ session_engine.py ──> get_db_manager()   ──> database.db
 
 hltv_sync_service ──> get_hltv_db_manager() ──> hltv_metadata.db
 
-ingestion pipeline ──> get_match_data_manager() ──> match_data/{id}.db
+ingestion pipeline ──> get_match_data_manager() ──> match_data/match_{id}.db
                    ──> get_db_manager()          ──> PlayerMatchStats, RoundStats
 ```
 
@@ -171,5 +178,8 @@ ingestion pipeline ──> get_match_data_manager() ──> match_data/{id}.db
   statistics from hltv.org. Demo ingestion is an entirely separate pipeline.
 - **FK cascade rules:** `ON DELETE CASCADE` for dependent data (stat cards, map vetoes);
   `ON DELETE SET NULL` for data that should survive parent deletion (ticks, experiences).
-- **Match data relocation:** one-time migration from `backend/storage/match_data/` to
-  `PRO_DEMO_PATH/match_data/` runs automatically on first startup after path change.
+- **Match data relocation is explicit-only.** Nothing relocates shards automatically:
+  `warn_if_shards_in_legacy_location()` only logs a warning when shards remain in the
+  legacy in-project directory. Call `migrate_match_data()` yourself when relocation is
+  intended (the old implicit "one-time migration" was removed on 2026-07-26 after it
+  moved the production shard corpus as a side effect of constructing the singleton).

@@ -9,37 +9,39 @@
 
 Layered automated test suite that exercises the full Macena CS2 Analyzer stack at several levels of granularity. Tests in this directory complement the topic-organised pytest modules at the package root (`Programma_CS2_RENAN/tests/test_*.py`) — those tests are unit-oriented and grouped by domain; the tests in this sub-package are organised by **test type**.
 
-The split exists so that CI can run a fast smoke-only stage, then gate slower stages on its success.
+The split keeps a fast smoke lane available and lets the slow suites be deselected with markers: `test_e2e.py` and `test_system_regression.py` are `slow`-marked, and the CI integration tier (`.github/workflows/build.yml`) runs `-m "integration and not slow"` to keep the monolith-scale runs out of its time budget.
 
 ## File inventory
 
 | File | Layer | Purpose |
 |------|-------|---------|
 | `__init__.py` | — | Package marker. |
-| `test_smoke.py` | Smoke | Fastest gate — instantiates core managers, opens DB, loads config. Should run in seconds. Failure here means the build is fundamentally broken. |
-| `test_unit.py` | Unit | Targeted unit tests across core utility functions that are not topic-specific (e.g. cross-cutting helpers, type coercions). |
-| `test_functional.py` | Functional | Functional tests for end-to-end pipelines with mocked external dependencies — pipelines run in-memory, no real demos / network. |
-| `test_e2e.py` | End-to-end | Real-or-fixture demo files run through the full ingestion → vectorisation → inference path. Heavier; gated behind `CS2_INTEGRATION_TESTS=1`. |
-| `test_system_regression.py` | Regression | System-level regression checks: known-bad inputs, historical bug reproductions, golden-file comparisons. |
+| `test_smoke.py` | Smoke | Fastest gate — imports core modules, initializes the DB, checks config (`METADATA_DIM=25`) and `ModelFactory` types. Should run in seconds. Failure here means the build is fundamentally broken. |
+| `test_unit.py` | Unit | Targeted unit tests for cross-cutting helpers: `extract_match_stats()` aggregation logic and `LocalizationManager` language switching / fallback. |
+| `test_functional.py` | Functional | User-settings persistence round-trip through the config layer, redirected to a temp file via the `isolated_settings` fixture — never touches the real `user_settings.json`. |
+| `test_e2e.py` | End-to-end | Full lifecycle on real DB data: init, config, then a complete `CoachTrainingManager` training cycle. Marked `slow` + `integration`; gated behind `CS2_INTEGRATION_TESTS=1` and skip-gated on 5+ real `PlayerMatchStats`. |
+| `test_system_regression.py` | Regression | `PlayerMatchStats` schema regression (pure model check, e.g. `dataset_split`) plus an `integration`-gated query against real data. Module marked `slow`. |
 
 ## Running
 
 ```bash
+# Activate the virtual environment first (venv_win on Windows, venv_linux on Linux)
+
 # Smoke only (fast)
-./.venv/bin/pytest Programma_CS2_RENAN/tests/automated_suite/test_smoke.py -v
+python -m pytest Programma_CS2_RENAN/tests/automated_suite/test_smoke.py -v
 
-# Smoke + unit (default CI fast lane)
-./.venv/bin/pytest Programma_CS2_RENAN/tests/automated_suite/test_smoke.py \
-                   Programma_CS2_RENAN/tests/automated_suite/test_unit.py -v
+# Smoke + unit (fast lane)
+python -m pytest Programma_CS2_RENAN/tests/automated_suite/test_smoke.py \
+                 Programma_CS2_RENAN/tests/automated_suite/test_unit.py -v
 
-# Functional (in-memory pipelines)
-./.venv/bin/pytest Programma_CS2_RENAN/tests/automated_suite/test_functional.py -v
+# Functional (in-memory, isolated settings)
+python -m pytest Programma_CS2_RENAN/tests/automated_suite/test_functional.py -v
 
-# Full suite including E2E (slow, requires demos)
-CS2_INTEGRATION_TESTS=1 ./.venv/bin/pytest Programma_CS2_RENAN/tests/automated_suite/ -v
+# Full suite including E2E (slow, requires real ingested data)
+CS2_INTEGRATION_TESTS=1 python -m pytest Programma_CS2_RENAN/tests/automated_suite/ -v
 
 # Regression
-./.venv/bin/pytest Programma_CS2_RENAN/tests/automated_suite/test_system_regression.py -v
+python -m pytest Programma_CS2_RENAN/tests/automated_suite/test_system_regression.py -v
 ```
 
 ## CI staging recommendation

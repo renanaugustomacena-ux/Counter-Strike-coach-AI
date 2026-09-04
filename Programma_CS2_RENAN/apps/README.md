@@ -13,10 +13,10 @@ powerful custom-widget painting (QPainter), and broad cross-platform support.
 
 `qt_app/` is a strictly consumer layer: it shares the same backend services (`backend/services/`),
 database layer (`backend/storage/`), and configuration system (`core/config.py`), and limits its
-database writes to user-owned records (profile, settings).
+database writes to user-owned records (profile, settings, notification read flags).
 
 > **Historical note:** A Kivy + KivyMD prototype (`legacy_kivy/`) served as the early-development
-> shell. It was replaced by the Qt frontend and removed in March 2026 (commit `4f04f06`).
+> shell. It was replaced by the Qt frontend and removed in June 2026 (commit `4f04f06`).
 
 ## Directory Structure
 
@@ -35,13 +35,13 @@ apps/
     ├── core/                    # Shared infrastructure
     │   ├── app_state.py         # AppState singleton — polls CoachState every 10s
     │   ├── worker.py            # Background Worker (QRunnable) pattern
-    │   ├── theme_engine.py      # QSS themes (CS2, CSGO, CS1.6), palettes, fonts
+    │   ├── theme_engine.py      # Token-driven theming (CS2, CSGO, CS1.6): QSS render, QPalette, fonts, wallpapers
     │   ├── design_tokens.py     # Design token definitions for the Qt component system
-    │   ├── qss_generator.py     # Programmatic QSS generation from design tokens
+    │   ├── qss_generator.py     # Renders themes/base.qss.template with token substitution
     │   ├── animation.py         # Shared animation utilities
     │   ├── easing.py            # Custom easing curves
     │   ├── typography.py        # Typography scale and font helpers
-    │   ├── icons.py             # Icon registry and SVG/icon asset loader
+    │   ├── icons.py             # IconProvider facade — SVG sprite, QPainterPath fallback
     │   ├── svg_icon_provider.py # QIconEngine backed by SVG resources
     │   ├── i18n_bridge.py       # Localization (en, pt, it) via JSON + fallback
     │   ├── sound.py             # Sound effect playback helpers
@@ -66,7 +66,7 @@ apps/
     │   ├── steam_config_screen.py   # Steam integration settings
     │   ├── faceit_config_screen.py  # FACEIT integration settings
     │   ├── help_screen.py           # Help documentation viewer
-    │   └── placeholder.py           # Placeholder factory for stub screens
+    │   └── placeholder.py           # Placeholder factory (all entries overridden by real screens)
     │
     ├── viewmodels/              # ViewModel layer (QObject subclasses)
     │   ├── coach_vm.py              # CoachViewModel — orchestrates coaching queries
@@ -87,29 +87,40 @@ apps/
     │   │   ├── economy_chart.py     # Round-by-round economy bars (QPainter)
     │   │   ├── mini_sparkline.py    # Compact sparkline (QPainter, no axes)
     │   │   ├── momentum_chart.py    # K-D delta momentum area chart (QPainter)
-    │   │   ├── radar_chart.py       # Pentagon skill radar (QPainter)
+    │   │   ├── radar_chart.py       # N-axis skill radar (QPainter)
     │   │   ├── rating_sparkline.py  # Rating trend with baseline (QPainter)
     │   │   └── utility_bar_chart.py # Utility usage bars (QPainter)
     │   ├── coaching/            # Coaching widgets (ChatPanel embedded in CoachScreen)
-    │   ├── components/          # Reusable UI components (design system) — 16 modules
+    │   ├── components/          # Reusable UI components (design system) — 26 modules
     │   │   ├── __init__.py          # Component exports
     │   │   ├── card.py              # Card container widget (5 depth variants)
+    │   │   ├── db_record_card.py    # Mono DB row echo (table · column · value)
+    │   │   ├── delta_chip.py        # Benchmark-relative delta pill
+    │   │   ├── drivers_list.py      # Signed contribution rows (what moved a stat)
     │   │   ├── empty_state.py       # Empty state placeholder with icon and message
     │   │   ├── filter_chip.py       # Toggleable filter pill
     │   │   ├── focus_insight.py     # Focus insight card (home screen)
     │   │   ├── hero_stats_strip.py  # Horizontal strip of hero metrics
     │   │   ├── icon_widget.py       # Icon display widget (SVG/pixmap)
     │   │   ├── last_match_hero.py   # Last-match hero card (home screen)
+    │   │   ├── map_tile.py          # Per-map stat tile with win-rate accent
     │   │   ├── match_mini_card.py   # Compact match summary card
     │   │   ├── match_row_card.py    # Expanded match row card
+    │   │   ├── metric_bar_row.py    # Label + horizontal metric bar + value
+    │   │   ├── mini_link_card.py    # Small related-link navigation card
+    │   │   ├── mono_footer.py       # Mono provenance/status footer line
     │   │   ├── nav_sidebar.py       # Collapsible navigation sidebar component
+    │   │   ├── numbered_step.py     # 01/02/03 accent-mono step row
+    │   │   ├── pro_badge.py         # PRO/tier pill for pro-player surfaces
     │   │   ├── progress_ring.py     # Circular progress ring indicator
     │   │   ├── section_header.py    # Section header with title and optional action
     │   │   ├── stat_badge.py        # Stat badge with label and value
     │   │   ├── status_chip.py       # Colored status pill with text label
     │   │   ├── stepper.py           # Step progress indicator
+    │   │   ├── tip_box.py           # Accent-bordered tip/callout box
     │   │   └── toggle_switch.py     # Animated boolean switch
     │   └── tactical/            # Tactical viewer components
+    │       ├── _paint_utils.py      # Shared QPainter helpers (map + timeline)
     │       ├── map_widget.py        # 2D map renderer (QPainter, TacticalMapWidget)
     │       ├── player_sidebar.py    # Player info panel
     │       └── timeline_widget.py   # Round timeline scrubber
@@ -120,11 +131,9 @@ apps/
     │   ├── tactical-viewer/     # Tactical viewer React app
     │   └── shared/              # Shared TypeScript utilities
     │
-    └── themes/                  # QSS stylesheets
-        ├── base.qss.template    # Token-substituted base stylesheet (core/qss_generator.py)
-        ├── cs2.qss              # CS2 theme (orange accent, dark surface)
-        ├── csgo.qss             # CS:GO theme (steel blue accent)
-        └── cs16.qss             # CS 1.6 theme (green accent, retro)
+    └── themes/                  # QSS source
+        └── base.qss.template    # Token-substituted stylesheet — sole QSS source
+                                 # (rendered per theme by core/qss_generator.py)
 ```
 
 ## MVVM Architecture
@@ -176,13 +185,15 @@ python -m Programma_CS2_RENAN.apps.qt_app.app
 The boot sequence in `app.py`:
 1. High-DPI scaling configured
 2. `QApplication` created, version read from package metadata
-3. Graceful shutdown handler connected (`aboutToQuit`)
-4. `ThemeEngine` initialized — custom fonts registered, theme applied
-5. `MainWindow` created with sidebar navigation
-6. All 15 screens instantiated and registered in the `QStackedWidget`
-7. First-run gate: shows `WizardScreen` if setup not completed, else `HomeScreen`
-8. Backend console booted (`get_console().boot()`)
-9. `AppState` polling started (10-second interval)
+3. `ThemeEngine` created and custom fonts registered; a themed splash screen (colors from the active theme's design tokens) is shown
+4. Graceful shutdown handler connected (`aboutToQuit`)
+5. Persisted theme and font settings applied
+6. `MainWindow` created with sidebar navigation
+7. All 15 screens instantiated and registered in the `QStackedWidget`; cross-screen signals wired (match selection → detail, wizard → home, highlight moments → tactical viewer, pro comparison → pro detail)
+8. First-run gate: shows `WizardScreen` if setup not completed, else `HomeScreen`
+9. Backend console booted (`get_console().boot()`) and the Session Engine daemon launched
+10. SBERT language model checked (downloaded on first run, with splash progress)
+11. `AppState` polling started (10-second interval)
 
 ### PyInstaller Bundle
 
@@ -227,13 +238,15 @@ Three built-in themes mirror the Counter-Strike franchise eras:
 
 | Theme | Accent Color | Surface |
 |-------|-------------|---------|
-| CS2 | Orange (`#D96600`) | Dark charcoal |
-| CSGO | Steel blue (`#617D8C`) | Slate gray |
-| CS 1.6 | Green (`#4DB04F`) | Dark olive |
+| CS2 | Tactical orange (`#FF6A00`) | Deep navy (`#0B1628`) |
+| CSGO | Steel blue (`#617D8C`) | Dark slate (`#1A1C21`) |
+| CS 1.6 | Green (`#4DB04F`) | Dark green (`#121A12`) |
 
-Themes are applied via QSS stylesheets (`themes/*.qss`) plus a `QPalette` for
-non-styled widgets. Custom fonts (Roboto, JetBrains Mono, CS Regular, YUPIX,
-New Hope) are registered at startup.
+Both the QSS (rendered from `themes/base.qss.template` by `core/qss_generator.py`)
+and the `QPalette` for non-styled widgets derive from the same per-theme design
+tokens (`core/design_tokens.py`, generated from `design/tokens/design-tokens.json`).
+Custom fonts (Roboto, JetBrains Mono, CS Regular, YUPIX, New Hope) are registered
+at startup, plus a display stack auto-scanned from `assets/fonts/` (Space Grotesk, Inter).
 
 ### Localization (`core/i18n_bridge.py`)
 
@@ -241,7 +254,8 @@ Three languages are supported: English, Portuguese, Italian. String resolution o
 1. JSON translation file (`assets/i18n/{lang}.json`)
 2. Hardcoded translation dict (current language)
 3. English fallback
-4. Raw key (if nothing matched)
+4. Caller-supplied default (if provided)
+5. Raw key (if nothing matched)
 
 Language changes emit a `language_changed` signal. Screens implement `retranslate()`
 to update their labels dynamically.
@@ -270,14 +284,17 @@ to update their labels dynamically.
 ## Development Notes
 
 - The Qt app requires **PySide6 6.11.0** (pinned in `requirements.txt`) and **Python 3.10+**.
-- QSS stylesheets are in `qt_app/themes/` — one file per theme. Edit these for
-  visual changes; do not inline styles in Python code.
-- The `placeholder.py` factory generates stub screens that display a "Coming Soon" message for screens under development.
-- `MainWindow` uses a `QStackedLayout` with three layers: background wallpaper
-  (bottom), screen stack (middle), and toast notifications (top).
+- The sole QSS source is `qt_app/themes/base.qss.template`; the legacy per-theme
+  `.qss` files were removed (commits `73ec5ed`, `5ce891b`). Visual changes go through
+  design tokens and the template; do not inline styles in Python code.
+- The `placeholder.py` factory creates simple named placeholder screens (centered title + description). At boot every placeholder entry is overridden by a real screen implementation; the factory remains as a registration safety net.
+- `MainWindow` layers the content area with a `QStackedLayout` (`StackAll` mode):
+  background (optional wallpaper at 15% opacity plus a subtle tactical-grid motif)
+  beneath the transparent screen stack. Toast notifications float as a separate
+  top-right child overlay, outside the stacked layout.
 - The backend console (`get_console().boot()`) may fail without breaking the UI.
   A warning dialog is shown, and the application continues in degraded mode.
 
 ## File Count
 
-- `qt_app/`: 77 Python files across `core/`, `screens/`, `viewmodels/`, `widgets/` + 3 QSS themes (plus `base.qss.template`) + 3 embedded web sub-apps
+- `qt_app/`: 92 Python files (`app.py`, `main_window.py`, `core/`, `screens/`, `viewmodels/`, `widgets/`) + 1 QSS template (`themes/base.qss.template`) + 3 embedded web sub-apps

@@ -7,13 +7,16 @@
 This directory stores trained neural network checkpoints (`.pt` files) used by the
 Ghost Engine for real-time inference and by the coaching pipeline for ML-augmented
 advice generation. Checkpoints are binary PyTorch `state_dict` serializations
-managed exclusively through the `persistence.py` module, which enforces atomic
-writes, multi-fallback loading, and strict dimension validation.
+managed through the `persistence.py` module, which enforces atomic writes,
+multi-fallback loading, and strict dimension validation.
 
 No `.pt` files are committed to the repository. This directory exists in version
 control to preserve its structure (via `global/README.txt`), to hold the CTF-1
 checkpoint hash registry (`checkpoint_hashes.json`), and to serve as the default
-write target when `BRAIN_DATA_ROOT` is not configured.
+write target when `BRAIN_DATA_ROOT` is not configured. Full-scale training over
+the pro demo corpus runs on the Linux data box (see `docs/OPEN_ISSUES.md` §3);
+its trained checkpoints live there, not in this repository. Local runs on this
+machine are dev-scale only.
 
 ## Directory Structure
 
@@ -33,14 +36,20 @@ At runtime, user-specific fine-tuned models are stored in per-user subdirectorie
 models/
 ├── global/                  # Shared baseline (from pro demo training)
 │   ├── latest.pt           # Default coach model (AdvancedCoachNN)
-│   ├── jepa_brain.pt       # JEPA pre-trained on pro matches
+│   ├── jepa_brain.pt       # JEPA pre-trained on pro matches (best val loss)
+│   ├── jepa_brain_latest.pt # Rolling per-epoch save of the same run
 │   └── rap_coach.pt        # RAP model checkpoint
+├── nn/versions/             # Timestamped snapshots (ModelManager.save_version)
+│   └── brain_{timestamp}.pt
 └── {user_id}/               # Per-user fine-tuned models
     └── latest.pt           # User-adapted checkpoint
 ```
 
-Each checkpoint is accompanied by a `.pt.meta.json` sidecar (GAP-07) recording
-`schema_version`, `metadata_dim`, and the feature-name list at save time.
+The `TrainingOrchestrator` writes two files per run: the bare version name on a
+new best validation loss, and `{version}_latest.pt` after every epoch. Each
+checkpoint saved through `save_nn()` is accompanied by a `.pt.meta.json` sidecar
+(GAP-07) recording `schema_version`, `metadata_dim`, and the feature-name list
+at save time.
 
 ## Checkpoint Inventory
 
@@ -49,18 +58,26 @@ Version strings map to `ModelFactory` model types:
 | Checkpoint | Model Class | Created By | Input Dim |
 |-----------|-------------|-----------|-----------|
 | `latest.pt` | AdvancedCoachNN (default) | `backend/nn/train.py`, `coach_manager.py` | 25 (METADATA_DIM) |
-| `jepa_brain.pt` | JEPA coaching model | `backend/nn/jepa_trainer.py` | 25 (METADATA_DIM) |
+| `jepa_brain.pt` | JEPA coaching model | `backend/nn/training_orchestrator.py` (epoch loop: `jepa_trainer.py`) | 25 (METADATA_DIM) |
 | `vl_jepa_brain.pt` | VL-JEPA (concept head) | `backend/nn/training_orchestrator.py` | 25 (METADATA_DIM) |
-| `rap_coach.pt` | RAPCoachModel | `backend/nn/experimental/rap_coach/trainer.py` | 25 (METADATA_DIM) |
-| `rap_lite_coach.pt` | RAP-Lite (LSTM memory) | RAP training with `use_lite_memory` | 25 (METADATA_DIM) |
-| `role_head.pt` | NeuralRoleHead | Role classification training | 5 |
-| `win_prob.pt` | WinProbabilityTrainerNN | `backend/nn/win_probability_trainer.py` (offline utility) | 9 (offline subset) |
+| `rap_coach.pt` | RAPCoachModel | `backend/nn/training_orchestrator.py` (epoch loop: `experimental/rap_coach/trainer.py`; gated by `USE_RAP_MODEL`) | 25 (METADATA_DIM) |
+| `rap_lite_coach.pt` | RAP-Lite (LSTM memory) | RAP training with `use_lite_memory` (version string from `factory.py`) | 25 (METADATA_DIM) |
+| `role_head.pt` | NeuralRoleHead | `backend/nn/role_head.py` | 5 |
+| `win_prob.pt` | WinProbabilityTrainerNN | `backend/nn/win_probability_trainer.py` (offline utility, currently no production caller) | 9 (offline subset) |
+
+The orchestrator additionally writes a `{version}_latest.pt` rolling checkpoint
+per epoch, and the standalone two-stage pipeline `backend/nn/jepa_train.py`
+(pretrain/finetune CLI over the monolith database, run at full scale on the
+Linux data box) writes `jepa_model.pt` / `jepa_model_finetuned.pt` in its own
+wrapped-dictionary format.
 
 ## Checkpoint Format
 
-Every `.pt` file is a PyTorch `state_dict` dictionary saved via `torch.save()`.
-The keys correspond to the named parameters of the model class. Example structure
-for `jepa_brain.pt`:
+Every `.pt` file written through `save_nn()` is a PyTorch `state_dict` dictionary
+saved via `torch.save()`. The keys correspond to the named parameters of the model
+class. (The standalone `jepa_train.py` pipeline instead wraps the state dict in a
+checkpoint dictionary with `model_state_dict`, EMA counters, and training
+metadata.) Example structure for `jepa_brain.pt`:
 
 ```python
 {
@@ -78,8 +95,13 @@ clones shadow tensors during `apply_shadow()` to preserve originals (invariant N
 
 ## Persistence Architecture
 
-The `backend/nn/persistence.py` module is the **sole** interface for checkpoint I/O.
-Direct `torch.save()` / `torch.load()` calls from other modules are forbidden.
+The `backend/nn/persistence.py` module is the canonical interface for checkpoint
+I/O on the production load/save paths; new code must not call `torch.save()` /
+`torch.load()` directly. Known offline exceptions that bypass it: the standalone
+`jepa_train.py` pipeline (own atomic wrapped-checkpoint format), the dormant
+`win_probability_trainer.py` utility (bare `state_dict` to a caller-supplied
+path), and `ModelManager.save_version()` in `model.py` (timestamped snapshots
+under `models/nn/versions/`).
 
 ### Atomic Write Protocol
 
@@ -153,7 +175,10 @@ current model class, loading fails deterministically.
 | `rap_coach` | RAPCoachModel | Pro demo dataset (RAP LTC-Hopfield training) |
 | `rap_lite_coach` | RAP-Lite | RAP training with LSTM fallback memory |
 | `role_head` | NeuralRoleHead | Role classification dataset |
-| `win_prob` | WinProbabilityTrainerNN | Round outcome dataset (offline utility) |
+| `win_prob` | WinProbabilityTrainerNN | Round outcome dataset (offline utility; no production caller — the predictor stays heuristic until the 12-dim retrain) |
+
+Full-scale runs against the pro demo dataset happen on the Linux data box, where
+the monolith training database lives (`docs/OPEN_ISSUES.md` §3).
 
 ## Bundling (PyInstaller)
 
@@ -167,11 +192,11 @@ tiers only resolve when a build explicitly bundles checkpoints.
 
 | Consumer | Checkpoint | Operation |
 |----------|-----------|-----------|
-| `backend/nn/jepa_trainer.py` | `jepa_brain.pt` | Write after training |
+| `backend/nn/training_orchestrator.py` | `jepa_brain.pt`, `vl_jepa_brain.pt`, `rap_coach.pt` (+ `_latest` variants) | Load/save with `StaleCheckpointError` handling; sole writer for the orchestrated trainings |
 | `backend/nn/coach_manager.py` | `latest.pt` | Save global/user models; load for inference |
-| `backend/nn/training_orchestrator.py` | `jepa_brain.pt`, `vl_jepa_brain.pt` | Load/save with `StaleCheckpointError` handling |
-| `backend/nn/experimental/rap_coach/trainer.py` | `rap_coach.pt` | Write after RAP training |
-| `backend/nn/win_probability_trainer.py` | `win_prob.pt` | Write after win-prob training (offline) |
+| `backend/nn/role_head.py` | `role_head.pt` | Save/load via `save_nn()` / `load_nn()` |
+| `backend/nn/jepa_train.py` | `jepa_model.pt`, `jepa_model_finetuned.pt` | Standalone two-stage pipeline (own checkpoint format) |
+| `backend/nn/win_probability_trainer.py` | caller-supplied path | Offline utility (raw `torch.save`, currently uncalled) |
 
 ## Development Notes
 
@@ -179,6 +204,9 @@ tiers only resolve when a build explicitly bundles checkpoints.
 - The `global/` directory must exist in the repo (preserved by `README.txt`)
 - Training logs are written by `backend/nn/training_monitor.py` (JSON format), not stored here
 - The `MODELS_DIR` path is resolved from `core/config.py` and defaults to this directory
-- When `BRAIN_DATA_ROOT` is set, models are written to `{BRAIN_DATA_ROOT}/models/` instead
+- When `BRAIN_DATA_ROOT` (or, as fallback, `CUSTOM_STORAGE_PATH`) is set and exists,
+  models are written to `{BRAIN_DATA_ROOT}/models/` instead
+- `checkpoint_hashes.json` is keyed by absolute checkpoint path; the committed
+  entries were recorded during training runs on the Linux data box
 - Always use `save_nn()` / `load_nn()` from `persistence.py` — never call `torch.save()` directly
 - After changing model architecture, delete stale checkpoints and retrain from scratch

@@ -9,6 +9,7 @@ Demo ingestion infrastructure for professional and user CS2 demos with Steam int
 ```
 ingestion/
 ├── __init__.py
+├── .validated_cache.json   # Runtime artifact, reset by tools/reset_pro_data.py (repo root)
 ├── demo_loader.py          # Three-pass demo parser with signed cache
 ├── integrity.py            # Demo file integrity validation
 ├── steam_locator.py        # Steam installation discovery
@@ -33,9 +34,10 @@ ingestion/
   restricted unpickler (DS-01) and verify the signature before deserializing
 
 **`steam_locator.py`** — Steam installation discovery
-- Multi-platform CS2 installation detection (Windows, Linux, macOS)
-- Registry parsing (Windows) and filesystem scanning
+- Multi-platform CS2 installation detection (Windows, Linux)
+- Registry parsing (Windows) and filesystem scanning, with a drive-scan fallback
 - Demo folder auto-detection
+- `sync_steam_demos()` queues each newly discovered demo as an `IngestionTask` row
 
 **`integrity.py`** — Demo file integrity validation
 - `validate_dem_file()` delegates to `backend/data_sources/demo_format_adapter`
@@ -76,5 +78,13 @@ Demo file registry and lifecycle management.
 
 - **HLTV scraping** lives in `backend/data_sources/hltv/`, NOT in this package
 - The main ingestion orchestrator function `_ingest_single_demo()` lives in `run_ingestion.py` at the package root
-- Pro demo ingestion uses the same core pipeline as user demos, with additional statistical enrichment
-- Demo discovery and batch processing is handled by `batch_ingest.py` at the project root
+- The production orchestrator does **not** import this package: `run_ingestion.py` parses via
+  `backend/data_sources/demo_parser` and uses `backend/ingestion/` (resource manager).
+  This package's consumers are `reporting/report_generator.py` and
+  `apps/qt_app/screens/tactical_viewer_screen.py` (`DemoLoader`), `core/session_engine.py`
+  (`steam_locator`), and the test suite (`integrity`)
+- Pro demo ingestion uses the same core pipeline as user demos; pro demos parse all
+  players (target `"ALL"`) while user demos target the configured `CS2_PLAYER_NAME`
+- Demo discovery and batch processing are handled by `run_ingestion.py`
+  (`StorageManager.list_new_demos()` + the `IngestionTask` queue) and the long-running
+  worker `run_worker.py`, both at the package root

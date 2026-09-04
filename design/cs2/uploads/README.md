@@ -2,16 +2,17 @@
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-Flattened upload bundle of the design atlas for the CS2 coaching application — a self-contained copy of the 41 SVG frames plus tokens, laid out flat for easy drag-and-drop into design tools. All files are SVG + HTML + JSON — zero binaries, fully portable. The canonical, structured atlas lives at `design/` (repo root); see `design/README.md`.
+Flattened upload bundle of the design atlas for the CS2 coaching application — a self-contained copy of the 41 SVG frames plus an earlier snapshot of the design tokens, laid out flat for easy drag-and-drop into design tools. All files are SVG + HTML + JSON — zero binaries, fully portable. The canonical, structured atlas lives at `design/` (repo root); see `design/README.md`.
 
 ## File Map
 
 ```
 design/cs2/uploads/
-├── index.html                  ← master canvas (open in browser)
+├── index.html                  ← copy of the atlas canvas (see Browser note below)
 ├── README.md
 ├── README-8252c0ae.md          ← uploaded copy of the project root README
-├── design-tokens.json          ← W3C DTCG format, 3 themes
+├── design-tokens.json          ← W3C DTCG format, 3 themes — older snapshot; the
+│                                 token SSOT is design/tokens/design-tokens.json
 ├── 01_cover.svg                Marketing (01–04)
 ├── 02_landing_hero.svg
 ├── 03_feature_showcase.svg
@@ -35,14 +36,16 @@ All 41 frames are 1440×900. The larger standalone architecture SVGs (`system_ma
 
 ### Browser (Claude Design / local preview)
 
+The `index.html` here is a verbatim copy of the atlas canvas: it references the SVGs via `frames/…` and `architecture/…` relative paths, which do not resolve against this flat folder. Open the canonical canvas instead:
+
 ```bash
-# open the master canvas
-open design/cs2/uploads/index.html
+# open the master canvas (structured atlas)
+open design/index.html
 # or
-firefox design/cs2/uploads/index.html
+firefox design/index.html
 ```
 
-Works as `file://` — no server needed. Load `index.html` as a Claude artifact for interactive use.
+Works as `file://` — no server needed. Load `design/index.html` as a Claude artifact for interactive use; the individual SVGs in this folder open directly in any browser.
 
 ### Figma
 
@@ -128,7 +131,9 @@ Three themes available in `design-tokens.json`:
 |-------|--------|------------|-----------|
 | **CS2** | `#d96600` orange | `#14141e` deep navy | Modern · dark · tactical |
 | **CSGO** | `#617d8c` steel | `#1a1c21` dark slate | Military · muted |
-| **CS1.6** | `#4db04f` green | `#0d1a0d` terminal | Retro · hacker |
+| **CS1.6** | `#4db04f` green | `#121a12` terminal | Retro · hacker |
+
+Note: this bundle's tokens and frames use the earlier CS2 palette; the current token SSOT (`design/tokens/design-tokens.json`) uses `#FF6A00` on `#0B1628`.
 
 ## RAP Deep-Dive (37–41)
 
@@ -158,13 +163,13 @@ These are hardcoded in the architecture diagrams for reference:
 | `NN-JM-04` | `target_encoder` requires_grad=False during EMA |
 | `DS-12` | MIN_DEMO_SIZE = 10 MB |
 | `P-VEC-02` | NaN/Inf clamp + >5% batch → DataQualityError |
-| `METADATA_DIM=25` | Sole source: `vectorizer.py:32` |
+| `METADATA_DIM=25` | Sole source: `vectorizer.py` |
 
 ## Compatibility Matrix
 
 | Tool | How |
 |------|-----|
-| Claude Design (web) | Load `index.html` as artifact; paste individual SVGs |
+| Claude Design (web) | Load `design/index.html` as artifact; paste individual SVGs |
 | Figma | Paste SVG; load tokens via Figma Tokens plugin |
 | After Effects | File → Import SVG (vector shape layers) |
 | Rive | Import SVG → timeline animate → export .riv |
