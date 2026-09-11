@@ -781,26 +781,12 @@ def run_export(args: argparse.Namespace) -> None:
         demo, split, pms_rows = item
         return _process_demo(args.db, demo, pms_rows, split, args.profile, args.seed)
 
-    results: List[Tuple[str, Dict[str, Any]]] = []
-    if args.workers <= 1:
-        for item in tasks:
-            result = process_one(item)
-            if result is not None:
-                results.append((item[1], result))
-            else:
-                skipped_empty += 1
-    else:
-        with ThreadPoolExecutor(max_workers=args.workers) as pool:
-            futures = {pool.submit(process_one, item): item for item in tasks}
-            for future in as_completed(futures):
-                item = futures[future]
-                result = future.result()
-                if result is not None:
-                    results.append((item[1], result))
-                else:
-                    skipped_empty += 1
+    n_tasks = len(tasks)
+    done = 0
 
-    for split, result in results:
+    def finish(split: str, result: Dict[str, Any], seconds: float) -> None:
+        """Write the shard NOW (never buffer demos in memory) and record its manifest entry."""
+        nonlocal done
         fname, sha = _write_shard(out_dir, split, result["demo_name"], result)
         entry = {
             "demo_name": result["demo_name"],
@@ -813,13 +799,38 @@ def run_export(args: argparse.Namespace) -> None:
             "match_date_source": result.get("match_date_source", ""),
         }
         split_demos.setdefault(split, []).append(entry)
-
         mds = result.get("match_date_source", "")
         if mds and mds not in CHRONOLOGICAL_SOURCES:
-            warnings = split_warnings.setdefault(split, [])
-            warnings.append(
-                f"OI-2: demo {result['demo_name']} match_date_source={mds} " f"is not chronological"
+            split_warnings.setdefault(split, []).append(
+                f"OI-2: demo {result['demo_name']} match_date_source={mds} is not chronological"
             )
+        done += 1
+        _log(
+            f"[{done}/{n_tasks}] {result['demo_name']} split={split} "
+            f"players={len(result['players'])} episodes={result['n_episodes']} "
+            f"ticks={result['n_ticks']} {seconds:.1f}s"
+        )
+
+    if args.workers <= 1:
+        for item in tasks:
+            t0 = time.monotonic()
+            result = process_one(item)
+            if result is not None:
+                finish(item[1], result, time.monotonic() - t0)
+            else:
+                skipped_empty += 1
+                _log(f"skip {item[0]}: no episodes")
+    else:
+        with ThreadPoolExecutor(max_workers=args.workers) as pool:
+            futures = {pool.submit(process_one, item): (item, time.monotonic()) for item in tasks}
+            for future in as_completed(futures):
+                item, t0 = futures[future]
+                result = future.result()
+                if result is not None:
+                    finish(item[1], result, time.monotonic() - t0)
+                else:
+                    skipped_empty += 1
+                    _log(f"skip {item[0]}: no episodes")
 
     for split, demos in split_demos.items():
         _write_manifest(out_dir, split, demos, split_warnings.get(split, []), args.seed)
