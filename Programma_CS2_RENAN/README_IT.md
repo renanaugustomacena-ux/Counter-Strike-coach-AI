@@ -2,7 +2,7 @@
 
 # Programma_CS2_RENAN — Pacchetto Applicativo Principale
 
-> **Autorita:** Tutte le Regole (Root del Pacchetto)
+> **Autorità:** Tutte le Regole (Root del Pacchetto)
 
 Pacchetto applicativo principale del Macena CS2 Analyzer — un coach tattico basato su intelligenza artificiale per Counter-Strike 2. Questo pacchetto contiene l'intero codice dell'applicazione organizzato in un'architettura a livelli.
 
@@ -12,20 +12,21 @@ L'intero sistema segue una pipeline a quattro fasi che trasforma i dati grezzi d
 
 ```
 GUARDA (Ingestione) →  IMPARA (Addestramento) →  PENSA (Inferenza) →  PARLA (Dialogo)
-    Daemon Hunter         Daemon Teacher             Pipeline COPER       Template + Ollama
-    Parsing demo          Maturita a 3 stadi         Conoscenza RAG       Attribuzione causale
+    Daemon Scanner        Daemon Teacher             Pipeline COPER       Template + Ollama
+    Parsing demo          Maturità a 3 stadi         Conoscenza RAG       Attribuzione causale
     Estrazione feature    Training multi-modello      Teoria dei giochi    Confronti con i pro
 ```
 
 ### Fase 1: GUARDA (Ingestione)
-- Il **daemon Hunter** raccoglie statistiche dei giocatori professionisti da hltv.org
+- Il **daemon Scanner** monitora le directory demo utente e pro e accoda i nuovi file `.dem`
+- Il **hunter service** (`hltv_sync_service.py`, supervisionato dal backend Console) effettua lo scraping delle statistiche dei giocatori professionisti da hltv.org
 - Il **daemon Digester** analizza i file `.dem` tramite demoparser2 ed estrae il vettore di feature a 25 dimensioni
 - I dati grezzi dei tick vengono salvati in database SQLite per singola partita
 
 ### Fase 2: IMPARA (Addestramento)
 - Il **daemon Teacher** addestra i modelli neurali sui dati ingeriti
-- Controllo di maturita a 3 stadi: CALIBRATING (0-49 demo) → LEARNING (50-199) → MATURE (200+)
-- Modelli: JEPA (auto-supervisionato), RAP Coach (pedagogico a 7 livelli), NeuralRoleHead, Win Probability
+- Controllo di maturità a 3 stadi: CALIBRATING (0-49 demo) → LEARNING (50-199) → MATURE (200+)
+- Modelli: JEPA (auto-supervisionato), RAP Coach (percezione/memoria/strategia/pedagogia), NeuralRoleHead, Win Probability
 
 ### Fase 3: PENSA (Inferenza)
 - Pipeline di coaching COPER: Context + Observation + Pro Reference + Experience + Reasoning
@@ -56,33 +57,39 @@ Programma_CS2_RENAN/
 │   ├── processing/             # Feature engineering (vettore 25-dim), baseline
 │   ├── progress/               # Tracciamento progresso addestramento
 │   ├── reporting/              # Query analitiche per la UI
-│   ├── services/               # Livello di orchestrazione servizi (6 servizi)
+│   ├── services/               # Livello di orchestrazione servizi (11 moduli di servizio)
 │   └── storage/                # Persistenza SQLite, modelli, backup
 ├── core/                       # Fondamenta runtime
-│   ├── session_engine.py       # Motore Quad-Daemon (Hunter, Digester, Teacher, Pulse)
+│   ├── session_engine.py       # Motore Quad-Daemon (Scanner, Digester, Teacher, Pulse)
 │   ├── config.py               # Sistema di configurazione (risoluzione a 3 livelli)
 │   ├── spatial_data.py         # Intelligenza spaziale mappe (9 mappe competitive)
+│   ├── known_maps.py           # SSOT mappa nota (lista autoritativa singola)
 │   ├── map_manager.py          # Gestione asset delle mappe
 │   └── lifecycle.py            # Avvio/arresto controllato
 ├── ingestion/                  # Orchestrazione ingestione demo
-│   ├── pipelines/              # Pipeline demo utente e pro
-│   ├── registry/               # Tracciamento e ciclo di vita file demo
-│   └── hltv/                   # Sottosistema scraper HLTV
+│   ├── pipelines/              # Pipeline demo utente e tournament-JSON
+│   └── registry/               # Tracciamento e ciclo di vita file demo
 ├── observability/              # Protezione e monitoraggio runtime
-│   ├── rasp.py                 # Guardia di integrita RASP
+│   ├── rasp.py                 # Guardia di integrità RASP
 │   ├── logger_setup.py         # Logging strutturato JSON
 │   └── sentry_setup.py         # Tracciamento errori Sentry
 ├── reporting/                  # Visualizzazione e report
-│   ├── visualizer.py           # Heatmap, mappe di ingaggio, grafici momentum
-│   └── report_generator.py     # Report PDF multi-pagina
+│   ├── visualizer.py           # Heatmap, overlay differenziali, momenti critici
+│   └── report_generator.py     # Report Markdown delle partite
 ├── assets/                     # Asset statici (i18n, mappe)
 ├── data/                       # Dati runtime (demo, conoscenza, configurazioni)
+├── logs/                       # Output log runtime (cs2_analyzer.log)
+├── migrations/                 # Ambiente di migrazione Alembic (env.py, script.py.mako)
 ├── models/                     # Checkpoint dei modelli addestrati
-├── tests/                      # Suite di test (2,024+ test in 118 file)
+├── PHOTO_GUI/                  # Asset tema runtime e font (temi cs16/csgo/cs2, mappe)
+├── runs/                       # Log di addestramento TensorBoard
+├── tactics/                    # Metadati tattici mappe (JSON)
+├── tests/                      # Suite di test (oltre 2.500 definizioni di funzione di test in 182 file)
 ├── tools/                      # Strumenti di validazione a livello pacchetto
 ├── __init__.py                 # Init del pacchetto (__version__ = "1.0.0")
 ├── run_ingestion.py            # Punto di ingresso ingestione demo
 ├── run_worker.py               # Worker di ingestione in background (recupero task stale)
+├── settings.json               # Default legacy tema/percorso demo (letto da tools/Goliath_Hospital.py)
 └── hltv_sync_service.py        # Daemon di sincronizzazione HLTV in background
 ```
 
@@ -93,19 +100,19 @@ Programma_CS2_RENAN/
 | `apps/qt_app/app.py` | Applicazione desktop (GUI Qt, primaria) | `python -m Programma_CS2_RENAN.apps.qt_app.app` |
 | `run_ingestion.py` | Pipeline di ingestione demo | `python -m Programma_CS2_RENAN.run_ingestion` |
 | `run_worker.py` | Worker di ingestione in background (recupero task stale) | `python -m Programma_CS2_RENAN.run_worker` |
-| `hltv_sync_service.py` | Sincronizzazione HLTV in background | Avviato dal daemon Hunter |
+| `hltv_sync_service.py` | Sincronizzazione HLTV in background (servizio "hunter") | Avviato come sottoprocesso separato dal ServiceSupervisor (`backend/control/console.py`) |
 
 ## Stack Tecnologico
 
 | Livello | Tecnologia |
 |---------|-----------|
 | UI Primaria | PySide6/Qt (pattern MVVM, 15 schermate, 10 ViewModel) |
-| Framework ML | PyTorch, ncps (neuroni Liquid Time-Constant), hflayers (Hopfield) |
-| Database | SQLite (modalita WAL) via SQLModel/SQLAlchemy |
+| Framework ML | PyTorch, ncps (neuroni Liquid Time-Constant), hopfield-layers (memoria associativa Hopfield) |
+| Database | SQLite (modalità WAL) via SQLModel/SQLAlchemy |
 | Parsing Demo | demoparser2 (basato su Rust, alte prestazioni) |
 | Statistiche Pro | BeautifulSoup4 + FlareSolverr/Docker (scraping HLTV) |
-| Conoscenza | Sentence-BERT (384-dim) + FAISS (ricerca per similarita) |
-| Osservabilita | TensorBoard, Sentry, logging strutturato JSON |
+| Conoscenza | Sentence-BERT (384-dim) + FAISS (ricerca per similarità) |
+| Osservabilità | TensorBoard, Sentry, logging strutturato JSON |
 | Rifinitura LLM | Ollama (opzionale, inferenza locale) |
 
 ## Costanti Critiche
