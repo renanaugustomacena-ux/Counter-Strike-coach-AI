@@ -54,13 +54,14 @@ os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE  # noqa: E402
 from tools.verify_math_claims import (  # noqa: E402  (imports torch on CPU; does not run main())
     fetch_ticks,
     open_ro,
     select_pairs,
 )
 
-TICK_RATE_HZ = 64
+TICK_RATE_HZ = DEFAULT_TICK_RATE
 TOKEN_TICKS = 8
 HORIZONS_TOK: Tuple[int, ...] = (1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64)
 MIN_EPISODE_TICKS = 64  # Parte III §3
