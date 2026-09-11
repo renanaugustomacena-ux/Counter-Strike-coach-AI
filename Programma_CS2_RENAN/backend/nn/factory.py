@@ -39,6 +39,7 @@ class ModelFactory:
     TYPE_RAP = "rap"
     TYPE_RAP_LITE = "rap-lite"
     TYPE_ROLE_HEAD = "role_head"
+    TYPE_JEPA_V2 = "jepa_v2"
 
     @staticmethod
     def get_model(model_type: str = "default", **kwargs) -> nn.Module:
@@ -82,6 +83,12 @@ class ModelFactory:
                 use_lite_memory=True,
             )
 
+        elif model_type == ModelFactory.TYPE_JEPA_V2:
+            from Programma_CS2_RENAN.backend.nn.jepa_v2.config import JepaV2Config
+            from Programma_CS2_RENAN.backend.nn.jepa_v2.encoder import EncoderV2
+
+            return EncoderV2(JepaV2Config())
+
         elif model_type == ModelFactory.TYPE_ROLE_HEAD:
             from Programma_CS2_RENAN.backend.nn.role_head import NeuralRoleHead
 
@@ -108,6 +115,7 @@ class ModelFactory:
                 ModelFactory.TYPE_RAP,
                 ModelFactory.TYPE_RAP_LITE,
                 ModelFactory.TYPE_ROLE_HEAD,
+                ModelFactory.TYPE_JEPA_V2,
             ]
             raise ValueError(f"Unknown model type: '{model_type}'. Valid types: {valid_types}")
 
@@ -116,7 +124,9 @@ class ModelFactory:
         """
         Returns the canonical checkpoint filename for this model type.
         """
-        if model_type == ModelFactory.TYPE_JEPA:
+        if model_type == ModelFactory.TYPE_JEPA_V2:
+            return "jepa_v2_encoder"
+        elif model_type == ModelFactory.TYPE_JEPA:
             return "jepa_brain"
         elif model_type == ModelFactory.TYPE_VL_JEPA:
             return "vl_jepa_brain"
@@ -136,6 +146,7 @@ class ModelFactory:
                 ModelFactory.TYPE_RAP,
                 ModelFactory.TYPE_RAP_LITE,
                 ModelFactory.TYPE_ROLE_HEAD,
+                ModelFactory.TYPE_JEPA_V2,
             ]
             raise ValueError(
                 f"Unknown model type for checkpoint: '{model_type}'. Valid types: {valid_types}"
