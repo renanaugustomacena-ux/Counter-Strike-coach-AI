@@ -1,36 +1,21 @@
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-# Execuções de Sessão e Dados de Processo
+# Session Runs & Dados de Execução
 
-Este diretório serve como o armazenamento volátil e espaço de trabalho para todos os dados de execução específicos de sessão gerados pelo coach de IA do Counter-Strike. Ele atua como um buffer temporário para tarefas de processamento ativas e um registro histórico para ciclos de análise concluídos.
+Este diretório é o local de saída padrão para logs de eventos TensorBoard gerados durante o treinamento de modelos pelo coach de IA do Counter-Strike. Não contém código; apenas dados de telemetria de treinamento regeneráveis são escritos aqui em tempo de execução.
 
 ## Visão Geral Técnica
 
-O diretório `runs/` foi projetado para lidar com um alto volume de processamento de dados durante a ingestão de partidas e o treinamento do modelo. Cada ciclo de execução (uma "run") cria um subdiretório com timestamp ou baseado em ID para isolar seus dados de outras sessões. Esse isolamento garante que os resultados de análise intermediária e os checkpoints de treinamento não se sobreponham, permitindo o processamento simultâneo de múltiplos demos ou sessões de treinamento.
+O caminho é resolvido como `RUNS_DIR = USER_DATA_ROOT/runs` em `core/config.py` (criado automaticamente no import). Quando `BRAIN_DATA_ROOT` está configurado, as runs são escritas sob essa raiz em vez do diretório no repositório. O `TensorBoardCallback` (`backend/nn/tensorboard_callback.py`) — Layer 2 do Coach Introspection Observatory — mantém `RUNS_DIR/coach_training` como valor padrão do construtor, mas o ponto de entrada do treinamento (`run_full_training_cycle.py`) delimita cada run via `build_run_dir(model_type)`, que retorna `RUNS_DIR/<model_type>/<timestamp UTC>-<tag de dispositivo>` (ex. `runs/jepa/20260817T142530Z-cpu`). O tag de dispositivo vem de `resolve_device_tag()` (`cpu` / `cuda` / `rocm`), de modo que uma smoke run Windows em CPU nunca é confundida com uma run Linux ROCm real no dashboard.
 
 ## Componentes Principais
 
-- **Checkpoints de Treinamento**: Durante os ciclos de ajuste fino (fine-tuning) do modelo ou aprendizado por reforço, estados periódicos do modelo (pesos, estados do otimizador) são armazenados aqui.
-- **Resultados de Análise Intermediária**: Arquivos JSON e binários temporários gerados durante o parsing de arquivos demo antes de serem agregados no banco de dados final ou relatório.
-- **Logs Brutos de Sessão**: Logs de execução detalhados e de baixo nível específicos para uma única execução, úteis para depurar ingestões falhas ou drift do modelo.
-- **Cache de Inferência**: Dados transitórios usados durante a inferência de VLM/LLM para acelerar consultas repetitivas dentro da mesma sessão.
-
-## Estrutura do Diretório
-
-```text
-Programma_CS2_RENAN/runs/
-├── [run_id_ou_timestamp]/  # Espaço de trabalho isolado para uma sessão específica
-│   ├── checkpoints/         # Pesos do modelo e estado de treinamento
-│   ├── intermediate/        # Dados de demo parcialmente processados
-│   └── session.log          # Log detalhado para esta execução específica
-├── README.md                # Documentação em inglês
-├── README_IT.md             # Versão em italiano
-└── README_PT.md             # Esta documentação
-```
+- **Arquivos de Evento TensorBoard**: Escalares (loss, learning rate, esparsidade), histogramas e layouts de escalares personalizados registrados por época durante o treinamento.
+- **Escalares MaturityObservatory**: O observatory compartilha o mesmo `SummaryWriter`, então seus sinais de conviction/maturidade são registrados no mesmo logdir.
+- **Subdiretórios Por-Run**: Cada invocação de treinamento recebe seu próprio diretório `<model_type>/<timestamp UTC>-<tag de dispositivo>`, mantendo os experimentos separáveis na UI do TensorBoard em vez de acumulá-los em uma única pasta.
 
 ## Uso
 
-1. **Processamento Ativo**: Quando uma nova ingestão de demo começa, o sistema cria automaticamente uma nova pasta em `runs/` para armazenar o estado temporário.
-2. **Treinamento de Modelo**: O script de treinamento grava seu progresso e arquivos periódicos `.pth` ou `.ckpt` neste diretório.
-3. **Limpeza**: Como este armazenamento é considerado volátil, recomenda-se arquivar checkpoints importantes e limpar pastas de execuções antigas periodicamente para economizar espaço em disco. O sistema inclui políticas de limpeza automática para execuções mais antigas que um limite específico.
-4. **Depuração**: No caso de uma falha no motor, os arquivos dentro da pasta da execução específica são a fonte primária para análise pós-morte.
+1. **Treinamento**: `python run_full_training_cycle.py` registra o callback TensorBoard por padrão; `--tb-logdir` sobrescreve o destino (o padrão `None` indica um diretório com escopo da run via `build_run_dir()`; um caminho explícito desabilita o escopo da run e escreve diretamente lá) e `--no-tensorboard` desabilita o logging. O tag de dispositivo (`-cpu`, `-cuda`, `-rocm`) torna as runs de diferentes configurações de hardware imediatamente distinguíveis no dashboard.
+2. **Visualização**: Iniciar `tensorboard --logdir Programma_CS2_RENAN/runs` e abrir a URL impressa para inspecionar as curvas de treinamento.
+3. **Limpeza**: Arquivos de evento são artefatos voláteis e regeneráveis — diretórios de runs antigos podem ser excluídos livremente para economizar espaço em disco.

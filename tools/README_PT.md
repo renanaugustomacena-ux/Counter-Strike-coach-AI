@@ -1,149 +1,165 @@
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-# Ferramentas de Projeto no Nivel Raiz
+# Ferramentas de Projeto no Nível Raiz
 
-> **Autoridade:** Regra 3 (Zero-Regressao), Regra 6 (Governanca de Mudancas)
+> **Autoridade:** Regra 3 (Zero-Regressão), Regra 6 (Governança de Mudanças)
 > **Skill:** `/validate`, `/pre-commit`
 
-Ferramentas de projeto no nivel raiz para validacao, diagnostico, orquestracao de build e manutencao do Macena CS2 Analyzer. A ferramenta mais critica e o `headless_validator.py`, que e o gate de regressao obrigatorio pre-commit.
+Ferramentas de projeto no nível raiz para validação, diagnóstico, orquestração de build e manutenção do Macena CS2 Analyzer. A ferramenta mais crítica é o `headless_validator.py`, que é o gate de regressão obrigatório pre-commit.
 
-## Inventario de Arquivos
+## Inventário de Arquivos
 
-| Arquivo | Proposito | Categoria |
+O diretório contém **55 ferramentas Python** mais o harness `fuzz/` ([README](fuzz/README.md)) e `hltv_stealth_init.js` (snippet de stealth para browser no fetching de HLTV). As mais importantes:
+
+| Arquivo | Finalidade | Categoria |
 |---------|-----------|-----------|
-| `headless_validator.py` | Gate de regressão com 26 fases de validação | Validação |
-| `dead_code_detector.py` | Modulos orfaos, definicoes duplicadas, imports obsoletos | Validacao |
-| `verify_all_safe.py` | Verificacao de seguranca em todos os modulos | Validacao |
-| `portability_test.py` | Verificacoes de portabilidade multiplataforma | Validacao |
-| `Feature_Audit.py` | Auditoria de alinhamento de features (parser vs pipeline ML) | Validacao |
-| `run_console_boot.py` | Verificacao de boot via console | Validacao |
-| `verify_main_boot.py` | Verificacao de boot da aplicacao principal | Validacao |
-| `build_pipeline.py` | Orquestracao do pipeline de build (5 estagios) | Build |
-| `audit_binaries.py` | Integridade de binarios pos-build (SHA-256) | Build |
-| `db_health_diagnostic.py` | Diagnostico de saude do banco de dados (10 secoes) | Banco de Dados |
-| `migrate_db.py` | Migracao de banco de dados com backward compatibility | Banco de Dados |
+| `headless_validator.py` | Gate de regressão com 41 fases de verificação distintas | Validação |
+| `dead_code_detector.py` | Módulos órfãos, definições duplicadas, imports obsoletos | Validação |
+| `audit_scanner.py` | Auditoria mecânica de subsistemas (LOC, imports, complexidade, TODOs) | Validação |
+| `verify_all_safe.py` | Descobre e executa todas as ferramentas seguras (somente leitura), pulando as inseguras/interativas | Validação |
+| `portability_test.py` | Verificações de portabilidade multiplataforma | Validação |
+| `Feature_Audit.py` | Auditoria de alinhamento de features (parser vs pipeline ML) | Validação |
+| `run_console_boot.py` | Verificação de boot via console | Validação |
+| `verify_main_boot.py` | Verificação de boot da aplicação principal | Validação |
+| `build_pipeline.py` | Orquestração do pipeline de build (5 estágios) | Build |
+| `audit_binaries.py` | Integridade de binários pós-build (SHA-256) | Build |
+| `db_health_diagnostic.py` | Diagnóstico de saúde do banco de dados (10 seções) | Banco de Dados |
+| `migrate_db.py` | DEPRECIADO — patcher pré-Alembic (usar `alembic upgrade head`) | Banco de Dados |
 | `reset_pro_data.py` | Reset de dados de jogadores profissionais (idempotente) | Banco de Dados |
-| `dev_health.py` | Orquestrador de saude do desenvolvimento | Manutencao |
-| `Sanitize_Project.py` | Sanitizacao do projeto (remocao de dados locais) | Manutencao |
-| `observe_training_cycle.py` | Monitoramento de metricas de treinamento | Observabilidade |
-| `test_rap_lite.py` | Teste lite do modelo RAP | Testes |
-| `test_tactical_pipeline.py` | Teste do pipeline de inferencia tatica | Testes |
-| `validate_coaching_pipeline.py` | Validacao end-to-end do pipeline de coaching | Testes |
+| `dev_health.py` | Orquestrador de saúde do desenvolvimento | Manutenção |
+| `Sanitize_Project.py` | Sanitização do projeto (remoção de dados locais) | Manutenção |
+| `observe_training_cycle.py` | Diagnóstico end-to-end do ciclo de treinamento (aquisição → conhecimento) | Observabilidade |
+| `ui_screenshot.py` | Harness de screenshot offscreen para telas reais (dados de fixture) | UI |
+| `ui_gallery.py` | Renderer offscreen da galeria de componentes (uma captura por tema) | UI |
+| `ui_fixtures.py` | Payloads de fixture frame-realísticos para o harness de UI | UI |
+| `test_rap_lite.py` | Teste de integração RAP-Lite (contratos dimensionais) | Testes |
+| `test_tactical_pipeline.py` | Teste end-to-end do pipeline do tactical viewer em um .dem real | Testes |
+| `validate_coaching_pipeline.py` | Validação end-to-end do pipeline de coaching | Testes |
 
-## `headless_validator.py` --- O Gate de Regressao
+O restante cobre ingestão de demos profissionais (`ingest_pro_demos.py`), reparo de dados do monolito (`repair_*.py`, `tick_census.py`), recuperação de shards e reconstrução do monolito (`d3_recover_shard_metadata.py`, `rebuild_monolith.py`), auditorias de disco somente leitura (`d4_disk_hygiene_audit.py`), mineração de experiências/estratégias (`mine_coaching_experience.py`, `mine_shard_strategies.py`), seeding de metadados HLTV (`seed_hltv_top_n.py`, `seed_hltv_apply_vision.py`), backfill de datas de partidas e estatísticas de round (`backfill_match_dates.py`, `populate_match_results.py`, `populate_round_stats.py`), exportação CSV elite (`build_elite_csvs.py`), sinalização de ghost-players (`flag_ghost_players.py`), manutenção de jogadores pro (`rescrape_placeholder_pros.py`, `sync_pro_players.py`), merge de demo-pool (`merge_demo_pool.py`), wipe seguro para re-ingestão (`wipe_for_reingest_safe.py`), geração de design tokens (`gen_design_tokens.py`), build web (`build_web.py`), purge de dados RAG padrão (`purge_default_stats_rag.py`), pinning de supply-chain (`sbom_generator.py`, `verify_lock_hashes.py`, `refresh_model_pins.py`, `refresh_compose_digests.py`), varredura de políticas de segurança e drift (`policy_runner.py`, `drift_detector.py`) e avaliações offline (`eval_harness.py`, `coach_answer_eval.py`).
 
-Esta e a ferramenta mais importante de todo o projeto. Executa **26 fases de validação automatizada** e deve terminar com codigo de saida 0 antes de qualquer commit. Tambem esta conectado como hook pre-commit.
+## `headless_validator.py` --- O Gate de Regressão
 
-### Fases de Validacao
+Esta é a ferramenta mais importante de todo o projeto (~2.900 linhas). Executa **41 fases de verificação distintas** (fases com banner numeradas 1–26 — a Fase 19 não é utilizada — mais sub-fases com letra 3b–3l e 6b–6f; a Fase 9 é a validação tabular de contratos cross-módulo) e deve terminar com código de saída 0 antes de qualquer commit. Também está integrado ao `.pre-commit-config.yaml` como hook pre-push.
+
+### Fases de Validação
 
 | Fase | O Que Verifica |
 |------|---------------|
-| 1. Import Health | Todos os modulos de producao importam sem erros |
-| 2. Schema Integrity | O schema do banco de dados em memoria corresponde as definicoes SQLModel |
-| 3. Config Loading | `get_setting()` e `get_credential()` resolvem corretamente |
-| 4. ML Smoke Test | Instanciacao e forward pass para todos os 6 tipos de modelo |
-| 5. UI Framework | PySide6 e Kivy importam com sucesso |
-| 6. Platform Compat | Caminhos de codigo especificos do SO resolvem corretamente |
-| 7. Contract Validation | Contratos de APIs publicas correspondem as implementacoes |
-| 8. ML Invariants | METADATA_DIM=25, INPUT_DIM=25, OUTPUT_DIM=10 |
-| 9. DB Integrity | Contagem de tabelas, chaves estrangeiras, existencia de indices |
-| 10. Code Quality | Formatacao Black, ordenacao isort |
-| 11. Package Structure | `__init__.py` em todos os pacotes, sem imports circulares |
-| 12. Feature Pipeline | FeatureExtractor produz vetores de 25 dimensoes |
-| 13. RAP Forward Pass | O forward pass do modelo RAP Coach e bem-sucedido |
-| 14. Belief Contracts | Probabilidades do modelo belief no intervalo [0, 1] |
-| 15. Circuit Breakers | Limiares de erro disparam corretamente |
-| 16. Integrity Manifest | Hashes SHA-256 correspondem a `core/integrity_manifest.json` |
-| 17. Security Scan | Nenhum segredo ou credencial hardcoded |
-| 18. Config Consistency | Schema do arquivo de configuracoes corresponde as chaves esperadas |
-| 19. Advanced Quality | Complexidade ciclomatica, deteccao de codigo duplicado |
-| 20-23. | Verificacoes especializadas adicionais |
+| 1. Environment | A raiz do projeto e diretórios críticos existem |
+| 2. Core Imports | Módulos core importam sem erros |
+| 3, 3b–3l. Backend Imports | Saúde dos imports por pacote: storage, processing, NN, analysis, coaching, services, knowledge, control, data sources, ingestion & onboarding, ingestion pipelines, reporting & observability |
+| 4. Database Schema | O schema do banco de dados em memória corresponde às definições SQLModel |
+| 5. Config & Data Files | `map_config.json` válido, tipos de `get_setting()`, METADATA_DIM==25, alinhamento de features |
+| 6. ML Smoke | Instanciação do modelo e forward pass |
+| 6b–6f. Smoke Sub-phases | Baselines, adaptador de formato de demo, detecção de GPU, pipeline de treinamento, pipeline de coaching |
+| 7. UI Components (Headless) | Componentes Qt/PySide6 importam em modo headless |
+| 8. Cross-Platform | Caminhos de código específicos do SO resolvem corretamente |
+| 9. Cross-Module Contracts | Contratos de APIs públicas correspondem às implementações |
+| 10. Deep ML Invariants | METADATA_DIM=25, OUTPUT_DIM=10, formas dos layers |
+| 11. Database Model Integrity | Registro de tabelas, colunas, índices |
+| 12. Code Quality Scanning | Detecção de anti-patterns (incluindo `print()` soltos) |
+| 13. Package Structure & Config | `__init__.py` em todos os pacotes, integridade da configuração |
+| 14. Feature Pipeline Consistency | O Vectorizer produz vetores de 25 dimensões |
+| 15. Dependency & Environment | Dependências fixadas são importáveis |
+| 16. RAP Coach & Perception | Forward pass do modelo RAP e pipeline |
+| 17. Belief Model & Analysis Engines | Contratos dos motores de análise, intervalos de probabilidade |
+| 18. MLControlContext & Training Control | Encanamento de pause/resume/stop |
+| 20. Shared Utilities | Imports de utilidades compartilhadas e módulos ausentes |
+| 21. Integrity & Security Scanning | Manifest SHA-256, nenhum segredo hardcoded |
+| 22. Configuration Consistency | Schema do arquivo de configurações corresponde às chaves esperadas |
+| 23. Advanced Code Quality | Complexidade ciclomática, detecção de código duplicado |
+| 24. Qt Frontend Imports | Imports de telas/viewmodels do app Qt |
+| 25. Design Token Freshness | Design tokens gerados estão atualizados |
+| 26. Web Marquee Scaffold Health | Integridade do scaffold do app web |
 
 ### Uso
 
 ```bash
-# Validacao padrao (obrigatoria antes de cada commit)
+# Validação padrão (obrigatória antes de cada commit)
 python tools/headless_validator.py
 
-# Codigo de saida: 0 = todas as verificacoes passaram, diferente de zero = falhas detectadas
+# Código de saída: 0 = todas as verificações passaram, diferente de zero = falhas detectadas
 echo $?
 ```
 
 ## Pipeline de Build
 
-### `build_pipeline.py` --- Orquestracao de Build em 5 Estagios
+### `build_pipeline.py` --- Orquestração de Build em 5 Estágios
 
 ```
-Estagio 1: Sanitize  ->  Estagio 2: Test  ->  Estagio 3: Manifest  ->  Estagio 4: Compile  ->  Estagio 5: Audit
-(limpar artefatos)       (executar testes)    (gerar hashes)          (PyInstaller)           (verificar binario)
+Estágio 1: Sanitize  ->  Estágio 2: Test  ->  Estágio 3: Manifest  ->  Estágio 4: Compile  ->  Estágio 5: Audit
+(limpar artefatos)       (executar testes)    (gerar hashes)          (PyInstaller)           (verificar binário)
 ```
 
-### `audit_binaries.py` --- Integridade Pos-Build
+### `audit_binaries.py` --- Integridade Pós-Build
 
-Calcula hashes SHA-256 de todos os arquivos na saida do build e compara com os valores esperados. Detecta adulteracoes ou builds incompletos.
+Calcula hashes SHA-256 de todos os arquivos na saída do build e compara com os valores esperados. Detecta adulterações ou builds incompletos.
 
 ## Ferramentas de Banco de Dados
 
-### `db_health_diagnostic.py` --- Diagnostico em 10 Secoes
+### `db_health_diagnostic.py` --- Diagnóstico em 10 Seções
 
-| Secao | O Que Verifica |
+| Seção | O Que Verifica |
 |-------|---------------|
-| 1 | Verificacao do modo WAL em todos os 3 bancos de dados |
-| 2 | Existencia de tabelas e contagem de linhas |
-| 3 | Integridade de restricoes de chave estrangeira |
-| 4 | Cobertura de indices em colunas consultadas frequentemente |
-| 5 | Metricas de qualidade de dados (taxas de NaN, valores anomalos) |
-| 6 | Estado de migracao Alembic |
-| 7 | Consistencia de bancos de dados per-match |
-| 8 | Completude de metadados HLTV |
-| 9 | Uso de armazenamento e tamanhos de arquivos |
-| 10 | Saude do connection pool |
+| 1 | Saúde estrutural — schema e restrições |
+| 2 | Verificação de integridade — detecção de corrupção (`PRAGMA integrity_check`) |
+| 3 | Verificação de modo WAL e journal |
+| 4 | Consistência de dados e estabilidade lógica (duplicatas, órfãos, valores impossíveis) |
+| 5 | Saúde do pipeline de ingestão (status de tarefas, tarefas travadas, cross-DB) |
+| 6 | Saúde de desempenho — cobertura de índices e verificação de full-scan no plano de query |
+| 7 | Observabilidade — cobertura de metadados diagnósticos |
+| 8 | Banco de dados de estatísticas pro HLTV |
+| 9 | Prontidão do pipeline ML — CoachState |
+| 10 | Resumo de armazenamento |
 
-### `migrate_db.py` --- Migracao Segura
+### `migrate_db.py` --- DEPRECIADO
 
-Encapsula migracoes Alembic com verificacoes de backward compatibility. Mais seguro do que executar `alembic upgrade head` diretamente.
+Mantido apenas como arquivo histórico (R2-11). Patcha bancos de dados pré-Alembic adicionando 5 colunas ao `CoachState`; esse schema agora é gerenciado pelas revisões Alembic `8c443d3d9523` e `3c6ecb5fe20e`. Use `alembic upgrade head` para todas as migrações de schema.
 
 ### `reset_pro_data.py` --- Reset de Dados Profissionais
 
-Reset multi-fase e idempotente dos dados de jogadores profissionais. Seguro para executar multiplas vezes. Fases: backup -> limpar tabelas -> resetar estado de sincronizacao -> verificar.
+Reset multi-fase e idempotente para um novo ciclo de ingestão e treinamento. Limpa as tabelas de dados de `database.db` + CoachState, `hltv_metadata.db` (ignorável com `--preserve-hltv`), `knowledge_graph.db`, caches, checkpoints de modelos, shards por partida e estado de sincronização.
 
-## Manutencao do Projeto
+## Manutenção do Projeto
 
-### `dev_health.py` --- Orquestrador de Saude
+### `dev_health.py` --- Orquestrador de Saúde
 
-Executa multiplas ferramentas em sequencia e produz um relatorio de saude unificado:
-1. Headless validator
-2. Dead code detector
-3. Portability test
-4. Feature audit
+Executa múltiplas ferramentas em sequência e produz um relatório de saúde unificado:
+1. Headless validator (sempre; `--quick` executa apenas este)
+2. Dead code detector (`--strict`)
+3. Auditoria de alinhamento de features
+4. Teste de portabilidade (somente com `--full`)
 
 ### `Sanitize_Project.py` --- Limpar Estado Local
 
-Remove todos os arquivos especificos do usuario e locais para distribuicao limpa:
-- `user_settings.json`
-- `database.db` e arquivos WAL/SHM
-- Diretorio `logs/`
-- Diretorios `__pycache__/`
+Remove todos os dados específicos do usuário e locais para distribuição limpa:
+- `Programma_CS2_RENAN/backend/storage/database.db` (banco de dados local principal)
+- `Programma_CS2_RENAN/backend/storage/hltv_metadata.db`
+- `Programma_CS2_RENAN/backend/storage/match_data/` (shards SQLite por partida)
+- `models/` (checkpoints ML)
+- diretório `logs/`
+- `hltv_sync.pid` obsoleto
 
 ## Uso
 
 ```bash
 # Ativar ambiente virtual
-source /home/renan/.venvs/cs2analyzer/bin/activate
+source .venv/bin/activate
 
-# Validacao headless (executar antes de cada commit)
+# Validação headless (executar antes de cada commit)
 python tools/headless_validator.py
 
-# Verificacao de saude do desenvolvimento
+# Verificação de saúde do desenvolvimento
 python tools/dev_health.py
 
-# Verificacao de saude do banco de dados
+# Verificação de saúde do banco de dados
 python tools/db_health_diagnostic.py
 
-# Verificacao de portabilidade
+# Verificação de portabilidade
 python tools/portability_test.py
 
-# Deteccao de codigo morto
+# Detecção de código morto
 python tools/dead_code_detector.py
 
 # Auditoria de alinhamento de features
@@ -152,15 +168,15 @@ python tools/Feature_Audit.py
 # Pipeline de build
 python tools/build_pipeline.py
 
-# Sanitizacao do projeto (ATENCAO: remove dados locais)
+# Sanitização do projeto (ATENÇÃO: remove dados locais)
 python tools/Sanitize_Project.py
 ```
 
 ## Notas de Desenvolvimento
 
-- Todas as ferramentas devem ser executadas a partir do diretorio raiz do projeto
-- O headless validator e o gate de regressao inegociavel --- se falhar, o commit e bloqueado
-- Ferramentas de banco de dados sao seguras para executar em dados de producao (usam consultas somente leitura, salvo indicacao explicita)
-- `Sanitize_Project.py` e destrutivo --- remove bancos de dados locais e configuracoes. Use com cuidado.
-- Ferramentas terminam com codigo 0 em caso de sucesso, diferente de zero em caso de falha
-- O orquestrador `dev_health.py` fornece a verificacao de saude mais completa em um unico comando
+- Todas as ferramentas devem ser executadas a partir do diretório raiz do projeto
+- O headless validator é o gate de regressão inegociável --- se falhar, o commit é bloqueado
+- Ferramentas de banco de dados são seguras para executar em dados de produção (usam consultas somente leitura, salvo indicação explícita)
+- `Sanitize_Project.py` é destrutivo --- remove bancos de dados locais e configurações. Use com cuidado.
+- Ferramentas terminam com código 0 em caso de sucesso, diferente de zero em caso de falha
+- O orquestrador `dev_health.py` fornece a verificação de saúde mais completa em um único comando

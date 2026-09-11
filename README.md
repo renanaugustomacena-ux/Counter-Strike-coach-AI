@@ -7,7 +7,7 @@
 
 **AI-Powered Tactical Coach for Counter-Strike 2**
 
-> **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 ---
 
@@ -405,7 +405,7 @@ Multi-level maps (Nuke, Vertigo) use Z-axis cutoffs to separate upper and lower 
 | **HTTP Client** | HTTPX | 0.28.1 | Async HTTP requests |
 | **Data Science** | NumPy, Pandas, SciPy, scikit-learn | 2.4.3 / 2.3.3 / 1.17.1 / 1.8.0 | Numerical computation and analysis |
 | **Visualization** | Matplotlib | 3.10.8 | Chart generation |
-| **Training Observability** | TensorBoard | 2.21.0 | Live training dashboards (`runs/`) |
+| **Training Observability** | TensorBoard | 2.21.0 | Live training dashboards (`Programma_CS2_RENAN/runs/`) |
 | **Vector Search** | faiss-cpu | 1.13.2 | Experience/RAG retrieval (optional; brute-force fallback) |
 | **Text Embeddings** | sentence-transformers | 3.4.1 | Semantic embeddings (optional; hash-based fallback) |
 | **TUI** | Rich | 15.0.0 | Terminal UI for console mode (pinned in the lock files, not requirements.txt) |
@@ -730,7 +730,7 @@ Language can be changed at runtime from Settings without restarting the applicat
 | Training batch size | 32 (`backend/nn/config.py`) | Increase for GPU with >6 GB VRAM. Decrease if OOM |
 | Ingestion workers | Auto: RAM- and CPU-based, capped at 8 (`batch_ingest.py`) | `--workers N` to override parallel demo parsing |
 | EMA momentum | 0.996 base, cosine-scheduled to 1.0 (`backend/nn/jepa_trainer.py`) | JEPA target encoder tracking. Lower values track faster but noisier. The standalone EMA helper defaults to 0.999 (`backend/nn/ema.py`) |
-| TensorBoard | `runs/coach_training` | `tensorboard --logdir runs/coach_training` for live metrics |
+| TensorBoard | `Programma_CS2_RENAN/runs/` | `tensorboard --logdir Programma_CS2_RENAN/runs/` for live metrics |
 | SQLite WAL mode | Enabled by default | Concurrent read/write. No tuning needed for single-user |
 | Drift detection threshold | Z-score based (`backend/processing/validation/`) | Auto-triggers retraining flag when feature distributions shift |
 
@@ -828,7 +828,7 @@ Three separate storage locations:
 ### TensorBoard Monitoring
 
 ```bash
-tensorboard --logdir runs/coach_training
+tensorboard --logdir Programma_CS2_RENAN/runs/
 ```
 
 Open [http://localhost:6006](http://localhost:6006) to monitor conviction index, maturity state transitions, gate specialization, and training loss curves.
@@ -850,7 +850,7 @@ Open [http://localhost:6006](http://localhost:6006) to monitor conviction index,
 | `RuntimeError: mat1 and mat2 shapes cannot be multiplied` | Model checkpoint from different METADATA_DIM. Delete stale checkpoints in `Programma_CS2_RENAN/models/` and retrain |
 | Headless validator fails | Run `python tools/headless_validator.py` for the specific failing phase. Fix before committing |
 | Demo parsing returns 0 rounds | File may be corrupted or below `MIN_DEMO_SIZE` (10 MB). Try a different demo |
-| TensorBoard shows no data | Verify `runs/coach_training/` exists and contains event files. Training must complete at least one epoch |
+| TensorBoard shows no data | Verify `Programma_CS2_RENAN/runs/` exists and contains event files. Training must complete at least one epoch |
 | Ollama not responding | Ensure Ollama is running (`ollama serve`) and the configured model is pulled (`ollama pull gemma4:e2b`) |
 | FlareSolverr connection refused | Start Docker: `docker compose up -d`. Verify port 8191 is accessible |
 | Factory reset | Delete `Programma_CS2_RENAN/user_settings.json` and restart |

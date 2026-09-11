@@ -27,7 +27,7 @@ banale in questa directory è difesa con **rischio affrontato / rischio residuo 
 | [`CONFIG_REFERENCE.md`](CONFIG_REFERENCE.md) | Variabili d'ambiente: default, sensibilità, validazione |
 | [`CVE_LOG.md`](CVE_LOG.md) | Log di triage CVE solo in append |
 | [`BOUNDARY_FILES.txt`](BOUNDARY_FILES.txt) | Lista di file ai confini di trust — i PR che toccano qualsiasi riga richiedono security review |
-| [`WIPE_RUNBOOK.md`](WIPE_RUNBOOK.md) | Procedura operativa standard per `tools/wipe_for_reingest*.py` |
+| [`WIPE_RUNBOOK.md`](WIPE_RUNBOOK.md) | Procedura operativa standard per `tools/wipe_for_reingest_safe.py` |
 | `policies/` | Regole policy-as-code consumate da `tools/policy_runner.py` |
 | `waivers.yaml` | Eccezioni a tempo limitato alle policy (ogni voce: `risk:`, `expires:`, `owner:`, `justification:`) |
 

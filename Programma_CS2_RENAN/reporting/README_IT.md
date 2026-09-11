@@ -10,7 +10,7 @@
 Questo pacchetto trasforma i dati grezzi di analisi match in artefatti visivi leggibili
 e report strutturati. Si colloca nel livello più esterno dell'architettura, consumando
 output dalle pipeline di processing, analisi e coaching per produrre heatmap, overlay
-differenziali, annotazioni momenti critici e report Markdown multi-sezione. Tutto il
+differenziali, annotazioni di momenti critici e report Markdown multi-sezione. Tutto il
 rendering è supportato da Matplotlib con gestione deterministica del ciclo di vita delle
 figure per prevenire memory leak.
 
@@ -18,20 +18,20 @@ figure per prevenire memory leak.
 
 | File | Scopo | Export Principali |
 |------|-------|-------------------|
-| `visualizer.py` | Motore visualizzazione mappe basato su Matplotlib | `MatchVisualizer`, `generate_highlight_report()` |
+| `visualizer.py` | Motore di visualizzazione mappe basato su Matplotlib | `MatchVisualizer`, `generate_highlight_report()` |
 | `report_generator.py` | Costruttore report match multi-sezione | `MatchReportGenerator` |
 | `__init__.py` | Marcatore pacchetto | -- |
 
 ## Architettura & Concetti
 
-### Motore Visualizzazione Mappe (`visualizer.py`)
+### Motore di Visualizzazione Mappe (`visualizer.py`)
 
-`MatchVisualizer` è la classe di rendering centrale. Produce tre categorie di output
+`MatchVisualizer` è la classe di rendering centrale. Produce quattro categorie di output
 visivo:
 
-1. **Heatmap Posizioni** (`generate_heatmap`) -- istogramma 2D delle posizioni
-   giocatore sovrapposto allo sfondo mappa. Usa una griglia a 64 bin con colourmap
-   `"magma"` e soglia minima conteggio (`cmin=1`) per sopprimere bin vuoti.
+1. **Heatmap Posizioni** (`generate_heatmap`) -- istogramma 2D delle posizioni giocatore
+   sovrapposto allo sfondo mappa. Usa una griglia a 64 bin con colourmap `"magma"` e
+   soglia minima conteggio (`cmin=1`) per sopprimere bin vuoti.
 
 2. **Overlay Differenziali** (`render_differential_overlay`) -- heatmap divergente che
    confronta il posizionamento utente contro baseline professionali. L'algoritmo:
@@ -46,14 +46,14 @@ visivo:
 
 3. **Mappe Momenti Critici** (`render_critical_moments`) -- scatter plot annotato degli
    eventi chiave identificati da `ChronovisorScanner`. Ogni momento è renderizzato come
-   marker colorato per severità, sagomato per tipo e dimensionato per scala:
+   marker colorato per severità, sagomato per tipo e dimensionato per scala; i tre
+   attributi sono campi indipendenti nel dict di annotazione:
 
-   | Severità | Colore | Tipo | Marker | Scala | Pixel |
-   |----------|--------|------|--------|-------|-------|
-   | critical | rosso | play | `^` (triangolo su) | macro | 350 |
-   | critical | rosso | mistake | `v` (triangolo giù) | standard | 200 |
-   | significant | arancione | play/mistake | `^` / `v` | standard | 200 |
-   | notable | oro | play/mistake | `o` (cerchio) | micro | 100 |
+   | Attributo | Mappatura |
+   |-----------|-----------|
+   | Severità → colore | critical = rosso, significant = arancione, notable = oro |
+   | Tipo → marker | play = `^` (triangolo su), mistake = `v` (triangolo giù) |
+   | Scala → dimensione pixel | micro = 100, standard = 200, macro = 350 |
 
 4. **Grafici Errori Round** (`plot_round_errors`) -- scatter plot che segna posizioni
    morte (rosso `x`) e decisioni errate segnalate dal coach (arancione `P`) per un
@@ -116,9 +116,8 @@ che fallimenti di visualizzazione non causino mai crash della pipeline chiamante
 
 | Consumatore | Utilizzo |
 |-------------|----------|
-| `apps/qt_app/screens/` | Rendering grafici inline in `PerformanceScreen`, `MatchDetailScreen` |
-| `backend/services/analysis_orchestrator.py` | Chiama `generate_highlight_report()` durante post-analisi |
-| `backend/nn/rap_coach/chronovisor_scanner.py` | Fornisce oggetti `CriticalMoment` per il rendering |
+| `backend/services/coaching_service.py` | Istanzia `MatchVisualizer` per overlay report statici |
+| `backend/nn/rap_coach/chronovisor_scanner.py` | Fornisce oggetti `CriticalMoment` per il rendering (importato da `generate_highlight_report()`) |
 | `ingestion/demo_loader.py` | Fornisce frame parsati consumati da `MatchReportGenerator` |
 | `core/config.py` | `USER_DATA_ROOT` per ancoraggio percorso output report |
 
@@ -126,8 +125,7 @@ che fallimenti di visualizzazione non causino mai crash della pipeline chiamante
 
 | Formato | DPI | Caso d'Uso |
 |---------|-----|------------|
-| PNG | 150 | Display UI, anteprime inline |
-| PNG (alta risoluzione) | 300 | Embedding PDF, archiviazione |
+| PNG | default (heatmap, grafici round); 150 (overlay, mappe momenti critici) | Visualizzazioni mappe |
 | Markdown | -- | Report testo strutturato con riferimenti immagini incorporate |
 
 ## Note Sviluppo
@@ -135,10 +133,13 @@ che fallimenti di visualizzazione non causino mai crash della pipeline chiamante
 - **Ciclo vita figure**: ogni figura Matplotlib deve essere creata e chiusa nello
   stesso scope del metodo. Non memorizzare mai riferimenti figura come attributi
   di istanza.
-- **Output deterministico**: i nomi file includono nome mappa e timestamp per prevenire
-  collisioni. Bin heatmap e colourmap sono fissi per riproducibilità.
+- **Output deterministico**: i nomi file PNG derivano solo dal nome mappa (o ID round),
+  quindi ri-renderizzare la stessa mappa sovrascrive l'immagine precedente; solo il
+  report Markdown porta un timestamp. Bin heatmap e colourmap sono fissi per
+  riproducibilità.
 - **Isolamento dipendenze**: `scipy.ndimage.gaussian_filter` è l'unico import SciPy;
   `numpy` è usato per computazione griglia. Entrambi sono dipendenze obbligatorie.
-- **Testing**: i test del visualizer usano `matplotlib.use("Agg")` per evitare
-  requisiti backend GUI. I test del report generator mockano `DemoLoader` e verificano
-  l'output file.
+- **Testing**: lo script smoke a livello root `tests/verify_reporting.py` istanzia
+  `MatchVisualizer` e `MatchReportGenerator` contro una directory output temporanea;
+  `Programma_CS2_RENAN/tests/test_chronovisor_highlights.py` verifica che
+  `render_critical_moments()` scriva un PNG valido.
