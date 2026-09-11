@@ -394,6 +394,7 @@ class TestWeaponClassMapping:
 
 
 @pytest.mark.integration
+@pytest.mark.timeout(600)
 class TestSchemaIntegration:
     """Requires CS2_INTEGRATION_TESTS=1 and access to the monolith."""
 
@@ -402,32 +403,51 @@ class TestSchemaIntegration:
         if not os.environ.get("CS2_INTEGRATION_TESTS"):
             pytest.skip("CS2_INTEGRATION_TESTS not set")
 
-    def test_extract_v2_on_real_tick(self):
+    def test_frame_and_scalar_paths_agree_on_real_ticks(self):
+        """100,000 real monolith rows: frame path == scalar path == v1 remap (D-06)."""
         import sqlite3
 
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import extract_v2
+        import pandas as pd
 
-        db_path = os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "..",
-            "data",
-            "cs2_analysis.db",
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
+            FeatureExtractor,
+            extract_frame_v2,
+            extract_v2,
+            remap_v1_to_v2,
+        )
+
+        db_path = os.path.realpath(
+            os.path.join(os.path.dirname(__file__), "..", "backend", "storage", "database.db")
         )
         if not os.path.exists(db_path):
             pytest.skip("monolith not found")
-
-        conn = sqlite3.connect(f"file:{os.path.realpath(db_path)}?mode=ro", uri=True)
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=60)
         conn.execute("PRAGMA query_only=1")
         try:
-            row = conn.execute("SELECT * FROM playertickstate LIMIT 1").fetchone()
-            if row is None:
-                pytest.skip("no tick data")
-            cols = [d[0] for d in conn.description]
-            tick = dict(zip(cols, row))
-            num, cat = extract_v2(tick, side="CT")
-            assert num.shape == (21,)
-            assert cat.shape == (3,)
-            assert not np.any(np.isnan(num))
+            demo = conn.execute("SELECT demo_name FROM playermatchstats LIMIT 1").fetchone()
+            if demo is None:
+                pytest.skip("no playermatchstats rows")
+            df = pd.read_sql_query(
+                "SELECT * FROM playertickstate WHERE demo_name = ? ORDER BY tick LIMIT 100000",
+                conn,
+                params=(demo[0],),
+            )
         finally:
             conn.close()
+        if len(df) < 1000:
+            pytest.skip("not enough tick rows")
+        map_name = str(df["map_name"].iloc[0])
+        x_num, x_cat = extract_frame_v2(df, map_name=map_name, side="CT")
+        assert x_num.shape == (len(df), 21) and x_cat.shape == (len(df), 3)
+        assert not np.any(np.isnan(x_num)) and not np.any(np.isinf(x_num))
+        assert x_num[:, 0].min() >= 0.0 and x_num[:, 0].max() <= 1.0  # health
+        rng = np.random.default_rng(0)
+        for i in rng.choice(len(df), size=min(5000, len(df)), replace=False):
+            tick = df.iloc[int(i)].to_dict()
+            num, cat = extract_v2(tick, map_name=map_name, side="CT")
+            np.testing.assert_allclose(num, x_num[i], atol=1e-6, err_msg=f"row {i} scalar vs frame")
+            assert cat.tolist() == x_cat[i].tolist(), f"row {i} categorical scalar vs frame"
+            v1 = FeatureExtractor.extract(tick, map_name=map_name)
+            num_r, cat_r = remap_v1_to_v2(v1, map_name, tick.get("active_weapon"), "CT")
+            np.testing.assert_allclose(num_r, num, atol=1e-6, err_msg=f"row {i} v1 remap vs v2")
+            assert cat_r.tolist() == cat.tolist(), f"row {i} categorical remap vs v2"
