@@ -53,9 +53,10 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE  # noqa: E402
 from tools.verify_math_claims import _log, open_ro, resolve_stored_name  # noqa: E402
 
-TICK_RATE = 64.0
+TICK_RATE = float(DEFAULT_TICK_RATE)
 BIN_EDGES_S: List[float] = [0, 1, 2, 4, 6, 8, 12, 16, 24, 40, 60, 115]
 BIN_LABELS: List[str] = [
     "<1",

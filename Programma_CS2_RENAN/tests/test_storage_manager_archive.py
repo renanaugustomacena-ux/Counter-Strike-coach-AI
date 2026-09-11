@@ -17,8 +17,15 @@ from Programma_CS2_RENAN.backend.storage.storage_manager import StorageManager
 
 
 @pytest.fixture()
-def storage(tmp_path):
-    """StorageManager with all paths rehomed under tmp_path."""
+def storage(tmp_path, monkeypatch):
+    """StorageManager with all paths rehomed under tmp_path and user settings isolated.
+
+    Without the get_setting patch a real DEMO_ARCHIVE_PATH in user_settings.json
+    makes archive_demo move the fake demo into the owner's real archive.
+    """
+    from Programma_CS2_RENAN.backend.storage import storage_manager as sm
+
+    monkeypatch.setattr(sm, "get_setting", lambda key, default=None: default)
     s = StorageManager()
     s.local_path = tmp_path / "local"
     s.ingest_dir = s.local_path
