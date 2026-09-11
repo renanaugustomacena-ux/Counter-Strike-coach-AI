@@ -414,20 +414,29 @@ def _fill_weapon_class(vec: np.ndarray, get_val) -> None:
     vec[19] = weapon_class
 
 
-def _fill_context_features(vec: np.ndarray, get_val, context: Optional[Dict[str, Any]]) -> None:
+def _fill_context_features(
+    vec: np.ndarray, get_val, context: Optional[Dict[str, Any]], cfg=None
+) -> None:
     """Slots 20-24: time_in_round, bomb_planted, teammates_alive, enemies_alive, team_economy.
 
     Reads from tick_data first (enriched during ingestion), falls back to the
     context dict (DemoFrame at inference). Eliminates the training/inference
     skew where these features were always 0.0 during training but populated
     during inference.
+
+    D-07: normalisation bounds come from ``cfg`` (HeuristicConfig) when provided;
+    hardcoded fallbacks preserve backward compatibility for callers that omit it.
     """
     ctx = context or {}
+    time_max = cfg.time_in_round_max if cfg else 115.0
+    team_max = cfg.teammates_alive_max if cfg else 4.0
+    enemy_max = cfg.enemies_alive_max if cfg else 5.0
+    econ_max = cfg.team_economy_max if cfg else 16000.0
 
     time_val = get_val("time_in_round", None)
     if time_val is None:
         time_val = ctx.get("time_in_round", 0.0)
-    vec[20] = min(float(time_val or 0.0) / 115.0, 1.0)
+    vec[20] = min(float(time_val or 0.0) / time_max, 1.0)
 
     bomb_val = get_val("bomb_planted", None)
     if bomb_val is None:
@@ -437,17 +446,17 @@ def _fill_context_features(vec: np.ndarray, get_val, context: Optional[Dict[str,
     team_val = get_val("teammates_alive", None)
     if team_val is None:
         team_val = ctx.get("teammates_alive", 0)
-    vec[22] = min(float(team_val or 0) / 4.0, 1.0)
+    vec[22] = min(float(team_val or 0) / team_max, 1.0)
 
     enemy_val = get_val("enemies_alive", None)
     if enemy_val is None:
         enemy_val = ctx.get("enemies_alive", 0)
-    vec[23] = min(float(enemy_val or 0) / 5.0, 1.0)
+    vec[23] = min(float(enemy_val or 0) / enemy_max, 1.0)
 
     econ_val = get_val("team_economy", None)
     if econ_val is None:
         econ_val = ctx.get("team_economy", 0)
-    vec[24] = min(float(econ_val or 0) / 16000.0, 1.0)
+    vec[24] = min(float(econ_val or 0) / econ_max, 1.0)
 
 
 def _finalize_vector(vec: np.ndarray) -> np.ndarray:
@@ -671,7 +680,7 @@ class FeatureExtractor:
         _fill_z_penalty(vec, pos_z, map_name)  # 15
         _fill_round_metadata(vec, get_val, cfg, map_name)  # 16-18
         _fill_weapon_class(vec, get_val)  # 19
-        _fill_context_features(vec, get_val, context)  # 20-24
+        _fill_context_features(vec, get_val, context, cfg)  # 20-24
 
         return _finalize_vector(vec)
 
@@ -776,3 +785,264 @@ class FeatureExtractor:
                 f"P-SR-01: Feature parity violation [{label}]: got {actual} features, "
                 f"expected METADATA_DIM={METADATA_DIM}. Schema: {FEATURE_NAMES}"
             )
+
+
+# ---------------------------------------------------------------------------
+# v2 extraction path (D-06, CORREZIONE_NUCLEO_NEURALE Parte III §2.2)
+# ---------------------------------------------------------------------------
+
+_WEAPON_FLOAT_TO_CLASS: Dict[float, str] = {
+    0.0: "knife",
+    0.05: "other",
+    0.1: "grenade",
+    0.2: "pistol",
+    0.4: "smg",
+    0.6: "rifle",
+    0.8: "sniper",
+    1.0: "heavy",
+}
+
+
+def _weapon_to_class_name(weapon_name: str) -> str:
+    """Map a weapon name string to its v2 categorical class name."""
+    name = weapon_name.lower()
+    if name.startswith("weapon_"):
+        name = name[7:]
+    val = WEAPON_CLASS_MAP.get(name)
+    if val is not None:
+        return _WEAPON_FLOAT_TO_CLASS.get(val, "other")
+    try:
+        if int(name) == 0xFFFFFF:
+            return "none"
+        return "other"
+    except (ValueError, TypeError):
+        return "other"
+
+
+def _get_active_config():
+    """Return the active HeuristicConfig (class-level or defaults)."""
+    with FeatureExtractor._config_lock:
+        cfg = FeatureExtractor._config
+    if cfg is None:
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.base_features import (
+            HeuristicConfig,
+        )
+
+        cfg = HeuristicConfig()
+    return cfg
+
+
+def extract_v2(
+    tick_data: Union[Dict[str, Any], Any],
+    map_name: Optional[str] = None,
+    side: Optional[str] = None,
+) -> tuple:
+    """Extract v2 features from a single tick (D-06, Parte III §2.2).
+
+    Returns ``(numeric np.float32[21], categorical np.int64[3])``.
+    """
+    from Programma_CS2_RENAN.backend.processing.feature_engineering.schema_v2 import CS2_V2
+
+    cfg = _get_active_config()
+
+    def gv(key: str, default: Any = 0) -> Any:
+        if isinstance(tick_data, dict):
+            return tick_data.get(key, default)
+        return getattr(tick_data, key, default)
+
+    if map_name is None:
+        _auto = gv("map_name", None)
+        if _auto and _auto != "de_unknown":
+            map_name = _auto
+
+    num = _extract_v2_numeric(gv, cfg, map_name)
+
+    cat = np.zeros(3, dtype=np.int64)
+    cat[0] = CS2_V2.vocab_index("map_id", map_name if map_name else "other")
+    weapon = gv("active_weapon", None)
+    if weapon is None or str(weapon).lower() in ("", "nan", "none"):
+        cat[1] = 0
+    else:
+        cat[1] = CS2_V2.vocab_index("weapon_class", _weapon_to_class_name(str(weapon)))
+    cat[2] = CS2_V2.vocab_index("side", side if side in ("CT", "T") else "unknown")
+    return num, cat
+
+
+def _extract_v2_numeric(gv, cfg, map_name: Optional[str]) -> np.ndarray:
+    """Compute the 21 numeric v2 features (v1 slots [0..15, 20..24])."""
+    num = np.zeros(21, dtype=np.float32)
+    num[0] = float(gv("health", 100)) / cfg.health_max
+    num[1] = float(gv("armor", 0)) / cfg.armor_max
+    helmet = gv("has_helmet", None)
+    if helmet is None:
+        helmet = gv("armor", 0) > 0
+    num[2] = 1.0 if helmet else 0.0
+    num[3] = 1.0 if gv("has_defuser", False) else 0.0
+    num[4] = float(gv("equipment_value", 0)) / cfg.equipment_value_max
+    num[5] = 1.0 if gv("is_crouching", False) else 0.0
+    num[6] = 1.0 if gv("is_scoped", False) else 0.0
+    _flash = gv("flash_duration", 0.0)
+    try:
+        _flash = float(_flash) if _flash is not None else 0.0
+    except (TypeError, ValueError):
+        _flash = 0.0
+    num[7] = 1.0 if (_flash > 0.0 or gv("is_blinded", False)) else 0.0
+    num[8] = min(float(gv("enemies_visible", 0)) / cfg.enemies_visible_max, 1.0)
+    px = float(gv("pos_x", gv("x", gv("X", 0))))
+    py = float(gv("pos_y", gv("y", gv("Y", 0))))
+    pz = float(gv("pos_z", gv("z", gv("Z", 0))))
+    num[9] = np.clip(px / cfg.pos_xy_extent, -1.0, 1.0)
+    num[10] = np.clip(py / cfg.pos_xy_extent, -1.0, 1.0)
+    num[11] = np.clip(pz / cfg.pos_z_extent, -1.0, 1.0)
+    yaw = math.radians(float(gv("view_x", 0)))
+    num[12] = math.sin(yaw)
+    num[13] = math.cos(yaw)
+    num[14] = float(gv("view_y", 0)) / cfg.pitch_max
+    if map_name:
+        from Programma_CS2_RENAN.core.spatial_data import compute_z_penalty
+
+        num[15] = compute_z_penalty(pz, map_name)
+    tv = gv("time_in_round", 0.0)
+    num[16] = min(float(tv or 0.0) / cfg.time_in_round_max, 1.0)
+    num[17] = 1.0 if gv("bomb_planted", False) else 0.0
+    ta = gv("teammates_alive", 0)
+    num[18] = min(float(ta or 0) / cfg.teammates_alive_max, 1.0)
+    ea = gv("enemies_alive", 0)
+    num[19] = min(float(ea or 0) / cfg.enemies_alive_max, 1.0)
+    ec = gv("team_economy", 0)
+    num[20] = min(float(ec or 0) / cfg.team_economy_max, 1.0)
+    return np.nan_to_num(num, nan=0.0, posinf=1.0, neginf=-1.0)
+
+
+def _fill_z_penalty_frame(num: np.ndarray, pos_z: np.ndarray, map_name: Optional[str]) -> None:
+    """Vectorised z_penalty (slot 15) — identical to ``compute_z_penalty``."""
+    if not map_name:
+        return
+    from Programma_CS2_RENAN.core.spatial_data import get_map_metadata
+
+    meta = get_map_metadata(map_name)
+    if not meta or meta.z_cutoff is None:
+        return
+    num[:, 15] = np.minimum(np.abs(pos_z - meta.z_cutoff) / 500.0, 1.0)
+
+
+def _fill_weapon_class_frame(cat: np.ndarray, df: "Any", n: int) -> None:  # noqa: ANN401
+    """Vectorised weapon_class categorical (slot 1) for a frame."""
+    from Programma_CS2_RENAN.backend.processing.feature_engineering.schema_v2 import CS2_V2
+
+    if "active_weapon" not in df.columns:
+        return
+    weapons = df["active_weapon"].fillna("").astype(str).values
+    unique_vals, inverse = np.unique(weapons, return_inverse=True)
+    idx_map = np.empty(len(unique_vals), dtype=np.int64)
+    for i, w in enumerate(unique_vals):
+        w_clean = w.lower().strip()
+        if not w_clean or w_clean in ("nan", "none"):
+            idx_map[i] = 0
+        else:
+            idx_map[i] = CS2_V2.vocab_index("weapon_class", _weapon_to_class_name(w_clean))
+    cat[:, 1] = idx_map[inverse]
+
+
+def extract_frame_v2(
+    df: "Any",  # pandas.DataFrame  # noqa: ANN401
+    map_name: Optional[str] = None,
+    side: Optional[str] = None,
+) -> tuple:
+    """Vectorised v2 extraction from a DataFrame (D-06, export hot path).
+
+    Returns ``(numeric np.float32[N,21], categorical np.int64[N,3])``.
+    All operations are numpy-vectorised — no per-row Python.
+    """
+    import pandas as pd
+
+    from Programma_CS2_RENAN.backend.processing.feature_engineering.schema_v2 import CS2_V2
+
+    cfg = _get_active_config()
+    n = len(df)
+    num = np.zeros((n, 21), dtype=np.float32)
+
+    def _col(name: str, default: float = 0.0) -> np.ndarray:
+        if name not in df.columns:
+            return np.full(n, default)
+        s = df[name]
+        if s.dtype == object:
+            s = pd.to_numeric(s, errors="coerce")
+        return s.values.astype(np.float64)
+
+    def _bcol(name: str) -> np.ndarray:
+        if name not in df.columns:
+            return np.zeros(n, dtype=np.float32)
+        arr = df[name].values
+        nan_mask = pd.isna(df[name]).values
+        out = np.zeros(n, dtype=np.float32)
+        out[~nan_mask] = np.asarray(arr[~nan_mask], dtype=bool).astype(np.float32)
+        return out
+
+    armor = _col("armor")
+    num[:, 0] = _col("health", 100.0) / cfg.health_max
+    num[:, 1] = armor / cfg.armor_max
+    if "has_helmet" in df.columns:
+        missing = pd.isna(df["has_helmet"]).values
+        harr = df["has_helmet"].values
+        hbool = np.zeros(n, dtype=bool)
+        hbool[~missing] = np.asarray(harr[~missing], dtype=bool)
+        num[:, 2] = np.where(missing, armor > 0, hbool).astype(np.float32)
+    else:
+        num[:, 2] = (armor > 0).astype(np.float32)
+    num[:, 3] = _bcol("has_defuser")
+    num[:, 4] = _col("equipment_value") / cfg.equipment_value_max
+    num[:, 5] = _bcol("is_crouching")
+    num[:, 6] = _bcol("is_scoped")
+    num[:, 7] = np.where((_col("flash_duration") > 0) | (_bcol("is_blinded") > 0), 1.0, 0.0).astype(
+        np.float32
+    )
+    num[:, 8] = np.minimum(_col("enemies_visible") / cfg.enemies_visible_max, 1.0)
+    px, py, pz = _col("pos_x"), _col("pos_y"), _col("pos_z")
+    num[:, 9] = np.clip(px / cfg.pos_xy_extent, -1.0, 1.0)
+    num[:, 10] = np.clip(py / cfg.pos_xy_extent, -1.0, 1.0)
+    num[:, 11] = np.clip(pz / cfg.pos_z_extent, -1.0, 1.0)
+    yaw_rad = np.radians(_col("view_x"))
+    num[:, 12] = np.sin(yaw_rad)
+    num[:, 13] = np.cos(yaw_rad)
+    num[:, 14] = _col("view_y") / cfg.pitch_max
+    _fill_z_penalty_frame(num, pz, map_name)
+    num[:, 16] = np.minimum(_col("time_in_round") / cfg.time_in_round_max, 1.0)
+    num[:, 17] = _bcol("bomb_planted")
+    num[:, 18] = np.minimum(_col("teammates_alive") / cfg.teammates_alive_max, 1.0)
+    num[:, 19] = np.minimum(_col("enemies_alive") / cfg.enemies_alive_max, 1.0)
+    num[:, 20] = np.minimum(_col("team_economy") / cfg.team_economy_max, 1.0)
+    np.nan_to_num(num, copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+
+    cat = np.zeros((n, 3), dtype=np.int64)
+    cat[:, 0] = CS2_V2.vocab_index("map_id", map_name if map_name else "other")
+    _fill_weapon_class_frame(cat, df, n)
+    cat[:, 2] = CS2_V2.vocab_index("side", side if side in ("CT", "T") else "unknown")
+    return num, cat
+
+
+def remap_v1_to_v2(
+    x25: np.ndarray,
+    map_name: Optional[str],
+    active_weapon: Optional[str],
+    side: Optional[str],
+) -> tuple:
+    """Remap a v1 float32[25] vector to v2 representation (D-06).
+
+    Numeric: v1 slots [0..15, 20..24] → float32[21].
+    Categorical: computed from ``map_name``, ``active_weapon``, ``side``.
+    """
+    from Programma_CS2_RENAN.backend.processing.feature_engineering.schema_v2 import CS2_V2
+
+    num = np.empty(21, dtype=np.float32)
+    num[:16] = x25[:16]
+    num[16:] = x25[20:]
+
+    cat = np.zeros(3, dtype=np.int64)
+    cat[0] = CS2_V2.vocab_index("map_id", map_name if map_name else "other")
+    if active_weapon is None or str(active_weapon).lower() in ("", "nan", "none"):
+        cat[1] = 0
+    else:
+        cat[1] = CS2_V2.vocab_index("weapon_class", _weapon_to_class_name(str(active_weapon)))
+    cat[2] = CS2_V2.vocab_index("side", side if side in ("CT", "T") else "unknown")
+    return num, cat

@@ -119,3 +119,41 @@ def test_no_duplicate_feature_names():
         f"Duplicate names in FEATURE_NAMES: "
         f"{[n for n in FEATURE_NAMES if FEATURE_NAMES.count(n) > 1]}"
     )
+
+
+# ---------------------------------------------------------------------------
+# D-07: HeuristicConfig context-feature normalisation bounds
+# ---------------------------------------------------------------------------
+
+
+def test_heuristic_config_has_context_fields():
+    """D-07: HeuristicConfig must expose the four context-feature normalisation
+    bounds that were previously hardcoded in ``_fill_context_features``.
+    """
+    from Programma_CS2_RENAN.backend.processing.feature_engineering.base_features import (
+        HeuristicConfig,
+    )
+
+    cfg = HeuristicConfig()
+    assert cfg.time_in_round_max == 115.0
+    assert cfg.teammates_alive_max == 4.0
+    assert cfg.enemies_alive_max == 5.0
+    assert cfg.team_economy_max == 16000.0
+
+
+def test_heuristic_config_context_fields_in_dict():
+    """The four D-07 fields must appear in ``to_dict()`` so they propagate to
+    checkpoint sidecars and saved configs.
+    """
+    from Programma_CS2_RENAN.backend.processing.feature_engineering.base_features import (
+        HeuristicConfig,
+    )
+
+    d = HeuristicConfig().to_dict()
+    for name in (
+        "time_in_round_max",
+        "teammates_alive_max",
+        "enemies_alive_max",
+        "team_economy_max",
+    ):
+        assert name in d, f"Missing {name} in HeuristicConfig.to_dict()"

@@ -21,6 +21,7 @@ def _mgr() -> CoachTrainingManager:
 
 def test_jepa_phase_reraises_stop():
     mgr = _mgr()
+    mgr.assign_dataset_splits = MagicMock()  # D-03: splits are assigned before the orchestrator
     with patch("Programma_CS2_RENAN.backend.nn.coach_manager.TrainingOrchestrator") as orch_cls:
         orch_cls.return_value.run_training.side_effect = TrainingStopRequested("stop")
         with pytest.raises(TrainingStopRequested):

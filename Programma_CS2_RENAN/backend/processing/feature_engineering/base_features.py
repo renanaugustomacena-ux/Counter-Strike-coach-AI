@@ -44,6 +44,12 @@ class HeuristicConfig:
     round_phase_force_threshold: float = 3000.0  # Below = eco round.          Range: [2500, 3500]
     round_phase_full_threshold: float = 4000.0  # Below = force buy.          Range: [3500, 5000]
 
+    # --- Context Feature Normalization Bounds (D-07) ---
+    time_in_round_max: float = 115.0  # Round timer ceiling (seconds).    Range: [105, 175]
+    teammates_alive_max: float = 4.0  # Max teammates (5v5, self excl.).  Range: [4, 4]
+    enemies_alive_max: float = 5.0  # Max enemies (5v5).                Range: [5, 5]
+    team_economy_max: float = 16000.0  # Team-economy ceiling (avg $).     Range: [12000, 20000]
+
     # --- Model Hyperparameters ---
     context_gate_l1_weight: float = 1e-4  # L1 sparsity weight on context gate. Range: [1e-6, 1e-2]
 

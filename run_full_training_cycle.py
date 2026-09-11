@@ -115,9 +115,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--epochs", type=int, default=100, help="Override default max epochs")
     parser.add_argument(
         "--model-type",
-        choices=["all", "jepa", "rap"],
-        default="all",
-        help="Specific model to train",
+        choices=["jepa_v2", "coach_v2", "jepa", "rap", "all"],
+        required=True,
+        help=(
+            "Model to train. 'all' = jepa_v2 then coach_v2. "
+            "Legacy types (jepa, rap) require ALLOW_LEGACY_NEURAL_TRAINING=True."
+        ),
     )
     parser.add_argument(
         "--tb-logdir",
@@ -224,7 +227,27 @@ def main():
 
     aborted_phases: list = []
     try:
-        if args.model_type in ["all", "jepa"]:
+        # --- v2 dispatch ---
+        if args.model_type in ("coach_v2", "all"):
+            # Fail fast: never burn a jepa_v2 run before a phase that cannot exist yet.
+            raise NotImplementedError("coach_v2 arrives with step 6 of CORREZIONE Parte III")
+
+        if args.model_type == "jepa_v2":
+            app_logger.info(">>> Starting Phase: JEPA v2 Pre-Training <<<")
+            try:
+                from Programma_CS2_RENAN.backend.nn.jepa_v2.cli import run_jepa_v2
+            except ImportError:
+                app_logger.critical(
+                    "jepa_v2 module not available — wave-2 delivery pending. "
+                    "Cannot proceed with model_type=%r.",
+                    args.model_type,
+                )
+                sys.exit(1)
+            jepa_v2_ok = run_jepa_v2(args)
+            aborted_phases += [] if jepa_v2_ok else ["jepa_v2"]
+
+        # --- Legacy dispatch (unchanged) ---
+        if args.model_type == "jepa":
             app_logger.info(">>> Starting Phase 1: JEPA Pre-Training (World Model) <<<")
             orchestrator_jepa = TrainingOrchestrator(
                 manager,
@@ -248,7 +271,7 @@ def main():
                     free_mb = torch.cuda.mem_get_info()[0] / 1024**2
                     app_logger.info("GPU reclaimed after JEPA — %.0f MB free", free_mb)
 
-        if args.model_type in ["all", "rap"]:
+        if args.model_type == "rap":
             app_logger.info(">>> Starting Phase 2: RAP Coach Training (Policy) <<<")
             orchestrator_rap = TrainingOrchestrator(
                 manager,

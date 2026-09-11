@@ -233,6 +233,7 @@ def load_user_settings() -> dict:
             "USER_DEMO_PATH": "",
             "USE_COPER_COACHING": True,
             "USE_HYBRID_COACHING": False,
+            "ALLOW_LEGACY_NEURAL_TRAINING": False,
             "USE_JEPA_MODEL": False,
             "USE_OLLAMA_COACHING": False,
             "USE_POV_TENSORS": False,

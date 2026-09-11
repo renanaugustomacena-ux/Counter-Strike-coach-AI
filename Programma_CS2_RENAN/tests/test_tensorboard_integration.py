@@ -179,5 +179,5 @@ class TestProductionCallbackChain:
         parser = rftc._build_parser() if hasattr(rftc, "_build_parser") else None
         if parser is None:
             pytest.skip("no _build_parser factory exposed")
-        args = parser.parse_args([])
+        args = parser.parse_args(["--model-type", "jepa"])
         assert args.tb_logdir is None

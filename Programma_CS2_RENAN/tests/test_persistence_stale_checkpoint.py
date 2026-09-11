@@ -227,3 +227,163 @@ class TestCorruptedCheckpoints:
 
             with pytest.raises(Exception):
                 load_nn("latest", model)
+
+
+class TestV2SidecarValidation:
+    """§2.3 / D-09: sidecar v2 fingerprint, numeric_dim, vocab_sizes checks."""
+
+    @pytest.fixture
+    def isolated_dir(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("Programma_CS2_RENAN.backend.nn.persistence.BASE_NN_DIR", tmp_path)
+        (tmp_path / "global").mkdir()
+        return tmp_path
+
+    @pytest.fixture
+    def tiny_model(self):
+        return nn.Sequential(nn.Linear(4, 2))
+
+    def _running_meta(self):
+        return {
+            "schema_fingerprint": "abc123",
+            "numeric_dim": 21,
+            "categorical_vocab_sizes": [10, 8, 3],
+        }
+
+    def _v2_sidecar(self, **overrides):
+        base = {
+            "schema_version": "v2",
+            "schema_id": "cs2_v2",
+            "schema_fingerprint": "abc123",
+            "numeric_dim": 21,
+            "categorical_vocab_sizes": [10, 8, 3],
+            "extra": {},
+        }
+        base.update(overrides)
+        return base
+
+    def _save_with_v2_sidecar(self, isolated_dir, tiny_model, sidecar_dict):
+        import json
+
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+
+        path = persistence.get_model_path("v2test")
+        torch.save(tiny_model.state_dict(), path)
+        sp = persistence._sidecar_path(path)
+        sp.write_text(json.dumps(sidecar_dict))
+        persistence._register_checkpoint_hash(path)
+
+    def test_v2_fingerprint_mismatch_raises(self, isolated_dir, tiny_model, monkeypatch):
+        """§2.3: checkpoint with wrong fingerprint → SchemaMismatchError."""
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+
+        monkeypatch.setattr(persistence, "_current_schema_meta", lambda: self._running_meta())
+        self._save_with_v2_sidecar(
+            isolated_dir,
+            tiny_model,
+            self._v2_sidecar(schema_fingerprint="OLD_FP"),
+        )
+        fresh = nn.Sequential(nn.Linear(4, 2))
+        with pytest.raises(persistence.SchemaMismatchError, match="schema_fingerprint"):
+            persistence.load_nn("v2test", fresh)
+
+    def test_v2_numeric_dim_mismatch_raises(self, isolated_dir, tiny_model, monkeypatch):
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+
+        monkeypatch.setattr(persistence, "_current_schema_meta", lambda: self._running_meta())
+        self._save_with_v2_sidecar(isolated_dir, tiny_model, self._v2_sidecar(numeric_dim=25))
+        fresh = nn.Sequential(nn.Linear(4, 2))
+        with pytest.raises(persistence.SchemaMismatchError, match="numeric_dim"):
+            persistence.load_nn("v2test", fresh)
+
+    def test_v2_vocab_mismatch_raises(self, isolated_dir, tiny_model, monkeypatch):
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+
+        monkeypatch.setattr(persistence, "_current_schema_meta", lambda: self._running_meta())
+        self._save_with_v2_sidecar(
+            isolated_dir,
+            tiny_model,
+            self._v2_sidecar(categorical_vocab_sizes=[10, 9, 3]),
+        )
+        fresh = nn.Sequential(nn.Linear(4, 2))
+        with pytest.raises(persistence.SchemaMismatchError, match="categorical_vocab_sizes"):
+            persistence.load_nn("v2test", fresh)
+
+    def test_v2_valid_sidecar_loads(self, isolated_dir, tiny_model, monkeypatch):
+        """Matching v2 sidecar → load succeeds."""
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+
+        monkeypatch.setattr(persistence, "_current_schema_meta", lambda: self._running_meta())
+        self._save_with_v2_sidecar(isolated_dir, tiny_model, self._v2_sidecar())
+        fresh = nn.Sequential(nn.Linear(4, 2))
+        result = persistence.load_nn("v2test", fresh)
+        for p_loaded, p_orig in zip(result.parameters(), tiny_model.parameters()):
+            assert torch.allclose(p_loaded, p_orig)
+
+    def test_v2_vocab_tuple_vs_list(self, isolated_dir, tiny_model, monkeypatch):
+        """JSON round-trips lists; running schema may expose tuples."""
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+
+        running = self._running_meta()
+        running["categorical_vocab_sizes"] = (10, 8, 3)
+        monkeypatch.setattr(persistence, "_current_schema_meta", lambda: running)
+        self._save_with_v2_sidecar(isolated_dir, tiny_model, self._v2_sidecar())
+        fresh = nn.Sequential(nn.Linear(4, 2))
+        result = persistence.load_nn("v2test", fresh)
+        assert result is not None
+
+    def test_schema_mismatch_is_stale_subclass(self):
+        from Programma_CS2_RENAN.backend.nn.persistence import (
+            SchemaMismatchError,
+            StaleCheckpointError,
+        )
+
+        assert issubclass(SchemaMismatchError, StaleCheckpointError)
+
+    def test_missing_schema_v2_module_raises(self, isolated_dir, tiny_model, monkeypatch):
+        """When schema_v2 is not importable, SchemaMismatchError is raised."""
+        import sys
+
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+
+        monkeypatch.setitem(
+            sys.modules,
+            "Programma_CS2_RENAN.backend.processing.feature_engineering.schema_v2",
+            None,
+        )
+        self._save_with_v2_sidecar(isolated_dir, tiny_model, self._v2_sidecar())
+        fresh = nn.Sequential(nn.Linear(4, 2))
+        with pytest.raises(persistence.SchemaMismatchError, match="not available"):
+            persistence.load_nn("v2test", fresh)
+
+    def test_save_nn_with_schema_meta(self, isolated_dir, tiny_model):
+        """save_nn(schema_meta=...) writes v2 envelope, skips _build_current_meta."""
+        import json
+
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+
+        schema_meta = self._v2_sidecar()
+        del schema_meta["extra"]
+        persistence.save_nn(
+            tiny_model,
+            "v2save",
+            extra_meta={"step": 100},
+            schema_meta=schema_meta,
+        )
+        sp = persistence._sidecar_path(persistence.get_model_path("v2save"))
+        data = json.loads(sp.read_text())
+        assert data["schema_version"] == "v2"
+        assert data["extra"] == {"step": 100}
+        assert "metadata_dim" not in data
+        assert "feature_names" not in data
+
+    def test_save_nn_without_schema_meta_unchanged(self, isolated_dir, tiny_model):
+        """save_nn() without schema_meta still writes v1 sidecar."""
+        import json
+
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+
+        persistence.save_nn(tiny_model, "v1save")
+        sp = persistence._sidecar_path(persistence.get_model_path("v1save"))
+        data = json.loads(sp.read_text())
+        assert data["schema_version"] == "v1"
+        assert "metadata_dim" in data

@@ -93,7 +93,6 @@ if len(TRAINING_FEATURES) != METADATA_DIM:
 
 # Match-aggregate feature names from PlayerMatchStats (used by _prepare_tensors fallback)
 # These map to actual DB columns — unlike TRAINING_FEATURES which are tick-level.
-# Must be exactly METADATA_DIM (25) entries to avoid zero-padding.
 # All fields verified on PlayerMatchStats in db_models.py.
 MATCH_AGGREGATE_FEATURES = [
     # Core performance (0-4)
@@ -130,11 +129,7 @@ MATCH_AGGREGATE_FEATURES = [
     # Kill enrichment (24)
     "thrusmoke_kill_pct",
 ]
-if len(MATCH_AGGREGATE_FEATURES) != METADATA_DIM:
-    raise ValueError(
-        f"MATCH_AGGREGATE_FEATURES length ({len(MATCH_AGGREGATE_FEATURES)}) "
-        f"!= METADATA_DIM ({METADATA_DIM})"
-    )
+MATCH_AGGREGATE_DIM = len(MATCH_AGGREGATE_FEATURES)
 
 TARGET_INDICES = list(range(OUTPUT_DIM))  # First 10 core features targeted by NN adjustments
 
@@ -586,33 +581,23 @@ class CoachTrainingManager:
             callbacks.close_all()
 
     def run_jepa_pretraining(self, context=None, callbacks=None):
-        """
-        Phase 1: Self-Supervised Learning on Pro Data.
-        Uses Unified Training Orchestrator.
-        """
+        """Phase 1: Self-Supervised Learning on Pro Data (CORREZIONE Parte III §1.3)."""
         app_logger.info("Starting JEPA Pre-training via Orchestrator...")
-        try:
-            orchestrator = TrainingOrchestrator(self, model_type="jepa", callbacks=callbacks)
-            orchestrator.run_training(context=context)
-        except TrainingStopRequested:
-            raise
-        except ValueError as e:
-            app_logger.warning("JEPA Skipping: %s", e)
-        except Exception as e:
-            app_logger.error("JEPA Training Failed: %s", e)
+        self.assign_dataset_splits()
+        orchestrator = TrainingOrchestrator(self, model_type="jepa", callbacks=callbacks)
+        success = orchestrator.run_training(context=context)
+        if not success:
+            raise RuntimeError(
+                "JEPA pre-training aborted: quality gate or data check returned False"
+            )
 
     def run_rap_cycle(self, context=None, callbacks=None):
-        """Phase 4: RAP Behavioral Optimization via Orchestrator."""
+        """Phase 4: RAP Behavioral Optimization via Orchestrator (CORREZIONE Parte III §1.3)."""
         app_logger.info("Starting RAP Optimization via Orchestrator...")
-        try:
-            orchestrator = TrainingOrchestrator(self, model_type="rap", callbacks=callbacks)
-            orchestrator.run_training(context=context)
-        except TrainingStopRequested:
-            raise
-        except ValueError as e:
-            app_logger.warning("RAP Skipping: %s", e)
-        except Exception as e:
-            app_logger.error("RAP Training Failed: %s", e)
+        orchestrator = TrainingOrchestrator(self, model_type="rap", callbacks=callbacks)
+        success = orchestrator.run_training(context=context)
+        if not success:
+            raise RuntimeError("RAP training aborted: quality gate or data check returned False")
 
     def _train_role_head(self, context=None):
         """Phase 5: Train the lightweight role classification neural head."""
