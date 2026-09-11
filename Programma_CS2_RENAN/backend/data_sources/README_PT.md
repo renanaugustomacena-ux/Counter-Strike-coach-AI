@@ -31,9 +31,10 @@ antes de serem passados aos consumidores a jusante.
 | Arquivo | Exportacao Primaria | Proposito |
 |---------|--------------------|-----------|
 | `__init__.py` | Raiz do pacote | (vazio -- apenas namespace) |
-| `demo_parser.py` | `parse_demo()` | Wrapper demoparser2 com calculo de rating HLTV 2.0, exporta dados por tick e por round |
+| `demo_parser.py` | `parse_demo()`, `parse_sequential_ticks()` | Wrapper demoparser2 com calculo de rating HLTV 2.0; timeout real (F-0013) e tick rate por demo lido do header |
+| `parse_guard.py` | `is_parse_error()`, `ParseTimeoutError` | SSOT F-0006 do parse-guard: classifica quais excecoes um guard demoparser2 pode absorver (incl. pyo3 `PanicException`); `KeyboardInterrupt`/`SystemExit`/`GeneratorExit`/`ParseTimeoutError` sempre propagam |
 | `demo_format_adapter.py` | `DemoFormatAdapter` | Validacao e conversao de formato entre saidas do demo parser e esquemas internos (`MIN_DEMO_SIZE=10MB`) |
-| `event_registry.py` | Despacho de eventos | Registro e despacho de tipos de evento para eventos de demo (kills, plants, defuses, etc.) |
+| `event_registry.py` | `EVENT_REGISTRY` | Registro de esquema canonico de eventos de jogo CS2 (campos, prioridade, cobertura de handlers) -- ferramenta de documentacao/cobertura, NAO um dispatcher runtime |
 | `trade_kill_detector.py` | `TradeKillDetector` | Identifica trade frags a partir de dados de tick usando uma janela deslizante de 3 segundos |
 | `round_context.py` | Helper de contexto de round | Enriquece dados por round com metadados contextuais (estado economico, controle de site, etc.) |
 | `steam_api.py` | `SteamAPI` | Integracao com Steam Web API para sincronizacao de perfil, lista de amigos, estatisticas de jogo |
@@ -102,11 +103,14 @@ demos CS2 reais tem 50+ MB. Realiza alinhamento de esquema para que consumidores
 jusante (feature engineering, armazenamento em banco de dados) recebam uma forma de
 dados consistente independentemente de mudancas de versao do parser.
 
-### event_registry.py -- Despacho de Eventos
+### event_registry.py -- EVENT_REGISTRY
 
-Registra e despacha eventos de demo (player_death, bomb_planted, bomb_defused,
-round_start, round_end, etc.) para assinantes. Usa um padrao observer para que multiplos
-modulos de analise possam reagir ao mesmo fluxo de eventos sem acoplamento entre si.
+Registro de esquema canonico de eventos de jogo CS2 (derivado dos dumps SteamDatabase
+Game Events): para cada evento registra a categoria, tipos de campo, prioridade, se
+Macena o trata e o caminho do arquivo handler. Expoe `get_implemented_events()`,
+`get_unimplemented_events()` e `get_coverage_report()` para rastreamento de cobertura
+do parser e planejamento de expansao. E uma ferramenta de documentacao/cobertura --
+**nao** despacha eventos em tempo de execucao.
 
 ### trade_kill_detector.py -- TradeKillDetector
 

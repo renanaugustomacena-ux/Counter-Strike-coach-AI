@@ -286,7 +286,7 @@ to update their labels dynamically.
 
 ## Development Notes
 
-- The Qt app requires **PySide6 6.11.0** (pinned in `requirements.txt`) and **Python 3.10+**.
+- The Qt app requires **PySide6 6.11.0** (pinned in `requirements.txt`) and **Python 3.11+**.
 - The sole QSS source is `qt_app/themes/base.qss.template`; the legacy per-theme
   `.qss` files were removed (commits `73ec5ed`, `5ce891b`). Visual changes go through
   design tokens and the template; do not inline styles in Python code.

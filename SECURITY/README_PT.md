@@ -37,8 +37,10 @@ neste diretório é defendida com **risk-addressed / residual-risk / tradeoffs /
 2. **Enquanto escreve** — `tools/policy_runner.py` roda em pre-commit (em warn-mode inicialmente) e previne drift.
 3. **Antes do merge** — se sua mudança toca um caminho em `BOUNDARY_FILES.txt`, o CI rotula o pull request com
    `security-review-required` e o `CODEOWNERS` impõe a revisão de segurança.
-4. **No release** — `goliath.py audit` executa a cadeia completa (SBOM, atestado SLSA, manifesto de integridade, RASP).
-5. **Durante um incidente** — `INCIDENT_RESPONSE.md` define os cenários nomeados; `goliath.py panic` é o kill-switch.
+4. **No release** — siga `packaging/BUILD_CHECKLIST.md`: `goliath.py integrity` regenera o
+   manifesto de integridade do código-fonte (RASP), e `tools/audit_binaries.py` audita os binários compilados.
+   `tools/sbom_generator.py` produz o SBOM CycloneDX (ferramenta standalone; ainda não é um passo da checklist).
+5. **Durante um incidente** — `INCIDENT_RESPONSE.md` define os cenários nomeados (IR-01…IR-05).
 
 ## Ancoragem em padrões
 
@@ -63,4 +65,5 @@ neste diretório é defendida com **risk-addressed / residual-risk / tradeoffs /
 Reports de vulnerabilidades ou de preocupações de segurança devem chegar ao dono do repositório:
 **Renan Augusto Macena** — veja CODEOWNERS para o roteamento de contato.
 
-Para divulgação coordenada, **não** abra uma issue pública. Use um canal privado.
+Para divulgação coordenada, **não** abra uma issue pública. Use um canal privado — o
+[`SECURITY.md`](../SECURITY.md) na raiz do repositório define o processo de reporte.

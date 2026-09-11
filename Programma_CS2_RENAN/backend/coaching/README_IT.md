@@ -11,63 +11,67 @@
 Il pacchetto coaching e il livello di intelligenza che trasforma i dati di analisi grezzi
 in feedback azionabile per il giocatore. Implementa una **pipeline di coaching a quattro
 modalita** dove ciascuna modalita offre un compromesso diverso tra consigli basati sulla
-conoscenza e previsioni di rete neurale. La modalita predefinita e **COPER** (Contextual
-Observation Pattern Experience Retrieval), che combina un Experience Bank, recupero
-conoscenza RAG e dati di riferimento di giocatori professionisti per produrre output di
-coaching fondato su prove reali di partita.
+conoscenza e previsioni di rete neurale. La modalita predefinita e **COPER** ("Context Optimized with Prompt, Experience,
+and Replay"), che combina un Experience Bank, recupero conoscenza RAG e dati di
+riferimento di giocatori professionisti per produrre output di coaching fondato su prove
+reali di partita.
 
 Tutte le modalita di coaching sono consumate da un singolo punto di ingresso --
 `backend/services/coaching_service.py` -- che seleziona la modalita attiva in base ai
-flag di funzionalita `USE_COPER_COACHING`, `USE_HYBRID_COACHING`, `USE_RAG_COACHING` e
-`USE_JEPA_MODEL` / `USE_RAP_MODEL` in `core/config.py`.
+flag di funzionalita `USE_COPER_COACHING`, `USE_HYBRID_COACHING` e `USE_RAG_COACHING`
+(il flag separato `USE_JEPA_MODEL` controlla l'adattatore di insight JEPA, non la
+selezione della modalita).
 
 ## Le Quattro Modalita di Coaching
 
 | # | Modalita | Flag | Descrizione |
 |---|----------|------|-------------|
-| 1 | **COPER** | `USE_COPER_COACHING=True` (predefinito) | Recupero semantico Experience Bank + conoscenza RAG + Riferimenti Pro. Nessun modello ML richiesto. |
-| 2 | **Hybrid** | `USE_HYBRID_COACHING=True` | Previsioni rete neurale sintetizzate con contesto RAG per output misto. |
-| 3 | **RAG** | `USE_RAG_COACHING=True` | Recupero puro di conoscenza da pattern demo pro indicizzati. Nessuna inferenza ML. |
-| 4 | **Neural** | `USE_JEPA_MODEL=True` o `USE_RAP_MODEL=True` | Previsioni ML pure senza augmentazione conoscenza. Richiede un checkpoint modello addestrato. |
+| 1 | **COPER** | `USE_COPER_COACHING=True` (predefinito) | Recupero semantico Experience Bank + conoscenza RAG + Riferimenti Pro. Richiede nome mappa + dati tick. |
+| 2 | **Hybrid** | `USE_HYBRID_COACHING=True` (predefinito False) | Z-score di deviazione dal baseline sintetizzati con contesto RAG. Richiede statistiche giocatore. |
+| 3 | **Traditional + RAG** | `USE_RAG_COACHING=True` (predefinito False) | Motore di correzione potenziato con recupero conoscenza tattica. Nessuna inferenza ML. |
+| 4 | **Traditional** | _(nessuno — sempre disponibile)_ | Motore di correzione puro basato su deviazione. Zero dipendenze esterne; fallback definitivo. |
 
 ### Flusso di Fallback del Coaching
 
-Quando una modalita a maggiore fedelta non e disponibile (checkpoint modello mancante,
+Quando una modalita a maggiore fedelta non e disponibile (modello mancante,
 knowledge base vuota, ecc.), la pipeline degrada in modo controllato attraverso la
 seguente catena:
 
 ```
-Neural (ML puro)
-   |  [checkpoint modello mancante o errore di inferenza]
-   v
-Hybrid (ML + RAG)
-   |  [indice RAG vuoto o ML non disponibile]
-   v
 COPER (Experience Bank + RAG + Pro)
-   |  [experience bank vuoto]
+   |  [errore/timeout, o dati mappa/tick mancanti]
    v
-RAG (solo recupero conoscenza)
-   |  [indice conoscenza vuoto]
+Hybrid (baseline Z + RAG)
+   |  [disabilitato, statistiche giocatore mancanti, o errore]
    v
-Correzioni euristiche (fallback correction_engine.py)
+Traditional + RAG (motore di correzione + recupero conoscenza)
+   |  [USE_RAG_COACHING disabilitato]
+   v
+Correzioni euristiche Traditional (correction_engine.py — terminale)
 ```
 
-Ogni transizione viene registrata a livello WARNING con un messaggio JSON strutturato
-contenente la ragione della degradazione, cosi l'operatore sa sempre quale modalita
-e attiva.
+Ogni transizione viene registrata a livello WARNING con un messaggio contenente
+la ragione della degradazione, cosi l'operatore sa sempre quale modalita e attiva.
+
+Nota: la catena sopra e una *scala di priorita*. Al momento dell'errore, un
+fallimento/timeout di COPER passa a Hybrid solo quando `USE_HYBRID_COACHING` e abilitato
+e le statistiche giocatore sono disponibili — altrimenti arriva direttamente a Traditional;
+un fallimento di Hybrid arriva sempre a Traditional. Il livello Traditional + RAG viene
+scelto solo al momento del dispatch quando ne COPER ne Hybrid sono selezionati e
+`USE_RAG_COACHING` e abilitato.
 
 ## Inventario File
 
 | File | Esportazione Primaria | Scopo |
 |------|----------------------|-------|
 | `__init__.py` | API Pacchetto | Ri-esporta `HybridCoachingEngine`, `generate_corrections`, `ExplanationGenerator`, `PlayerCardAssimilator`, `get_pro_baseline_for_coach` |
-| `hybrid_engine.py` | `HybridCoachingEngine` | Orchestratore centrale che sintetizza previsioni ML con recupero conoscenza RAG per insights di coaching bilanciati |
-| `correction_engine.py` | `generate_corrections()` | Genera correzioni tattiche confrontando le deviazioni di performance del giocatore rispetto ai baseline professionisti |
+| `hybrid_engine.py` | `HybridCoachingEngine` | Orchestratore modalita Hybrid: deviazioni Z-score dal baseline + recupero conoscenza RAG + punteggio di confidenza |
+| `correction_engine.py` | `generate_corrections()` | Classifica deviazioni Z-score precalcolate nelle top-3 correzioni ponderate (scalatura confidenza e importanza) |
 | `nn_refinement.py` | `apply_nn_refinement()` | Scalatura pesi correzioni — moltiplica le deviazioni Z-score per pesi per-feature. NON esegue inferenza NN (nome storico) |
 | `longitudinal_engine.py` | `generate_longitudinal_coaching()` | Traccia trend di performance nel tempo usando integrazione di decay baseline temporale per consigli di miglioramento a lungo termine |
-| `explainability.py` | `ExplanationGenerator` | Converte tensori di previsione ML opachi in spiegazioni leggibili dall'uomo con catene di attribuzione causale |
-| `pro_bridge.py` | `PlayerCardAssimilator` | Collega le stat card di giocatori professionisti a insights di coaching via comparazione basata su ruolo (entry fragger, AWPer, ecc.) |
-| `token_resolver.py` | `PlayerTokenResolver` | Canonicalizza nomi giocatori usando fuzzy matching, normalizzazione leet-speak e risoluzione alias |
+| `explainability.py` | `ExplanationGenerator` | Generazione narrativa basata su template per asse di abilita, piu classificazione severita insight |
+| `pro_bridge.py` | `PlayerCardAssimilator` | Assimila stat card di giocatori professionisti in baseline formato coach e archetipi |
+| `token_resolver.py` | `PlayerTokenResolver` | Recupera "Player Token" statici dei pro (stat card) da `hltv_metadata.db` e confronta statistiche partita con essi |
 | `jepa_insight_adapter.py` | `JEPAInsightAdapter` | Converte le uscite sigmoid del coaching-head JEPA in oggetti `InsightCandidate`. Mappa i primi 10 delle 25 dimensioni a 5 assi tattici. Gating per maturità; attivato dal flag `USE_JEPA_MODEL` (default `False`). Conforme NO-WALLHACK — consuma solo dati POV del giocatore. |
 
 ## Descrizioni Moduli
@@ -75,29 +79,36 @@ e attiva.
 ### hybrid_engine.py -- HybridCoachingEngine
 
 `HybridCoachingEngine` e l'orchestratore primario per la modalita Hybrid di coaching.
-Accetta un vettore di caratteristiche a 25 dimensioni (vedi `METADATA_DIM` in
-`nn/config.py`), esegue inferenza ML attraverso il modello attivo (JEPA o RAP), recupera
-conoscenza pertinente dall'indice RAG e fonde entrambi i segnali in una risposta di
-coaching unificata. Il motore applica una strategia di fusione pesata per confidenza:
-previsioni ML ad alta confidenza dominano, mentre quelle a bassa confidenza cedono
-alla conoscenza RAG.
+La sua pipeline: calcola le deviazioni Z-score delle `player_stats` rispetto al baseline
+pro (opzionalmente un baseline contestuale dalla stat card di un pro specifico), recupera
+conoscenza pertinente dall'indice RAG e sintetizza insight unificati dalle deviazioni e
+dal contesto della conoscenza. Contributi neurali entrano nella catena di insight tramite
+`JEPAInsightAdapter` quando il flag `USE_JEPA_MODEL` e abilitato (26-HYB-01). La
+confidenza dell'insight combina |Z| con conteggi di utilizzo della conoscenza; baseline
+di fallback obsoleti marcano ogni insight con un avviso di baseline degradato (F4-02).
 
 ### correction_engine.py -- generate_corrections()
 
-Funzione stateless che prende uno snapshot di performance del round del giocatore e lo
-confronta con il baseline professionale (fornito da `pro_bridge.py`). Deviazioni che
-superano soglie configurabili producono voci di correzione con severita
-(info/warning/critical), una descrizione leggibile e la metrica specifica che ha attivato
-la correzione. Questo modulo e il fallback finale quando tutte le modalita di coaching
-a maggiore fedelta non sono disponibili.
+Funzione stateless che prende deviazioni Z-score *precalcolate* (il confronto con il
+baseline avviene a monte) piu `rounds_played`. Ogni deviazione viene scalata da un fattore
+di confidenza (`rounds_played / 300`, limitato a 1.0) e un peso di importanza per-feature
+(sovrascrivibile tramite l'impostazione `COACH_WEIGHT_OVERRIDES`); le top-3 correzioni
+ordinate per `|weighted_z| * importance` vengono restituite come dizionari (`feature`,
+`weighted_z`, `importance`). Severita e narrative leggibili vengono aggiunte a valle da
+`coaching_service.py` usando `ExplanationGenerator`. Questo modulo e il fallback finale
+quando tutte le modalita di coaching a maggiore fedelta non sono disponibili.
 
 ### nn_refinement.py -- apply_nn_refinement()
 
-Livello di post-elaborazione che prende correzioni euristiche da `correction_engine.py`
-e le raffina usando una rete neurale addestrata. Ogni correzione riceve un punteggio di
-confidenza (0.0--1.0). Le correzioni sotto la soglia di confidenza vengono soppresse per
-ridurre il rumore. Il passo di raffinamento e opzionale e si attiva solo quando un
-checkpoint di modello addestrato e disponibile.
+Passo di scalatura pesi correzioni (DA-03: il nome storico e fuorviante). Prende
+correzioni euristiche da `correction_engine.py` e moltiplica ogni `weighted_z` per
+`(1 + feature_weight)` da un dizionario di aggiustamenti fornito. Questa e pura aritmetica
+— nessuna rete neurale viene caricata, nessuna inferenza modello avviene, nessun punteggio
+di confidenza viene calcolato. Il dizionario di aggiustamenti *puo* originare dall'output
+di un modello NN a monte, ma questo modulo e una moltiplicazione scalare. Chiamato
+condizionalmente da `correction_engine.py` solo quando `nn_adjustments` non e vuoto — il
+percorso di servizio corrente non passa mai aggiustamenti, quindi questo passo e dormiente
+in produzione.
 
 ### longitudinal_engine.py -- generate_longitudinal_coaching()
 
@@ -110,50 +121,55 @@ di conseguenza.
 
 ### explainability.py -- ExplanationGenerator
 
-Implementa la spiegabilita del modello decomponendo le previsioni della rete neurale in
-spiegazioni leggibili. Usa attribuzione delle caratteristiche (quale delle 25 dimensioni
-di input ha contribuito maggiormente alla previsione) e catene di ragionamento causale
-per spiegare *perche* il modello raccomanda una particolare azione. Fondamentale per
-costruire la fiducia del giocatore nei consigli di coaching guidati da ML.
+Generazione narrativa basata su template: `generate_narrative()` renderizza template
+per-asse (`SkillAxes` MECHANICS / POSITIONING / UTILITY / TIMING / DECISION) con
+contesto dinamico (posizione, arma, magnitudine delta). Delta sotto la soglia di silenzio
+(|delta| < 0.2) non producono feedback — "il silenzio e un'azione valida" — e un filtro
+per livello di abilita semplifica l'output per principianti. `classify_insight_severity()`
+mappa |delta| a High / Medium / Low. Usato da `coaching_service.py` per trasformare
+Z-score di correzione in messaggi di coaching leggibili.
 
 ### pro_bridge.py -- PlayerCardAssimilator
 
 Colma il divario tra le statistiche dei giocatori professionisti (da `hltv_metadata.db`)
-e la pipeline di coaching. Il `PlayerCardAssimilator` carica le stat card dei pro e
-esegue comparazioni basate su ruolo: se l'utente gioca come entry fragger, le sue
-statistiche vengono confrontate con quelle degli entry fragger professionisti.
-L'helper `get_pro_baseline_for_coach()` fornisce un dizionario baseline pronto all'uso
-per il motore di correzione.
+e la pipeline di coaching. Il `PlayerCardAssimilator` traduce una `ProPlayerStatCard`
+nel formato baseline del coach su scale per-round (KPR/DPR — P3-02), con normalizzazione
+difensiva di valori in forma percentuale legacy (V-2), e classifica l'archetipo del pro
+tramite `get_player_archetype()` (Star Fragger / Support Anchor / Sniper Specialist /
+All-Rounder). L'helper `get_pro_baseline_for_coach()` fornisce un dizionario baseline
+contestuale pronto all'uso, utilizzato da `hybrid_engine.py` quando un riferimento pro
+e selezionato.
 
 ### token_resolver.py -- PlayerTokenResolver
 
-Risolve riferimenti ambigui di nomi giocatore a identita canoniche. Gestisce sfide comuni
-nella nomenclatura CS2: sostituzioni leet-speak (es. "s1mple" vs "simple"), prefissi
-clan tag, omoglifi Unicode e corrispondenze parziali di nomi. Usa fuzzy string matching
-con soglie di similarita configurabili. Essenziale per abbinare nomi forniti dall'utente
-a voci nel database di giocatori professionisti.
+Recupera "Player Token" statici dei pro per l'AI Coach: `get_player_token()` cerca un
+professionista per nickname esatto in `hltv_metadata.db` (`ProPlayer` + ultimo
+`ProPlayerStatCard`) e assembla un dizionario token strutturato (identita, metriche core,
+baseline tattici, statistiche dettagliate granulari, metadati).
+`compare_performance_to_token()` restituisce un "Correction Delta" (delta rating / ADR /
+KAST / HS piu un flag di underperformance) per valutazione esperta contro il token.
+Il fuzzy name matching risiede altrove (`nickname_resolver.py`, usato da
+`backend/services/player_lookup.py`), non in questo modulo.
 
 ## Integrazione con il Livello Servizi
 
 ```
 coaching_service.py
     |
-    +-- seleziona modalita coaching (COPER / Hybrid / RAG / Neural)
+    +-- seleziona modalita coaching (COPER / Hybrid / Traditional+RAG / Traditional)
     |
     +-- chiama hybrid_engine.py (modalita Hybrid)
-    |       |-- inferenza ML (modello JEPA o RAP)
+    |       |-- deviazioni Z-score dal baseline (baseline contestuali pro_bridge.py)
     |       +-- recupero RAG (knowledge/)
     |
-    +-- chiama correction_engine.py (tutte le modalita)
-    |       +-- pro_bridge.py (baseline professionale)
+    +-- chiama correction_engine.py (modalita Traditional e fallback per errori)
+    |       +-- nn_refinement.py (solo se nn_adjustments passati -- dormiente oggi)
     |
-    +-- chiama nn_refinement.py (se modello disponibile)
+    +-- chiama longitudinal_engine.py (trend da compute_trend())
     |
-    +-- chiama longitudinal_engine.py (se dati storici presenti)
+    +-- chiama explainability.py (narrative + severita per correzioni)
     |
-    +-- chiama explainability.py (se previsioni ML usate)
-    |
-    +-- restituisce CoachingResponse al livello UI
+    +-- salva righe CoachingInsight nel database (consumate dalla UI)
 ```
 
 L'orchestratore `coaching_service.py` inietta anche contesto di baseline temporale da
@@ -178,7 +194,6 @@ recenti.
 
 ## Dipendenze
 
-- **PyTorch** -- Inferenza rete neurale per modalita Hybrid e Neural
+- **PyTorch** -- Inferenza modello adattatore insight JEPA in `jepa_insight_adapter.py`
 - **sentence-transformers** -- Generazione embedding per recupero RAG ed Experience Bank
-- **SQLModel** -- Persistenza Experience Bank
-- **scikit-learn** -- Metriche di similarita per risoluzione token (opzionale)
+- **SQLModel** -- Accesso database (conoscenza tattica, insight di coaching, stat card pro)

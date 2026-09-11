@@ -18,10 +18,10 @@ I quattro livelli sono progettati per essere eseguiti in ordine crescente di pro
 
 | Livello | Strumento | Controlli | Tempo | Scopo |
 |---------|-----------|-----------|-------|-------|
-| 1 | `headless_validator.py` | 26 fasi | <20s | Gate di regressione rapido (obbligatorio prima del completamento task) |
-| 2 | Suite pytest | 2.024+ test in 118 file | ~2min | Validazione logica, asserzioni di contratto |
+| 1 | `headless_validator.py` | 39 fasi | <20s | Gate di regressione rapido (obbligatorio prima del completamento task) |
+| 2 | Suite pytest | 2.500+ test in 193 file | ~2min | Validazione logica, asserzioni di contratto |
 | 3 | `backend_validator.py` | 40 in 7 sezioni | ~30s | Salute build, zoo modelli, pipeline coaching |
-| 4 | `Goliath_Hospital.py` | 10 reparti | ~60s | Diagnostica clinica completa |
+| 4 | `Goliath_Hospital.py` | 11 reparti | ~60s | Diagnostica clinica completa |
 
 ## Inventario File
 
@@ -58,7 +58,7 @@ Tutti gli strumenti in questa directory si basano sul modulo di infrastruttura c
 - **`BaseValidator`** -- Classe base astratta con `define_checks()`, `check()`, `run()`,
   integrazione `Console` e generazione report JSON.
 - **`ToolResult`** / **`ToolReport`** -- Dataclass strutturate per risultati dei controlli con
-  livelli `Severity` (CRITICAL, WARNING, INFO, OK).
+  livelli `Severity` (CRITICAL, ERROR, WARNING, INFO, HEALTHY).
 - **`Console`** -- Output terminale in stile Rich con intestazioni di sezione, indicatori
   pass/fail e tabelle riepilogative.
 
@@ -95,7 +95,7 @@ che qualsiasi task di sviluppo sia considerato completato.
 
 ```bash
 # Attivare prima l'ambiente virtuale
-source ~/.venvs/cs2analyzer/bin/activate
+source .venv/bin/activate
 
 # Validazione headless (gate post-task obbligatorio)
 python Programma_CS2_RENAN/tools/headless_validator.py

@@ -18,7 +18,7 @@ dato lasci il confine del processo.
 
 | File | Scopo | Export Principali |
 |------|-------|-------------------|
-| `logger_setup.py` | Logging strutturato JSON centralizzato con ID correlazione | `get_logger()`, `get_tool_logger()`, `set_correlation_id()`, `configure_log_dir()`, `configure_retention()` |
+| `logger_setup.py` | Logging strutturato JSON centralizzato con ID correlazione | `get_logger()`, `get_tool_logger()`, `set_correlation_id()`, `configure_log_dir()`, `configure_log_level()`, `configure_retention()` |
 | `rasp.py` | Guardia integrità Runtime Application Self-Protection | `RASPGuard`, `run_rasp_audit()`, `IntegrityError` |
 | `sentry_setup.py` | Integrazione SDK Sentry con doppio opt-in e scrubbing PII | `init_sentry()`, `add_breadcrumb()` |
 | `error_codes.py` | Registro centralizzato codici errore con severità e rimedio | `ErrorCode`, `log_with_code()`, `get_all_codes()` |
@@ -67,9 +67,10 @@ filesystem corrente.
 
 Comportamenti chiave:
 
-- **Firma HMAC** (`R1-12`): il manifest stesso è firmato con una chiave HMAC-SHA256.
-  Le build di produzione iniettano la chiave tramite `CS2_MANIFEST_KEY`; lo sviluppo
-  ricade su una chiave statica con un warning loggato (`RP-01`).
+- **Firma HMAC** (`R1-12`): il manifest stesso e' firmato con una chiave HMAC-SHA256
+  iniettata tramite `CS2_MANIFEST_KEY`. Lo sviluppo ricade su una chiave statica con
+  un warning loggato (`RP-01`); le build frozen (PyInstaller) falliscono in modo
+  chiuso, rifiutando l'avvio quando la chiave env manca.
 - **Supporto binari frozen**: quando eseguito all'interno di un bundle PyInstaller, il
   manifest viene risolto da `sys._MEIPASS` con percorsi candidati multipli.
 - **Entry point di convenienza**: `run_rasp_audit(project_root)` istanzia la guardia,
@@ -117,9 +118,9 @@ opzionale `error_code` per il logging strutturato. I sottotipi includono
 | `core/config.py` | `configure_log_dir(LOG_DIR)` dopo risoluzione percorso per rompere import circolare |
 | Pipeline `ingestion/` | `get_logger()` + ID correlazione per tracing per-demo |
 | Training `backend/nn/` | `get_logger()` per logging epoch/loss; `add_breadcrumb()` ai checkpoint |
-| `apps/qt_app/` | `init_sentry()` all'avvio applicazione con DSN consentito dall'utente |
+| Opt-in Sentry | `init_sentry()` e' disponibile per il wiring all'avvio applicazione con un DSN consentito dall'utente (nessun chiamante lo invoca attualmente) |
 | Script `tools/` | `get_tool_logger()` per diagnostica tool isolata |
-| Hook pre-commit | `run_rasp_audit()` tramite `tools/headless_validator.py` |
+| Hook pre-commit | `sync_integrity_manifest.py --verify-only` controlla il manifest; `tools/headless_validator.py` istanzia `RASPGuard` nella fase Security |
 
 ## Note Sviluppo
 
@@ -129,8 +130,15 @@ opzionale `error_code` per il logging strutturato. I sottotipi includono
 - **Thread safety**: `_correlation_local` usa `threading.local()`, quindi gli ID
   correlazione sono isolati per thread. I thread daemon nel Quad-Daemon engine
   impostano ciascuno il proprio ID all'inizio del ciclo.
+- **La rotazione e' single-writer only (F-0011)**: ogni logger nominato attacca il
+  proprio `RotatingFileHandler` al file condiviso `cs2_analyzer.log`, percio' handler
+  concorrenti -- e specialmente processi concorrenti -- possono competere sulla stessa
+  rotazione e intercalare le righe. L'uso corrente e' single-writer; il redesign del
+  logging multiprocesso e' tracciato in `docs/OPEN_ISSUES.md` (F-0011).
 - **Testing**: nelle suite di test, `CS2_LOG_LEVEL=DEBUG` e
   `configure_log_dir(tmp_path)` redirigono tutto l'output in una directory temporanea.
-  Sentry viene automaticamente saltato quando `pytest` è rilevato in `sys.modules`.
-- **Pre-commit**: l'hook `integrity-manifest` rigenera e firma il manifest;
-  `headless_validator.py` esegue `run_rasp_audit()` per verificarlo.
+  Sentry viene automaticamente saltato quando `pytest` e' rilevato in `sys.modules`.
+- **Pre-commit**: l'hook `integrity-manifest-check` esegue
+  `sync_integrity_manifest.py --verify-only` e fallisce il commit se il manifest su
+  disco diverge dagli hash calcolati; eseguire il tool senza `--verify-only` per
+  rigenerare e ri-firmare il manifest.

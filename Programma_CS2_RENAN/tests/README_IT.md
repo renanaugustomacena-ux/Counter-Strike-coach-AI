@@ -4,7 +4,7 @@
 
 **Autorita:** `Programma_CS2_RENAN/tests/` -- Suite completa di regressione e correttezza per il Macena CS2 Analyzer.
 
-La suite di test contiene oltre 2.024 test distribuiti su 118 file, seguendo la piramide di test
+La suite di test contiene oltre 2.500 test distribuiti su 193 file, seguendo la piramide di test
 (unit > integration > e2e). Ogni sottosistema -- dal vettore di feature a 25 dimensioni attraverso
 le reti neurali, il motore di coaching, il livello database e le schermate UI -- e coperto da
 asserzioni deterministiche e riproducibili. I test vengono eseguiti con pytest con una guardia
@@ -98,7 +98,7 @@ la variabile d'ambiente `CS2_INTEGRATION_TESTS`.
 | `test_spatial_engine.py` | Analisi | Trasformazioni coordinate motore spaziale |
 | `test_state_reconstructor.py` | Processing | Ricostruzione stato RAP da tick |
 | `test_tactical_features.py` | Processing | Estrazione feature tattiche |
-| `test_temporal_baseline.py` | Analisi | 20 test di decadimento baseline temporale |
+| `test_temporal_baseline.py` | Analisi | 22 test di decadimento baseline temporale |
 | `test_tensor_factory.py` | NN | Contratti forma e dtype `TensorFactory` |
 | `test_trade_kill_detector.py` | Analisi | Logica rilevamento trade kill |
 | `test_training_callbacks.py` | NN | Test del registro callback di training |
@@ -115,7 +115,7 @@ Tutte le fixture condivise risiedono in `conftest.py`. La gerarchia e:
 
 ```
 in_memory_db          -- Schema vuoto tramite SQLModel.metadata.create_all()
-  seeded_db_session   -- Pre-popolato con 6 PlayerMatchStats, 12 RoundStats, 1 PlayerProfile
+  seeded_db_session   -- Pre-popolato con 6 PlayerMatchStats, 8 RoundStats, 1 PlayerProfile
     seeded_player_stats  -- Primo PlayerMatchStats dal DB con seed
     seeded_round_stats   -- Primo RoundStats dal DB con seed
 
@@ -153,7 +153,7 @@ confusi quando i test vengono eseguiti accidentalmente con il Python di sistema.
 
 ```bash
 # Attivare prima l'ambiente virtuale
-source ~/.venvs/cs2analyzer/bin/activate
+source .venv/bin/activate
 
 # Eseguire tutti i test (fermarsi al primo fallimento)
 python -m pytest Programma_CS2_RENAN/tests/ -x -q

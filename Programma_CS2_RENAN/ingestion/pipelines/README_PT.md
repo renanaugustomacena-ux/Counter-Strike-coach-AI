@@ -8,11 +8,11 @@
 
 Este pacote contem as pipelines de ingestao concretas que transformam fontes de
 dados brutas em linhas estruturadas no banco de dados.  Cada pipeline trata um
-formato de entrada especifico -- arquivos replay `.dem` de partidas do usuario,
-arquivos `.dem` de partidas profissionais, e exports JSON estruturados de bancos
-de dados de torneios.  As pipelines compartilham um fluxo comum de sete etapas
-(discovery, validation, parsing, enrichment, persistence, registration,
-archival) mas divergem na logica de enriquecimento e nas tabelas de destino.
+formato de entrada especifico -- arquivos replay `.dem` de partidas do usuario
+e exports JSON estruturados de bancos de dados de torneios.  As pipelines
+compartilham um fluxo logico comum (discovery, validation, parsing, enrichment,
+persistence, archival) mas divergem na logica de enriquecimento e nas tabelas
+de destino.
 
 ## Inventario de Arquivos
 
@@ -27,38 +27,42 @@ archival) mas divergem na logica de enriquecimento e nas tabelas de destino.
 
 ## Arquitetura e Conceitos
 
-### O Fluxo de Ingestao em Sete Etapas
+### O Fluxo de Ingestao
 
 Toda pipeline segue esta sequencia canonica.  Etapas podem ser implicitas em
 pipelines mais simples, mas a ordem logica e sempre preservada:
 
 1. **Discovery** -- varredura do diretorio fonte por arquivos nao processados
-   (`.dem` ou `.json`).  O `DemoRegistry` de `ingestion/registry/` e
-   consultado para pular arquivos ja ingeridos.
-2. **Validation** -- verificacao da integridade do arquivo.  Para arquivos
-   `.dem` isso significa checar o tamanho minimo
-   (`MIN_DEMO_SIZE = 10 MB`, invariante DS-12).  Para arquivos JSON o helper
-   `_validate_tournament_json()` verifica as chaves top-level obrigatorias
-   (`id`, `slug`, `match_maps`) e as chaves per-map.
+   (`.dem` ou `.json`).
+2. **Validation** -- verificacao da integridade da entrada.  O piso de
+   aceitacao para arquivos `.dem` (`MIN_DEMO_SIZE = 10 MB`, invariante DS-12)
+   reside em `backend/data_sources/demo_format_adapter`; note que
+   `user_ingest.py` em si nao realiza verificacao de tamanho --
+   `parse_demo()` verifica apenas existencia e parseabilidade.  Para arquivos
+   JSON o helper `_validate_tournament_json()` verifica as chaves top-level
+   obrigatorias (`id`, `slug`, `match_maps`) e loga um warning para chaves
+   per-map ausentes (`map_name`, `games`).
 3. **Parsing** -- extracao de dados estruturados.  Arquivos demo sao parseados
    por `backend/data_sources/demo_parser.parse_demo()` (suportado por
    `demoparser2`).  Arquivos JSON sao carregados diretamente com
    `json.load()`.
-4. **Enrichment** -- calculo de estatisticas derivadas.  Pipelines de usuario
-   chamam `extract_match_stats()` de `base_features.py`.  Pipelines de torneio
-   calculam acuracia e rating economico por-round inline.
+4. **Enrichment** -- calculo de estatisticas derivadas.  A pipeline de usuario
+   chama `extract_match_stats()` de `base_features.py`, depois persiste o
+   enriquecimento em nivel de round via `round_stats_builder`.  Pipelines de
+   torneio calculam acuracia e rating economico por-round inline.
 5. **Persistence** -- escrita dos resultados no banco de dados.  Pipelines de
    usuario fazem upsert de linhas `PlayerMatchStats` via `DatabaseManager`.
    Pipelines de torneio escrevem em CSV para processamento downstream.
-6. **Registration** -- marcacao do arquivo como processado no `DemoRegistry`
-   para que execucoes futuras o pulem.
-7. **Archival** -- movimentacao dos arquivos ingeridos com sucesso para o
+6. **Archival** -- movimentacao dos arquivos ingeridos com sucesso para o
    diretorio `processed_dir` para manter limpo o diretorio fonte.
 
 ### `user_ingest.py` em Detalhe
 
 A pipeline de ingestao do usuario trata arquivos `.dem` gravados das partidas
-CS2 do jogador local.  E a pipeline primaria para o coaching pessoal.
+CS2 do jogador local.  E uma pipeline standalone simplificada: a ingestao de
+demo do usuario em producao passa por `_ingest_single_demo()` em
+`run_ingestion.py`, e `ingest_user_demos()` atualmente nao tem chamadores
+in-code.
 
 **Ponto de entrada:** `ingest_user_demos(source_dir: Path, processed_dir: Path)`
 
@@ -67,21 +71,26 @@ Fluxo interno:
 1. Glob de `source_dir` por arquivos `*.dem`.
 2. Para cada arquivo, chama `_process_single_user_demo()` que envolve toda a
    pipeline em um try/except para que um arquivo corrompido nao aborte o batch.
-3. `parse_demo()` retorna um `DataFrame` de dados em nivel de round.
+3. `parse_demo()` retorna um `DataFrame` de estatisticas por-jogador (totais
+   do scoreboard final mais medias por-round).
 4. `extract_match_stats()` agrega em um dicionario de estatisticas plano.
 5. Um objeto ORM `PlayerMatchStats` e criado com `is_pro=False` e o nome do
    jogador lido de `get_setting("CS2_PLAYER_NAME")`.
 6. `db_manager.upsert()` persiste a linha (insert ou update on conflict).
-7. `_trigger_ml_pipeline()` importa lazily `run_ml_pipeline` de
+7. `persist_round_stats_and_enrichment()` de
+   `backend/processing/round_stats_builder` salva `RoundStats` mais campos de
+   enriquecimento (fechamento F6-19 -- sem ele, os eixos trade/opening/utility
+   ficariam em 0.0 e comparacoes pro seriam fabricadas).
+8. `_trigger_ml_pipeline()` importa lazily `run_ml_pipeline` de
    `run_ingestion.py` para evitar imports circulares, entao executa a etapa de
-   enriquecimento ML (vetorizacao de features, inferencia do modelo).
-8. `_archive_user_demo()` move o arquivo para `processed_dir` somente apos
+   enriquecimento ML (vetorizacao de features, inferencia do modelo).  Se a
+   pipeline reportar uma execucao incompleta, a demo e deixada no lugar para
+   retry.
+9. `_archive_user_demo()` move o arquivo para `processed_dir` somente apos
    todas as etapas anteriores terem sido bem-sucedidas (invariante R3-H03).
 
-**Limitacao importante (F6-19):** Esta pipeline salva apenas
-`PlayerMatchStats` basico.  `RoundStats`, eventos e dados em nivel de tick
-requerem o caminho de enriquecimento completo em `run_ingestion.py`
-(`enrich_from_demo()` e `_extract_and_store_events()`).
+**Limitacao residual:** Extracao de dados em nivel de tick nao e realizada aqui;
+isso permanece como tarefa do caminho completo em `run_ingestion.py`.
 
 ### `json_tournament_ingestor.py` em Detalhe
 
@@ -107,8 +116,9 @@ Fluxo interno:
 7. O progresso e logado a cada 100 arquivos.
 
 Esta pipeline e standalone: pode ser executada como `__main__` com caminhos
-hardcoded apontando para `new_datasets/csgo_tournament_data/` e saida em
-`data/external/tournament_advanced_stats.csv`.
+hardcoded apontando para `new_datasets/csgo_tournament_data/CS_GO_Tournaments/`
+(raiz do repo) e saida em
+`Programma_CS2_RENAN/data/external/tournament_advanced_stats.csv`.
 
 ## Integracao
 
@@ -125,10 +135,8 @@ hardcoded apontando para `new_datasets/csgo_tournament_data/` e saida em
 
 ### Consumidores Downstream
 
-- **`run_ingestion.py`** -- o orquestrador que chama `run_ml_pipeline()` apos
-  a ingestao de demos do usuario.
-- **`ingestion/registry/`** -- as pipelines consultam e atualizam o registro
-  de demos.
+- **`run_ingestion.py`** -- o orquestrador que fornece `run_ml_pipeline()`
+  chamada apos a ingestao de demos do usuario.
 - **`backend/nn/`** -- os modelos ML consomem as linhas `PlayerMatchStats`
   produzidas por estas pipelines.
 
@@ -143,13 +151,14 @@ hardcoded apontando para `new_datasets/csgo_tournament_data/` e saida em
   bem-sucedidas.  Se qualquer etapa lancar uma excecao, o arquivo permanece no
   diretorio fonte para retry na proxima execucao.
 - **Thread safety:** As pipelines em si nao sao thread-safe.  Sao projetadas
-  para serem chamadas de uma unica thread (o daemon IngestionWatcher).  A
-  seguranca cross-process e delegada ao `DemoRegistry` via `FileLock`.
+  para serem chamadas de uma unica thread.
 - **Logging estruturado:** Todas as pipelines logam via
-  `get_logger("cs2analyzer.*")` com formato JSON e IDs de correlacao para
-  observabilidade.
+  `get_logger("cs2analyzer.*")` com formato JSON para observabilidade.
 - **Invariante DS-04:** O helper `_safe_int()` no ingestor de torneios
   converte todos os campos numericos com seguranca, retornando um default de
   `0` em caso de falha.
-- **Invariante DS-12:** Arquivos demo menores que `MIN_DEMO_SIZE` (10 MB) sao
-  rejeitados durante a validacao.  Demos CS2 reais sao tipicamente 50+ MB.
+- **Invariante DS-12:** O piso de aceitacao `MIN_DEMO_SIZE` (10 MB) e definido
+  e aplicado em `backend/data_sources/demo_format_adapter`
+  (`validate_demo_file()`).  Essa verificacao NAO esta no call path desta
+  pipeline: `user_ingest.py` -> `parse_demo()` nao realiza validacao de
+  tamanho.  Demos CS2 reais sao tipicamente 50+ MB.

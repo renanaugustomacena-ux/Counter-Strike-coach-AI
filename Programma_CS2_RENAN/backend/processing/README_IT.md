@@ -15,15 +15,15 @@ valida dati -- nessuno di essi memorizza o addestra nulla.
 
 | File | Righe | Scopo | Export Principali |
 |------|-------|-------|-------------------|
-| `__init__.py` | 1 | Marcatore di package | -- |
+| `__init__.py` | 0 | Marcatore di package | -- |
 | `connect_map_context.py` | ~112 | Feature spaziali Z-aware relative agli obiettivi della mappa | `distance_with_z_penalty()`, `calculate_map_context_features()` |
 | `data_pipeline.py` | ~408 | Pulizia dati, scaling, split temporale, decontaminazione giocatori | `ProDataPipeline` |
 | `external_analytics.py` | ~201 | Confronto z-score con dataset CSV di riferimento elite | `EliteAnalytics` |
-| `heatmap_engine.py` | ~300 | Mappe di occupazione Gaussiana e heatmap differenziali utente-vs-pro | `HeatmapEngine`, `HeatmapData`, `DifferentialHeatmapData` |
+| `heatmap_engine.py` | ~148 | Metadati hotspot differenziali utente-vs-pro | `HeatmapEngine`, `DifferentialHeatmapData` |
 | `player_knowledge.py` | ~625 | Sistema di percezione Player-POV (modello sensoriale NO-WALLHACK) | `PlayerKnowledge`, `PlayerKnowledgeBuilder` |
-| `rating.py` | ~230 | Glue HLTV rating cross-module (aggregazione match-level) | `compute_match_rating()` |
+| `rating.py` | ~230 | Metriche PlusMinus e rating Bayesiano aggiustato per ruolo (KT-06) | `compute_plus_minus()`, `compute_role_adjusted_rating()` |
 | `round_reconstructor.py` | ~575 | Ricostruzione stato per-round da stream tick grezzi | `RoundReconstructor` |
-| `round_stats_builder.py` | ~742 | Statistiche per-round, per-giocatore dagli eventi demo | `build_round_stats()`, `aggregate_round_stats_to_match()`, `enrich_from_demo()` |
+| `round_stats_builder.py` | ~1043 | Statistiche per-round, per-giocatore dagli eventi demo | `build_round_stats()`, `aggregate_round_stats_to_match()`, `enrich_from_demo()`, `persist_round_stats_and_enrichment()` |
 | `skill_assessment.py` | ~161 | Decomposizione skill a 5 assi e proiezione livello curriculum | `SkillLatentModel`, `SkillAxes` |
 | `state_reconstructor.py` | ~130 | Conversione tick-a-tensori per addestramento e inferenza RAP-Coach | `RAPStateReconstructor` |
 | `tensor_factory.py` | ~747 | Tensori di percezione Player-POV (map, view, motion) | `TensorFactory`, `TensorConfig`, `TrainingTensorConfig`, `get_tensor_factory()` |
@@ -34,7 +34,7 @@ valida dati -- nessuno di essi memorizza o addestra nulla.
 | Sub-Package | File | Scopo |
 |-------------|------|-------|
 | `feature_engineering/` | `vectorizer.py`, `base_features.py`, `role_features.py`, `rating.py`, `kast.py` | Estrazione feature unificata a 25-dim (`FeatureExtractor`), rating HLTV 2.0, calcolo KAST, feature specifiche per ruolo |
-| `baselines/` | `pro_baseline.py`, `role_thresholds.py`, `meta_drift.py`, `nickname_resolver.py` | Baseline professionisti, soglie ruoli, decay temporale, rilevamento meta-drift, risoluzione nickname |
+| `baselines/` | `pro_baseline.py`, `role_thresholds.py`, `meta_drift.py`, `nickname_resolver.py`, `pro_player_linker.py` | Baseline professionisti, soglie ruoli, decay temporale, rilevamento meta-drift, risoluzione nickname, linking giocatori pro |
 | `validation/` | `dem_validator.py`, `schema.py`, `sanity.py`, `drift.py` | Validazione file demo, conformità schema, controlli di sanità, rilevamento drift delle feature |
 
 ## Architettura e Concetti
@@ -118,16 +118,20 @@ approssimazione CDF Gaussiana (`sigmoid(1.702 * z)`).
 - **Motore di Coaching:** `skill_assessment.SkillLatentModel` alimenta
   il livello curriculum. `external_analytics.EliteAnalytics` fornisce
   confronti z-score per il motore di correzione.
-- **UI / Visualizzazione:** `heatmap_engine.HeatmapEngine` genera dati
-  RGBA per heatmap di posizione e overlay differenziali.
+- **UI / Visualizzazione:** `heatmap_engine.HeatmapEngine` calcola la
+  densita di posizione differenziale e i metadati degli hotspot.
 
 ## Note di Sviluppo
 
 - Tutti i calcoli di distanza spaziale su mappe multi-livello devono
   usare `distance_with_z_penalty()` da `connect_map_context.py`, non
   la distanza Euclidea grezza.
-- `HeatmapEngine.generate_heatmap_data()` e
-  `generate_differential_heatmap_data()` sono thread-safe.
+- `HeatmapEngine.generate_differential_heatmap_data()` e thread-safe.
+  F-0017 (chiuso 2026-08-21): la vecchia superficie texture Kivy
+  (`generate_heatmap_data`/`create_texture_from_data`/
+  `generate_heatmap_texture`, `rgba_bytes`) e stata rimossa e la griglia
+  ora segue la convenzione C-03 single-Y-flip condivisa con
+  `tensor_factory._world_to_grid`; vengono prodotti solo metadati hotspot.
 - `ProDataPipeline` limita le righe in memoria a `_MAX_PIPELINE_ROWS`
   (50.000) per prevenire OOM su deployment di grandi dimensioni.
 - `player_knowledge.py` limita i nemici tracciati a `MAX_TRACKED_ENEMIES`

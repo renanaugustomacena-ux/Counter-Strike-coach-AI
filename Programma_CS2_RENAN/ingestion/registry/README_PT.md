@@ -69,7 +69,8 @@ Esta ordenacao consistente previne deadlocks.
 
 Escritas usam uma estrategia write-ahead para prevenir corrupcao:
 
-1. Cria um backup do registro existente (`.json.backup`).
+1. Cria um backup do registro existente (`.json.backup`) -- pulado na
+   primeira escrita, quando nenhum arquivo de registro existe ainda.
 2. Escreve o novo estado em um arquivo temporario (`tempfile.mkstemp()`).
 3. Substitui atomicamente o arquivo original via `os.replace()`.
 4. Se qualquer etapa falhar, o arquivo temporario e limpo e a excecao se
@@ -108,21 +109,19 @@ INFO.
 ### `schema.sql` -- Reservado
 
 O arquivo `schema.sql` esta reservado para uma futura migracao do registro
-baseado em JSON para registro baseado em SQL.  Atualmente vazio.  Quando
-implementado, definira uma tabela `demo_file_records` com colunas para caminho
-do arquivo, hash, tamanho, tipo de fonte, estado de lifecycle, codigo de erro,
-contador de retry e timestamps.
+baseado em JSON para registro baseado em SQL.  Esta atualmente vazio (0 bytes).
 
 ## Integracao
 
 ### Consumidores Upstream
 
-| Consumidor | Uso |
-|------------|-----|
-| `ingestion/pipelines/user_ingest.py` | Chama `is_processed()` antes da ingestao, `mark_processed()` apos sucesso |
-| `ingestion/pipelines/json_tournament_ingestor.py` | Processamento batch com verificacoes no registro |
-| `run_ingestion.py` | Gerenciamento de registro no nivel do orquestrador |
-| `core/session_engine.py` (IngestionWatcher) | Thread daemon que dispara pipelines e consulta o registro |
+`DemoRegistry` e `DemoLifecycleManager` atualmente **nao tem consumidores
+in-code**: o orquestrador de producao (`run_ingestion.py`) realiza sua propria
+deduplicacao em `_check_duplicate_demo()`, que verifica a tabela
+`IngestionTask` (caminho de demo exato), `PlayerMatchStats` (nome stem da demo),
+e a existencia do arquivo DB por-match (`match_id` derivado do SHA-256 do
+nome stem) -- sem hashing de conteudo de arquivo.  As classes permanecem
+disponiveis como utilitarios standalone de dedup/retencao do pacote.
 
 ### Dependencias
 
@@ -174,9 +173,11 @@ contador de retry e timestamps.
   `tempfile.mkstemp()` + `os.replace()` para garantir que o arquivo de registro
   nunca fique em um estado de escrita parcial.  Isso e critico porque um crash
   durante a escrita corromperia todo o historico de ingestao.
-- **Seguranca de backup:** Antes de cada escrita, uma copia do registro atual
-  e criada em `<path>.json.backup`.  O backup e validado na recuperacao para
-  prevenir restauracao a partir de um backup corrompido.
+- **Seguranca de backup:** Antes de cada escrita que sobrescreve um registro
+  existente, uma copia do arquivo atual e criada em `<path>.json.backup`.  O
+  backup e validado na recuperacao para prevenir restauracao a partir de um
+  backup corrompido, e um backup recuperado com sucesso e copiado de volta
+  sobre o arquivo primario.
 - **Retencao padrao:** O periodo de retencao padrao de 30 dias e um
   compromisso conservador entre espaco em disco e a possibilidade de
   reanalisar demos recentes.  Pode ser sobrescrito via o parametro `days`.

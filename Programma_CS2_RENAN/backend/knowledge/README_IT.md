@@ -27,23 +27,27 @@ nel tempo man mano che vengono analizzate piu demo e raccolti piu feedback.
 | `pro_demo_miner.py` | Mining di conoscenza coaching dalle stat card pro di HLTV | `ProStatsMiner` (alias `ProDemoMiner`), `auto_populate_from_pro_demos()` |
 | `init_knowledge_base.py` | Inizializzazione completa: carica JSON, esegue mining pro stats, costruisce indici FAISS | `initialize_knowledge_base()` |
 | `round_utils.py` | Utilita condivisa per inferenza fase round da valore equipaggiamento | `infer_round_phase()` |
-| `tactical_knowledge.json` | Dati seed: 15 voci di conoscenza tattica scritte a mano che coprono 7 mappe | (dati JSON) |
-| `__init__.py` | Esportazioni del package | `KnowledgeGraphManager`, `get_knowledge_graph` |
+| `book/` | Corpus del Coach Book: `index.json` + 8 file di contenuto (`general.json` + 7 mappe), 508 voci in 13 categorie | (dati JSON) |
+| `tactical_knowledge.json` | Dati seed legacy (fallback quando `book/index.json` manca): 15 voci scritte a mano su 8 mappe + general | (dati JSON) |
+| `__init__.py` | Radice del pacchetto | (vuoto -- solo namespace) |
 
 ---
 
 ## Architettura
 
-Il modulo e organizzato attorno a quattro strategie di recupero che alimentano
-il motore di coaching attraverso `generate_unified_coaching_insight()`:
+Il modulo e organizzato attorno a due pilastri di recupero che i livelli di
+coaching consumano direttamente -- `KnowledgeRetriever` per la conoscenza tattica
+RAG e `ExperienceBank` per le esperienze COPER. (`rag_knowledge.py` espone anche
+`generate_rag_coaching_insight()` e `generate_unified_coaching_insight()` come
+entry point a livello di modulo che combinano entrambi i pilastri, ma i
+consumatori in produzione attualmente istanziano le classi direttamente.)
 
 ```
                      +---------------------+
                      | coaching_service.py  |
-                     |  (COPER / Hybrid)    |
+                     | coaching_dialogue.py |
+                     | hybrid_engine.py ... |
                      +----------+----------+
-                                |
-                 generate_unified_coaching_insight()
                                 |
               +-----------------+-----------------+
               |                                   |
@@ -100,7 +104,9 @@ score = (similarity + hash_bonus + effectiveness_bonus) * confidence
 Dove:
 - `similarity` -- similarita coseno da FAISS o brute-force (0.0 a 1.0)
 - `hash_bonus` -- 0.2 se il `context_hash` corrisponde esattamente (stessa mappa + side + fase + area)
-- `effectiveness_bonus` -- `effectiveness_score * 0.4` per esperienze validate
+- `effectiveness_bonus` -- `effectiveness_score * 0.4`, applicato solo quando
+  l'esperienza e `outcome_validated` e ha almeno `_MIN_EFFECTIVENESS_TRIALS`
+  prove di consiglio (fix C-2)
 - `confidence` -- peso di affidabilita per esperienza (0.1 a 1.0)
 
 ### Ciclo di Feedback
@@ -116,10 +122,12 @@ L'Experience Bank implementa un ciclo di apprendimento a circuito chiuso:
 ### Knowledge Graph
 
 `KnowledgeGraphManager` fornisce un grafo entita-relazioni supportato da SQLite
-per il ragionamento tattico strutturato. Le entita (es. "Mirage/Window", tipo
-"Spot") portano liste di osservazioni JSON. Le relazioni sono archi diretti
-(es. `"Mirage/Window" --[CONNECTS_TO]--> "Mirage/Mid"`). Le query BFS sui
-sottografi supportano attraversamento multi-hop fino a profondita 5.
+per il ragionamento tattico strutturato, memorizzato in
+`<USER_DATA_ROOT>/knowledge_graph.db` (modalita WAL, connessione in cache). Le
+entita (es. "Mirage/Window", tipo "Spot") portano liste di osservazioni JSON.
+Le relazioni sono archi diretti (es.
+`"Mirage/Window" --[CONNECTS_TO]--> "Mirage/Mid"`). Le query BFS sui sottografi
+supportano attraversamento multi-hop fino a profondita 5.
 
 ---
 
@@ -129,16 +137,19 @@ sottografi supportano attraversamento multi-hop fino a profondita 5.
 
 | Consumatore | Utilizzo |
 |-------------|----------|
-| `backend/services/coaching_service.py` | Chiama `generate_unified_coaching_insight()` nelle modalita COPER e Hybrid |
-| `backend/coaching/hybrid_engine.py` | Unisce il contesto di conoscenza RAG con le predizioni ML |
-| `backend/coaching/correction_engine.py` | Recupera esempi pro per suggerimenti di correzione |
-| `core/session_engine.py` (daemon Teacher) | Avvia l'estrazione esperienze dopo l'ingestione demo |
+| `backend/services/coaching_service.py` | Modalita COPER: costruisce un `ExperienceContext`, interroga `get_experience_bank()` e chiama `collect_feedback_from_match()` dopo ogni partita analizzata; usa anche `KnowledgeRetriever` e `round_utils.infer_round_phase()` |
+| `backend/services/coaching_dialogue.py` | Grounding della chat: `KnowledgeRetriever.retrieve()` + recupero Experience Bank; chiama `ensure_seed_knowledge_loaded()` all'avvio |
+| `backend/coaching/hybrid_engine.py` | Carica pigramente un `KnowledgeRetriever` (AC-15-01) per unire il contesto di conoscenza RAG con le deviazioni Z-score della baseline |
+| `backend/analysis/role_classifier.py` | Recupera voci di coaching specifiche per ruolo tramite `KnowledgeRetriever.retrieve()` |
+| `core/session_engine.py` | Bootstrap al primo avvio: chiama `initialize_knowledge_base()` quando la tabella `TacticalKnowledge` e vuota; avvia anche il watcher di ingestione |
+| `apps/qt_app/app.py` | Schermata di splash: verifica la cache del modello `KnowledgeEmbedder` e pre-scarica il modello SBERT al primo avvio |
 
 ### Fonti Dati
 
 | Fonte | Destinazione |
 |-------|-------------|
-| `tactical_knowledge.json` | Tabella `TacticalKnowledge` tramite `KnowledgePopulator.populate_from_json()` |
+| `book/index.json` (Coach Book, 508 voci; voci filtrate tramite la allow-list `_ALLOWED_ENTRY_KEYS`) | Tabella `TacticalKnowledge` tramite `KnowledgePopulator.populate_from_json()` |
+| `tactical_knowledge.json` (fallback legacy, 15 voci) | Tabella `TacticalKnowledge` tramite `KnowledgePopulator.populate_from_json()` |
 | HLTV `ProPlayerStatCard` | Tabella `TacticalKnowledge` tramite `ProStatsMiner.mine_all_pro_stats()` |
 | Tick data + eventi demo analizzati | Tabella `CoachingExperience` tramite `ExperienceBank.extract_experiences_from_demo()` |
 
@@ -148,7 +159,7 @@ Tutti i componenti principali usano factory singleton thread-safe:
 
 - `get_experience_bank()` -- double-checked locking con `threading.Lock`
 - `get_vector_index_manager()` -- restituisce `None` se FAISS non e disponibile
-- `get_knowledge_graph()` -- inizializzazione lazy
+- `get_knowledge_graph()` -- double-checked locking con `threading.Lock`
 - `_get_retriever()` -- `KnowledgeRetriever` cachato per evitare il ricaricamento di SBERT
 
 ---
@@ -175,13 +186,17 @@ JSON legacy (inizia con `[`) per compatibilita all'indietro.
 
 | Costante | Valore | Posizione |
 |----------|--------|-----------|
-| `MIN_RETRIEVAL_CONFIDENCE` | 0.3 | `experience_bank.py:42` |
-| `PRO_EXPERIENCE_CONFIDENCE` | 0.7 | `experience_bank.py:43` |
-| `AMATEUR_EXPERIENCE_CONFIDENCE` | 0.5 | `experience_bank.py:44` |
+| `MIN_RETRIEVAL_CONFIDENCE` | 0.3 | `experience_bank.py:48` |
+| `PRO_EXPERIENCE_CONFIDENCE` | 0.7 | `experience_bank.py:49` |
+| `AMATEUR_EXPERIENCE_CONFIDENCE` | 0.5 | `experience_bank.py:50` |
 | `OVERFETCH_KNOWLEDGE` | 10 | `vector_index.py:48` |
 | `OVERFETCH_EXPERIENCE` | 20 | `vector_index.py:49` |
 | `KnowledgeEmbedder.CURRENT_VERSION` | `"v3"` | `rag_knowledge.py:51` |
-| `KnowledgeEmbedder.embedding_dim` | 384 (SBERT) / 100 (fallback) | `rag_knowledge.py:53,67` |
+| `KnowledgeEmbedder.embedding_dim` | 384 (SBERT) / 100 (fallback) | `rag_knowledge.py:56,74` |
+| `_MIN_EFFECTIVENESS_TRIALS` | 5 | `experience_bank.py:45` |
+| `DUPLICATE_SIMILARITY_THRESHOLD` | 0.9 | `experience_bank.py:53` |
+| `REPLAY_ALPHA` | 0.6 | `experience_bank.py:59` |
+| `REPLAY_GATE` | 0.4 | `experience_bank.py:60` |
 
 ### Soglie Archetipi del Mining Pro-Stats
 
@@ -201,5 +216,7 @@ Eseguire `init_knowledge_base.py` una volta per inizializzare il sistema di cono
 python -m Programma_CS2_RENAN.backend.knowledge.init_knowledge_base
 ```
 
-Questo carica `tactical_knowledge.json` (15 voci), esegue il mining delle stat
-card pro da `hltv_metadata.db` e costruisce entrambi gli indici FAISS.
+Questo carica il Coach Book tramite `book/index.json` (508 voci; ricade sul
+legacy `tactical_knowledge.json` con 15 voci se l'indice del libro manca),
+esegue il mining delle stat card pro da `hltv_metadata.db` e costruisce entrambi
+gli indici FAISS.

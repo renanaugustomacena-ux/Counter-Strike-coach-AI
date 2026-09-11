@@ -1,6 +1,6 @@
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-# RAP Coach — Architettura Neurale Pedagogica con Recupero Aumentato
+# RAP Coach — Architettura Neurale Reasoning, Adaptation, Pedagogy
 
 **Autorita:** `Programma_CS2_RENAN/backend/nn/rap_coach/`
 **Posizione canonica:** `backend/nn/experimental/rap_coach/` (questo pacchetto e uno shim di compatibilita dalla migrazione P9-01)
@@ -8,11 +8,12 @@
 
 ## Introduzione
 
-RAP (Retrieval-Augmented Pedagogical) Coach e il modello neurale di coaching ad alta
-fedelta del Macena CS2 Analyzer. Implementa un'architettura a 7 livelli che percepisce
-lo stato di gioco attraverso stream CNN, mantiene la memoria temporale tramite neuroni
-Liquid Time-Constant (LTC), prende decisioni attraverso uno strato strategico
-Mixture-of-Experts, e genera feedback di coaching leggibile dall'uomo, calibrato sul
+RAP (Reasoning, Adaptation, Pedagogy) Coach e il modello neurale di coaching ad alta
+fedelta del Macena CS2 Analyzer. Accoppia sei componenti apprendibili dentro `RAPCoachModel` --
+percezione CNN, memoria temporale Liquid Time-Constant (LTC) + Hopfield, uno strato
+strategico sparse Mixture-of-Experts con routing top-2, una value head pedagogica,
+attribuzione causale, e una position head -- con un livello di comunicazione esterno
+basato su template che genera feedback di coaching leggibile dall'uomo, calibrato sul
 livello di abilita del giocatore.
 
 Il modello consuma il vettore canonico a 25 dimensioni (`METADATA_DIM=25`) prodotto da
@@ -29,17 +30,18 @@ funzioni di valore, delta di posizionamento ottimale e punteggi di attribuzione 
 | `memory.py` | `RAPMemory` | Shim che ri-esporta il livello di memoria LTC-Hopfield. |
 | `trainer.py` | `RAPTrainer` | Shim che ri-esporta l'orchestratore di addestramento. |
 | `perception.py` | `RAPPerception`, `ResNetBlock` | Shim che ri-esporta il livello di percezione CNN. |
-| `strategy.py` | `RAPStrategy`, `ContextualAttention` | Shim che ri-esporta il livello strategico MoE. |
+| `strategy.py` | `RAPStrategy` | Shim che ri-esporta il livello strategico MoE. |
 | `pedagogy.py` | `RAPPedagogy`, `CausalAttributor` | Shim che ri-esporta il livello di feedback causale. |
 | `communication.py` | `RAPCommunication` | Shim che ri-esporta il generatore di consigli in linguaggio naturale. |
 | `chronovisor_scanner.py` | `ChronovisorScanner`, `CriticalMoment`, `ScanResult`, `ScaleConfig`, `ANALYSIS_SCALES` | Shim che ri-esporta il rilevamento multi-scala dei momenti critici. |
-| `skill_model.py` | `SkillAxes`, `SkillLatentModel` | Shim che ri-esporta gli assi di abilita del giocatore (stile VAE). Posizione canonica: `backend/processing/skill_assessment`. |
+| `skill_model.py` | `SkillAxes`, `SkillLatentModel` | Shim che ri-esporta gli assi di abilita del giocatore (decomposizione statistica a 5 assi proiettata su un livello curricolare 1-10). Posizione canonica: `backend/processing/skill_assessment.py`. |
 
 ## Architettura: La Pipeline RAP a 7 Livelli
 
-Il modello RAP elabora lo stato di gioco attraverso sette livelli distinti, ciascuno con
-una responsabilita pedagogica specifica. Il diagramma ASCII sottostante mostra il flusso
-dati completo:
+Il diagramma sottostante organizza lo stack RAP in sette stadi di elaborazione, ciascuno
+con una responsabilita pedagogica specifica. Gli stadi 1-4 e 7 sono componenti apprendibili
+dentro `RAPCoachModel`; lo stadio 5 (`RAPCommunication`) e lo stadio 6 (`ChronovisorScanner`)
+risiedono al di fuori del grafo `nn.Module` (vedi la nota dopo il diagramma):
 
 ```
                          RAP Coach — Architettura a 7 Livelli
@@ -75,13 +77,14 @@ dati completo:
             +---------v-----------+
             |  LTC (Liquid Time-  |   Cablaggio AutoNCP
             |  Constant) neuroni  |   ncp_units=512
-            |  hidden_dim=256     |   seed=42
+            |  output 153 -> 256  |   seed=42
+            |  (ltc_projection)   |
             +---------+-----------+
                       |
             +---------v-----------+
-            | Memoria Associativa |   4 teste di attenzione
-            | Hopfield (512 slot) |   NN-MEM-01: bypassata
-            | + Addizione Residua |   fino a >=2 passaggi fwd
+            | HopfieldLayer       |   4 teste di attenzione
+            | (32 prototipi)      |   NN-MEM-01: bypassata
+            | + Addizione Residua |   fino al 1° step ottimizz.
             +---------+-----------+
                       |
                combined_state [B, T, 256]
@@ -97,9 +100,9 @@ dati completo:
   LIVELLO 3: STRATEGIA (RAPStrategy)
                       |
             +---------v-----------+
-            | Mixture of Experts  |   4 esperti
-            | + Superposition     |   context = metadata[:,-1,:]
-            | + Context Gate      |   regolarizzazione L1
+            | Mixture of Experts  |   4 esperti, routing top-2
+            | + Superposition     |   context = metadata+belief
+            | (FiLM) + Gate       |   (89-dim); entropy sparsity
             +---------+-----------+
                       |
                advice_probs [B, OUTPUT_DIM=10]
@@ -124,7 +127,7 @@ dati completo:
                attribution [B, 5]
                       |
   ====================|================================================
-  LIVELLO 5: COMUNICAZIONE (RAPCommunication)
+  LIVELLO 5: COMUNICAZIONE (RAPCommunication -- al di fuori del grafo nn.Module)
                       |
             +---------v-----------+
             | Motore Template     |   Livelli: low (1-3),
@@ -136,7 +139,7 @@ dati completo:
                consiglio di coaching in linguaggio naturale
                       |
   ====================|================================================
-  LIVELLO 6: ANALISI TEMPORALE (ChronovisorScanner)
+  LIVELLO 6: ANALISI TEMPORALE (ChronovisorScanner -- utilita offline separata)
                       |
             +---------v-----------+
             | Elaborazione Segnale|   micro:  64 tick (~1s)
@@ -159,11 +162,25 @@ dati completo:
   ========================================================================
 ```
 
+> **Nota -- staging vs. grafo forward letterale.** Il flusso verticale sopra e uno staging
+> pedagogico, non l'esatto grafo `RAPCoachModel.forward`: le head di strategy,
+> pedagogy e position consumano tutte lo stato nascosto della memoria **in parallelo**;
+> `CausalAttributor` consuma inoltre il delta di posizione; `RAPCommunication`
+> post-elabora gli output restituiti; e `ChronovisorScanner` e uno scanner offline
+> separato che guida il modello addestrato lungo le timeline dei match.
+>
+> **Nota -- risoluzione input.** Le forme di input `[B, 3, 64, 64]` riflettono la
+> configurazione di training (`TrainingTensorConfig`, 64x64). `GhostEngine` usa
+> `TrainingTensorConfig` per corrispondere alla risoluzione di training (F-0026 chiuso).
+> `ChronovisorScanner` usa il `TensorConfig` default (128/224) tramite
+> `RAPStateReconstructor`; l'`AdaptiveAvgPool2d` di `RAPPerception` gestisce la
+> discrepanza.
+
 ## Costanti Chiave
 
 > Gli anchor di riga sottostanti puntano all'implementazione canonica in
 > `backend/nn/experimental/rap_coach/` -- i file in questo pacchetto sono shim
-> di ri-esportazione da 4-5 righe.
+> di ri-esportazione da poche righe.
 
 | Costante | Valore | Sorgente |
 |----------|--------|----------|
@@ -171,18 +188,21 @@ dati completo:
 | `perception_dim` | 128 | `experimental/rap_coach/model.py:42` (64 + 32 + 32) |
 | `ncp_units` | 512 | `experimental/rap_coach/memory.py:52` (hidden_dim x 2) |
 | `belief_dim` | 64 | `experimental/rap_coach/model.py:61` |
-| `OUTPUT_DIM` | 10 | `nn/config.py:162` |
-| `METADATA_DIM` | 25 | `vectorizer.py:32` |
-| `RAP_POSITION_SCALE` | 500.0 | `nn/config.py:194` |
+| strategy `context_dim` | 89 (25 metadata + 64 belief) | `experimental/rap_coach/model.py:62` |
+| `OUTPUT_DIM` | 10 | `nn/config.py:186` |
+| `METADATA_DIM` | 25 | `vectorizer.py:34` |
+| `RAP_POSITION_SCALE` | 500.0 | `nn/config.py:218` |
 | `num_experts` | 4 | `experimental/rap_coach/strategy.py:32` |
-| `hopfield_heads` | 4 | `experimental/rap_coach/memory.py:92` |
-| `Z_AXIS_PENALTY_WEIGHT` | 2.0 | `experimental/rap_coach/trainer.py:27` |
+| `TOP_K` (esperti instradati) | 2 | `experimental/rap_coach/strategy.py:30` |
+| `hopfield_heads` | 4 | `experimental/rap_coach/memory.py:118` |
+| prototipi hopfield (`quantity`) | 32 | `experimental/rap_coach/memory.py:119` |
+| `Z_AXIS_PENALTY_WEIGHT` | 2.0 | `experimental/rap_coach/trainer.py:28` |
 
 ## Invarianti Critiche
 
 | ID | Regola | Conseguenza se Violata |
 |----|--------|------------------------|
-| **NN-MEM-01** | La memoria Hopfield viene bypassata fino a quando non si sono verificati >=2 passaggi forward di addestramento. L'attivazione avviene anche al caricamento di un checkpoint. | I prototipi casuali iniettano rumore invece di segnale nel combined_state, corrompendo l'addestramento iniziale. |
+| **NN-MEM-01** | La memoria Hopfield viene bypassata fino a che il trainer segnala il primo step reale dell'ottimizzatore tramite `notify_optimizer_step()`. Il caricamento di checkpoint la attiva solo quando il checkpoint contiene effettivamente i pesi Hopfield. | I prototipi casuali iniettano rumore invece di segnale nel combined_state, corrompendo l'addestramento iniziale. |
 | **NN-RM-01** | `skill_vec` deve avere forma `[B, 10]`. Le forme non corrispondenti vengono registrate e ignorate. | Dati spazzatura silenziosi nell'adattatore pedagogico distorcono le stime di valore. |
 | **NN-RM-03** | `gate_weights` deve essere passato esplicitamente a `compute_sparsity_loss()` (thread-safety, F3-07). | Condizione di competizione sullo stato memorizzato nella cache in inferenza multi-thread. |
 | **P-X-02** | Le asserzioni sulla forma dell'input impongono `metadata.shape[-1] == METADATA_DIM`. | Errori criptici di dimensione LSTM/CNN in profondita nel passaggio forward. |
@@ -192,12 +212,12 @@ dati completo:
 
 RAP Coach si integra con il Macena CS2 Analyzer piu ampio attraverso diversi punti di contatto:
 
-- **CoachTrainingManager** (`backend/nn/coach_manager.py`) -- controlla il gate di maturita per ChronovisorScanner
+- **CoachTrainingManager** (`backend/nn/coach_manager.py`) -- gate di maturita consultivo per ChronovisorScanner (scansioni con maturita insufficiente procedono con un warning)
 - **FeatureExtractor** (`backend/processing/feature_engineering/vectorizer.py`) -- produce il vettore metadata a 25 dimensioni
 - **RAPStateReconstructor** (`backend/processing/state_reconstructor.py`) -- converte i dati tick grezzi in batch di tensori pronti per il modello
 - **SuperpositionLayer** (`backend/nn/layers/superposition.py`) -- livello lineare modulato dal contesto usato dagli esperti di RAPStrategy
 - **Persistence** (`backend/nn/persistence.py`) -- `load_nn("rap_coach", model)` / `save_nn()` per la gestione dei checkpoint
-- **Structured Logging** -- tutti i moduli usano `get_logger("cs2analyzer.nn.experimental.rap_coach.<modulo>")`
+- **Structured Logging** -- i moduli neurali loggano sotto `cs2analyzer.nn.experimental.rap_coach.<modulo>`; `ChronovisorScanner` logga sotto `cs2analyzer.nn.chronovisor`
 
 ## Dipendenze
 
@@ -205,11 +225,11 @@ RAP Coach si integra con il Macena CS2 Analyzer piu ampio attraverso diversi pun
 |-----------|-------|------------|
 | `torch` | Operazioni tensoriali core, nn.Module | Obbligatorio |
 | `ncps` | Neuroni LTC, cablaggio AutoNCP | Opzionale (protetto da `_RAP_DEPS_AVAILABLE`) |
-| `hflayers` | Memoria associativa Hopfield | Opzionale (protetto da `_RAP_DEPS_AVAILABLE`) |
+| `hopfield-layers` (importato come `hflayers`) | Memoria associativa Hopfield | Opzionale (protetto da `_RAP_DEPS_AVAILABLE`) |
 | `numpy` | Elaborazione segnale in ChronovisorScanner | Obbligatorio |
 | `sqlmodel` | Query database in ChronovisorScanner | Obbligatorio (al momento della scansione) |
 
-Quando `ncps` / `hflayers` non sono installati, `RAPMemoryLite` (fallback basato su LSTM) e
+Quando `ncps` / `hopfield-layers` non sono installati, `RAPMemoryLite` (fallback basato su LSTM) e
 disponibile tramite `use_lite_memory=True` in `RAPCoachModel.__init__()`.
 
 ## Note di Sviluppo
@@ -221,6 +241,8 @@ disponibile tramite `use_lite_memory=True` in `RAPCoachModel.__init__()`.
   con controllo di versione in `load_nn()` rileva le discrepanze architetturali tramite `StaleCheckpointError`.
 - Lo stato RNG per il cablaggio AutoNCP viene esplicitamente salvato e ripristinato (`seed=42`)
   per garantire una topologia di rete deterministica e portabile tra checkpoint (NN-45 + NN-MEM-02).
-- Il trainer usa una loss a 4 componenti pesate: strategy (1.0), value (0.5), sparsity (1.0),
-  position (1.0). Gli errori di posizione sull'asse Z sono penalizzati con peso 2x (NN-TR-02b).
+- Il trainer usa una loss a 4 componenti pesate: strategy (1.0), value (0.5), sparsity (1.0,
+  basata su entropia sulle probabilita del gate, RAP-AUDIT-04), position (1.0). Gli errori
+  di posizione sull'asse Z sono penalizzati con peso 2x (NN-TR-02b).
 - Il livello di comunicazione sopprime i consigli quando la confidenza del modello e sotto la soglia di 0.7.
+- I findings precedentemente aperti F-0025 (etichette team solo CT) e F-0026 (skew risoluzione tensore training/inferenza) sono stati chiusi nella revisione del 2026-08-21. Vedi `docs/OPEN_ISSUES.md` per dettagli.

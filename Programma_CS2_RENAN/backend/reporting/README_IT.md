@@ -15,15 +15,15 @@ del rating HLTV 2.0. Tutti i metodi sono query in sola lettura senza mutazioni.
 
 **Distinzione importante:** Questo e `backend/reporting/`, che si concentra sul
 calcolo dei dati per la dashboard Qt. E separato dalla directory di primo livello
-`Programma_CS2_RENAN/reporting/`, che gestisce la generazione PDF e i file di output
-di visualizzazione.
+`Programma_CS2_RENAN/reporting/`, che genera report di partita in Markdown e file
+immagine di heatmap/visualizzazione.
 
 ## Inventario File
 
 | File | Righe | Scopo | Export Principali |
 |------|-------|-------|-------------------|
 | `__init__.py` | 0 | Marcatore di pacchetto | -- |
-| `analytics.py` | 353 | Motore matematico per dashboard | `AnalyticsEngine`, `analytics` (singleton) |
+| `analytics.py` | 418 | Motore matematico per dashboard | `AnalyticsEngine`, `analytics` (singleton) |
 
 ## Architettura e Concetti
 
@@ -31,14 +31,21 @@ di visualizzazione.
 
 La classe `AnalyticsEngine` e il punto di ingresso unico per tutta l'aggregazione
 dei dati della dashboard. Possiede un riferimento al database manager (ottenuto
-tramite `get_db_manager()`) ed espone sette metodi pubblici, ciascuno che restituisce
+tramite `get_db_manager()`) ed espone otto metodi pubblici, ciascuno che restituisce
 una forma dati specifica per un widget dell'interfaccia.
+
+Le query con ambito giocatore condividono un helper `_player_filter()`: se il
+giocatore ha almeno una partita personale (`is_pro == False`), i risultati sono
+limitati a quelle righe; altrimenti il filtro ricade su TUTTE le righe (incluse le
+partite pro) cosi che la schermata Performance mostri una panoramica pro invece di
+uno stato vuoto. `get_skill_radar()` e l'eccezione -- filtra solo per
+`player_name`.
 
 #### `get_player_trends(player_name, limit=20)` -> DataFrame
 
 Recupera le metriche di prestazione storica per il widget del grafico delle tendenze:
 
-- Interroga `PlayerMatchStats` dove `player_name` corrisponde e `is_pro == False`
+- Interroga `PlayerMatchStats` tramite il fallback `_player_filter()` descritto sopra
 - Ordina per `processed_at DESC`, limita a `limit` record (default 20)
 - Converte i risultati in un DataFrame pandas in ordine cronologico (invertito)
 - Restituisce un DataFrame vuoto se non esistono dati
@@ -49,8 +56,8 @@ Calcola gli attributi di abilita normalizzati (0--100) per il widget del grafico
 
 | Asse Abilita | Formula | Tetto |
 |-------------|---------|-------|
-| **Aim** | `(accuracy * 100 * 0.5) + (HS% * 100 * 0.5)` | 100 |
-| **Utility** | `(blind_enemies / 2.0 * 100 * 0.6) + (flash_assists / 1.0 * 100 * 0.4)` | 100 |
+| **Aim** | `(accuracy * 100 * 0.5) + (HS% * 100 * 0.5)` | non limitato |
+| **Utility** | `min(100, blind_enemies / 2.0 * 100) * 0.6 + min(100, flash_assists / 1.0 * 100) * 0.4` | 100 |
 | **Positioning** | `min(100, (KAST / 0.75) * 100)` | 100 |
 | **Map Sense** | `min(100, (ADR / 100.0) * 100)` | 100 |
 | **Clutch** | `min(100, clutch_win_pct * 100)` | 100 |
@@ -66,8 +73,10 @@ addestramento/validazione e confidence del belief.
 #### `get_rating_history(player_name, limit=50)` -> List
 
 Restituisce una lista ordinata cronologicamente di dict
-`{rating, match_date, demo_name}` per il widget della timeline del rating.
-Filtra le partite pro (`is_pro == False`).
+`{rating, match_date, demo_name, kd_ratio, avg_adr, avg_kast}` per il widget della
+timeline del rating, usando il fallback `_player_filter()`. I campi statistici extra
+alimentano il contesto dei percentili pro in `performance_vm.py` (fix R4 HIGH,
+2026-07-16).
 
 #### `get_per_map_stats(player_name)` -> Dict
 
@@ -75,22 +84,31 @@ Aggrega le prestazioni per mappa in `{map_name: {rating, adr, kd, matches}}`:
 
 - Estrae i nomi delle mappe da `demo_name` usando il pattern regex
   `(de_\w+|cs_\w+|ar_\w+)`
+- Ricade su una lista di nomi mappe conosciuti (mirage, inferno, dust2, ...) per
+  nomi di file demo come `furia-vs-navi-m1-mirage.dem`, normalizzati a `de_<nome>`
 - Raggruppa le partite per mappa e calcola media di rating, ADR e K/D per mappa
 - Le mappe non identificabili sono raggruppate sotto `"unknown"`
 
 #### `get_strength_weakness(player_name)` -> Dict
 
 Calcola le deviazioni Z-score rispetto alla baseline professionale per le metriche
-chiave. Z-score > 0.5 qualifica come punto di forza; Z-score < -0.5 qualifica come
-debolezza. Restituisce i primi 5 punti di forza e le prime 5 debolezze.
+chiave:
+
+- Recupera le medie del giocatore per rating, K/D, ADR, KAST, HS%, precisione,
+  clutch% e opening duel%
+- Chiama `calculate_deviations()` da `pro_baseline.py` per ottenere gli Z-score
+- Z-score > 0.5 qualifica come punto di forza; Z-score < -0.5 qualifica come
+  debolezza
+- Restituisce i primi 5 punti di forza e le prime 5 debolezze, ordinati per
+  grandezza
 
 #### `get_utility_breakdown(player_name)` -> Dict
 
 Confronto per tipo di utilita tra medie utente e medie pro per 6 metriche:
 `he_damage`, `molotov_damage`, `smokes_per_round`, `flash_blind_time`,
 `flash_assists`, `unused_utility`. La baseline pro viene interrogata da dati reali
-del DB (`is_pro == True`). Se non esistono dati pro, il dict pro viene restituito
-vuoto (Regola Anti-Fabbricazione).
+del DB (`is_pro == True`) e porta un marcatore `"_provenance": "db"`. Se non
+esistono dati pro, il dict pro viene restituito vuoto (Regola Anti-Fabbricazione).
 
 #### `get_hltv2_breakdown(player_name)` -> Dict
 
@@ -113,21 +131,18 @@ mantenendo la classe testabile tramite istanziazione diretta.
 ```
 Dashboard UI (Qt MVVM)
     |
-    +-- PerformanceViewModel
-    |       +-- analytics.get_player_trends()    --> grafico tendenze
-    |       +-- analytics.get_skill_radar()      --> grafico radar
-    |       +-- analytics.get_rating_history()   --> timeline rating
-    |       +-- analytics.get_per_map_stats()    --> scomposizione per mappa
+    +-- PerformanceViewModel (performance_vm.py)
+    |       +-- analytics.get_rating_history()     --> timeline rating
+    |       +-- analytics.get_per_map_stats()      --> scomposizione per mappa
+    |       +-- analytics.get_strength_weakness()  --> card Z-score
+    |       +-- analytics.get_utility_breakdown()  --> barre utente vs pro
     |
-    +-- StrengthWeaknessWidget
-    |       +-- analytics.get_strength_weakness() --> card Z-score
-    |
-    +-- UtilityWidget
-    |       +-- analytics.get_utility_breakdown() --> barre utente vs pro
-    |
-    +-- TrainingStatusWidget
-            +-- analytics.get_training_metrics()  --> display epoch/loss
+    +-- MatchDetailViewModel (match_detail_vm.py)
+            +-- analytics.get_hltv2_breakdown()    --> componenti HLTV 2.0
 ```
+
+`get_player_trends()`, `get_skill_radar()` e `get_training_metrics()` attualmente
+non hanno consumatori collegati nella UI.
 
 ### Dipendenze
 
@@ -143,12 +158,22 @@ Dashboard UI (Qt MVVM)
 ## Note di Sviluppo
 
 - **Contratto di sola lettura**: Tutti i metodi usano `get_db_manager().get_session()`
-  per letture atomiche. Nessun metodo muta il database.
+  per letture atomiche. Nessun metodo muta il database. Questo e garantito dal design,
+  non da guardie nel codice.
 - **Controllo null difensivo**: Ogni metodo restituisce un default sicuro (dict vuoto,
   lista vuota, DataFrame vuoto) se i dati sottostanti mancano o sono insufficienti.
-- **Tutte le query usano SQLModel ORM**: Nessun SQL grezzo.
-- **La normalizzazione radar e basata su euristiche**: I pesi sono parametri di
-  regolazione, non output ML. Regolarli nel corpo del metodo.
-- **Baseline pro da dati reali**: Nessun valore fabbricato come fallback.
-- **Nessun caching in questa classe**: I ViewModel gestiscono il caching.
-- **Logging**: Utilizza `get_logger("cs2analyzer.analytics")` per logging strutturato.
+- **Tutte le query usano SQLModel ORM**: Nessun SQL grezzo. Questo garantisce type
+  safety e compatibilita con la configurazione SQLite WAL.
+- **La normalizzazione radar e basata su euristiche**: I pesi (0.5/0.5 per Aim,
+  0.6/0.4 per Utility, ecc.) sono parametri di regolazione, non output ML. Regolarli
+  nel corpo del metodo man mano che il modello di coaching evolve.
+- **Baseline pro da dati reali**: `get_utility_breakdown()` e
+  `get_strength_weakness()` usano entrambi dati pro reali dal database. Nessun
+  valore fabbricato come fallback (Regola Anti-Fabbricazione).
+- **Nessun caching in questa classe**: I ViewModel gestiscono il caching e
+  l'invalidazione. `AnalyticsEngine` ricalcola ad ogni chiamata.
+- **Logging**: Utilizza `get_logger("cs2analyzer.analytics")` per logging strutturato
+  degli errori. Tutti i percorsi di errore registrano l'eccezione e restituiscono
+  default sicuri.
+- **Il limite di 20 partite per default** per `get_player_trends()` previene letture
+  DB eccessive fornendo al contempo linee di tendenza significative.

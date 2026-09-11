@@ -17,10 +17,10 @@ Os quatro niveis sao projetados para serem executados em ordem crescente de prof
 
 | Nivel | Ferramenta | Verificacoes | Tempo | Proposito |
 |-------|------------|-------------|-------|-----------|
-| 1 | `headless_validator.py` | 26 fases | <20s | Gate de regressao rapido (obrigatorio antes da conclusao de tarefas) |
-| 2 | Suite pytest | 2.024+ testes em 118 arquivos | ~2min | Validacao logica, assercoes de contrato |
+| 1 | `headless_validator.py` | 39 fases | <20s | Gate de regressao rapido (obrigatorio antes da conclusao de tarefas) |
+| 2 | Suite pytest | 2.500+ testes em 193 arquivos | ~2min | Validacao logica, assercoes de contrato |
 | 3 | `backend_validator.py` | 40 em 7 secoes | ~30s | Saude do build, zoo de modelos, pipeline de coaching |
-| 4 | `Goliath_Hospital.py` | 10 departamentos | ~60s | Diagnostico clinico abrangente |
+| 4 | `Goliath_Hospital.py` | 11 departamentos | ~60s | Diagnostico clinico abrangente |
 
 ## Inventario de Arquivos
 
@@ -57,7 +57,7 @@ Todas as ferramentas neste diretorio se baseiam no modulo de infraestrutura comp
 - **`BaseValidator`** -- Classe base abstrata com `define_checks()`, `check()`, `run()`,
   integracao `Console` e geracao de relatorios JSON.
 - **`ToolResult`** / **`ToolReport`** -- Dataclasses estruturadas para resultados de verificacoes com
-  niveis `Severity` (CRITICAL, WARNING, INFO, OK).
+  niveis `Severity` (CRITICAL, ERROR, WARNING, INFO, HEALTHY).
 - **`Console`** -- Saida de terminal estilo Rich com cabecalhos de secao, indicadores
   pass/fail e tabelas de resumo.
 
@@ -94,7 +94,7 @@ que qualquer tarefa de desenvolvimento seja considerada concluida.
 
 ```bash
 # Ativar o ambiente virtual primeiro
-source ~/.venvs/cs2analyzer/bin/activate
+source .venv/bin/activate
 
 # Validacao headless (gate pos-tarefa obrigatorio)
 python Programma_CS2_RENAN/tools/headless_validator.py

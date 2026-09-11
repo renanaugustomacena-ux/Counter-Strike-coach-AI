@@ -4,7 +4,7 @@
 
 > **Autorità:** Regola 4 (Persistenza Dati)
 
-Questa directory contiene dati runtime, file di configurazione, conoscenza di coaching, dataset statistici esterni e l'area di staging per l'ingestione delle demo. Tutti i file qui presenti sono dati lato utente (non codice).
+Questa directory contiene dati runtime, file di configurazione, conoscenza di coaching, input di dati statistici esterni e l'area di staging per l'ingestione delle demo. Tutti i file qui presenti sono dati lato utente (non codice).
 
 ## Struttura della Directory
 
@@ -16,98 +16,97 @@ data/
 │   ├── features.md                 # Lista funzionalità di coaching
 │   ├── getting_started.md          # Guida alla configurazione utente (regola 10/10)
 │   └── troubleshooting.md         # Problemi comuni
-├── external/                        # Dataset statistici di terze parti (CSV)
-│   ├── all_Time_best_Players_Stats.csv
-│   ├── cs2_playstyle_roles_2024.csv
-│   ├── csgo_games.csv
-│   ├── Maps01_BombPlantOutcomes01.csv
-│   ├── Maps01_RoundOutcomes.csv
-│   ├── Maps02_BombPlantOutcomes.csv
-│   ├── maps_statistics.csv
-│   ├── top_100_players.csv
-│   ├── weapons_statistics.csv
-│   └── hltv_stats_urls.txt         # URL giocatori HLTV per lo scraper
+├── external/                        # Input di dati esterni
+│   └── hltv_stats_urls.txt         # URL giocatori HLTV (lista input storica)
 ├── knowledge/                       # Base di conoscenza RAG per il coaching
-│   ├── {map}_coaching.txt          # Testo di coaching per mappa (8 mappe)
+│   ├── {map}_coaching.txt          # Testo di coaching per mappa (7 mappe)
 │   ├── {map}_coaching_ocr.txt      # Varianti estratte tramite OCR
-│   ├── general_coaching.txt        # Principi generali di coaching CS2
-│   ├── coaching_knowledge_base.json # KB strutturata (JSON)
+│   ├── general_coaching.txt        # Principi generali di coaching CS2 (+ variante OCR)
+│   ├── coaching_knowledge_base.json # KB strutturata (JSON, + variante OCR)
 │   └── extraction_summary.json     # Metadati estrazione conoscenza
-├── dataset.csv                      # Dataset di training
-├── map_config.json                  # Configurazione spaziale mappe (257 linee)
+├── dataset.csv                      # Placeholder dataset di training (attualmente vuoto)
+├── map_config.json                  # Configurazione spaziale mappe (260 linee)
 ├── map_tensors.json                 # Definizioni coordinate tensore 3D
 └── hltv_sync_state.json            # Stato sincronizzazione scraper HLTV
 ```
 
 ## File di Configurazione Principali
 
-### `map_config.json` (257 linee)
+### `map_config.json` (260 linee)
 
-Definizioni spaziali per tutte le mappe competitive di CS2:
+Definizioni spaziali per tutte le mappe competitive di CS2. Le voci delle mappe
+risiedono sotto la chiave top-level `maps` (accanto a `_description`, `_source`,
+`_last_updated` e `competitive_pool`):
 
 ```json
 {
-  "de_mirage": {
-    "display_name": "Mirage",
-    "pos_x": -3230,
-    "pos_y": 1713,
-    "scale": 5.0,
-    "landmarks": {
-      "a_site": [x, y],
-      "b_site": [x, y],
-      "mid_control": [x, y],
-      "t_spawn": [x, y],
-      "ct_spawn": [x, y]
+  "maps": {
+    "de_mirage": {
+      "pos_x": -3230,
+      "pos_y": 1713,
+      "scale": 5.0,
+      "display_name": "Mirage",
+      "landmarks": {
+        "A-Site": [x, y],
+        "B-Site": [x, y],
+        "Mid": [x, y],
+        "T-Spawn": [x, y],
+        "CT-Spawn": [x, y]
+      }
     }
   }
 }
 ```
 
 - Utilizzato da `core/spatial_data.py` per le trasformazioni di coordinate
-- Le mappe multi-livello (Nuke, Vertigo) includono confini `z_cutoff`
+- Le mappe multi-livello (Nuke, Vertigo) includono confini `z_cutoff` e `levels`
 - Pool competitivo: nuke, inferno, mirage, dust2, ancient, overpass, vertigo, anubis, train
 
 ### `map_tensors.json`
 
-Coordinate tensore 3D per il training ML:
+Coordinate tensore 3D per il training ML (7 mappe: mirage, inferno, dust2, nuke,
+overpass, ancient, anubis):
+- `image_file` riferimento radar per mappa
 - Posizioni bombsite (A/B) con X, Y, Z
 - Posizioni spawn (T/CT)
 - Zone di controllo mid e zone importanti (connector, jungle, palace, ecc.)
 
 ## `demos/pro_ingest/`
 
-Directory di staging per i file `.dem` di partite professionistiche. La pipeline di ingestione preleva i file da qui per il training della baseline professionale.
+Placeholder lato repository per file `.dem` di partite professionistiche, mantenuto
+per test dev-scale locali (`tests/test_demo_parser.py` salta quando è vuoto).
 
 - Attualmente tracciato tramite `.gitkeep` (vuoto nel repository)
-- Produzione: ~200 file demo professionistici sull'SSD esterno
+- La directory di ingestione pro a runtime è configurata dall'utente: l'impostazione
+  `PRO_DEMO_PATH` quando impostata, altrimenti `pro_ingest/` sotto la root di storage
+  (`backend/storage/storage_manager.py`)
+- Il corpus completo di demo pro e il database di training monolite risiedono su un
+  volume esterno, non in questo repository (vedi `docs/OPEN_ISSUES.md` §2)
 - I file vengono elaborati da `backend/data_sources/demo_parser.py`
 
-## `external/` — Dataset Statistici
+## `external/` — Input di Dati Esterni
 
-Dati CSV di terze parti utilizzati per analisi di riferimento e calibrazione del coaching:
+Attualmente contiene un singolo file:
 
 | File | Contenuto | Utilizzato Da |
 |------|-----------|---------------|
-| `top_100_players.csv` | Statistiche top 100 giocatori HLTV | `processing/external_analytics.py` |
-| `all_Time_best_Players_Stats.csv` | Statistiche storiche migliori giocatori | Riferimento baseline professionale |
-| `cs2_playstyle_roles_2024.csv` | Dati classificazione ruoli (2024) | `backend/ingestion/csv_migrator.py` |
-| `maps_statistics.csv` | Percentuali vittorie e giocabilità mappe | Analisi contesto mappe |
-| `weapons_statistics.csv` | Dati danno/precisione armi | Feature classi armi |
-| `Maps01_RoundOutcomes.csv` | Distribuzioni esiti round | Training probabilità vittoria |
-| `Maps01_BombPlantOutcomes01.csv` | Dati esiti piazzamento bomba (dataset 1) | Analisi economia |
-| `Maps02_BombPlantOutcomes.csv` | Dati esiti piazzamento bomba (dataset 2) | Analisi economia |
-| `csgo_games.csv` | Dati storici partite CS:GO | Riferimento legacy |
-| `hltv_stats_urls.txt` | URL profili giocatori HLTV | Input scraper HLTV |
+| `hltv_stats_urls.txt` | URL profili giocatori HLTV | Nessun consumatore di codice attivo (lista input di un helper di fetch rimosso; mantenuto come dato) |
+
+I dataset CSV di terze parti (statistiche giocatori, statistiche mappe, esiti round)
+non sono mantenuti nel repository; `backend/processing/external_analytics.py` li legge
+da qui quando presenti, e l'ingestor di tornei JSON
+(`ingestion/pipelines/json_tournament_ingestor.py`) scrive il suo CSV di output qui
+(`tournament_advanced_stats.csv`) quando eseguito.
 
 ## `knowledge/` — Base di Conoscenza RAG
 
-File di conoscenza per il coaching nel framework COPER (Context Optimized with Prompt, Experience, Replay):
+File di conoscenza per il coaching nel framework COPER (Context Optimized with Prompt, Experience, and Replay):
 
-### Coaching per Mappa (8 mappe x 2 versioni)
+### Coaching per Mappa (7 mappe + generale, x 2 versioni)
 
-Ogni mappa ha due versioni:
-- `{map}_coaching.txt` — Testo di coaching grezzo
-- `{map}_coaching_ocr.txt` — Variante estratta tramite OCR
+Ogni argomento ha due versioni:
+- `{map}_coaching.txt` — Testo di coaching grezzo (per lo più brevi bozze)
+- `{map}_coaching_ocr.txt` — Variante estratta tramite OCR (contiene il grosso del contenuto)
 
 Mappe coperte: Ancient, Anubis, Dust2, Inferno, Mirage, Nuke, Overpass + generale
 
@@ -119,13 +118,20 @@ Mappe coperte: Ancient, Anubis, Dust2, Inferno, Mirage, Nuke, Overpass + general
 
 ### Come Viene Utilizzata la Conoscenza
 
+Questi file sono il materiale sorgente grezzo della conoscenza di coaching. La base
+di conoscenza RAG a runtime viene popolata da `backend/knowledge/book/index.json`
+(Coach Book, con `backend/knowledge/tactical_knowledge.json` come fallback legacy)
+nella tabella database `tacticalknowledge` da `backend/knowledge/init_knowledge_base.py`;
+l'unico consumatore automatizzato di `data/knowledge/` stesso è un controllo strutturale
+in `tools/headless_validator.py`.
+
 ```
-File knowledge/
+Tabella DB tacticalknowledge (popolata da init_knowledge_base.py)
     │
     └── backend/knowledge/rag_knowledge.py (KnowledgeEmbedder)
             │
             ├── Sentence-BERT genera embedding dei chunk di testo (vettori 384-dim)
-            └── Indici FAISS per ricerca rapida per similarità
+            └── Indice FAISS quando disponibile (fallback coseno brute-force)
                     │
                     └── CoachingService recupera conoscenza rilevante per query
 ```
@@ -142,7 +148,8 @@ File Markdown serviti da `backend/knowledge_base/help_system.py`:
 
 - **NON committare file demo** (`.dem`) — sono da 50-200MB ciascuno
 - Le coordinate di `map_config.json` provengono dai file di gioco CS2 (`resource/overviews/*.txt`)
-- I CSV esterni sono dati di riferimento statici — aggiornarli manualmente quando nuovi dati sono disponibili
-- `hltv_sync_state.json` traccia il progresso dello scraper — un `{}` vuoto significa nessuna sincronizzazione attiva
+- `hltv_sync_state.json` traccia lo stato di sincronizzazione HLTV — un `{}` vuoto significa
+  nessuna sincronizzazione attiva (attualmente azzerato solo da `tools/reset_pro_data.py`)
 - I file di conoscenza sono la base intellettuale del coaching — modificare con cura
-- `dataset.csv` e generato dalla pipeline di training, non modificato manualmente
+- `dataset.csv` è attualmente un placeholder vuoto (incluso dallo spec PyInstaller), non modificato manualmente
+- Lo spec PyInstaller include anche `map_config.json`, `external/` e `docs/` da qui

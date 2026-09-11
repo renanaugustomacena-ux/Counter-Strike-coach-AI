@@ -2,46 +2,49 @@
 
 # Logs de Sistema Centralizados
 
-Este diretório serve como o hub centralizado para observabilidade de todo o sistema e dados de diagnóstico. Ele agrega logs do mecanismo de backend, serviços de ingestão de partidas e módulos de inferência de IA para fornecer uma visão abrangente da integridade operacional do sistema.
+Este diretorio coleta logs de runtime do tooling operador na raiz do repo (o operador Goliath, o console de desenvolvedor, ferramentas de manutencao) e serve como sink de fallback para a stack de logging do backend. A aplicacao em si resolve seu diretorio de log a partir da configuracao (`LOG_DIR = <USER_DATA_ROOT>/logs`, padrao `Programma_CS2_RENAN/logs`, sobreponivel via `BRAIN_DATA_ROOT` / `CUSTOM_STORAGE_PATH`), entao o `cs2_analyzer.log` primario normalmente vai para la, nao aqui.
 
-## Visão Geral Técnica
+## Visao Geral Tecnica
 
-A arquitetura de log foi projetada para monitoramento de alta granularidade do backend do coach de Counter-Strike. Os logs são gerados usando um formato estruturado para facilitar a análise automatizada e o alerta. O objetivo principal é garantir que gargalos de desempenho, falhas de ingestão e desvios de modelo sejam identificados e resolvidos em tempo real.
+A arquitetura de logging e projetada para monitoramento de alta granularidade do backend do coach de Counter-Strike. O logging e configurado por `Programma_CS2_RENAN/observability/logger_setup.py`: todos os loggers compartilham um unico sink `cs2_analyzer.log` (saida JSON estruturada, parseavel por maquina), e execucoes standalone de tools adicionalmente gravam logs JSON com timestamp sob `tools/`. `core/config.py` conecta o `LOG_DIR` resolvido no `logger_setup` via `configure_log_dir()`; scripts que usam `logger_setup` sem essa conexao recaem no caminho relativo `logs/` — este diretorio, quando executados da raiz do repo. O objetivo principal e garantir que gargalos de desempenho, falhas de ingestao e desvios de modelo sejam identificados e resolvidos rapidamente.
 
 ## Componentes Chave
 
-- **`cs2_analyzer.log`**: O principal arquivo de log para o mecanismo de análise de backend. Ele rastreia:
-    - **Monitoramento de Erros**: Stack traces detalhados para falhas de API, problemas de conexão de banco de dados e erros de análise (parsing) de demos.
-    - **Taxa de Transferência de Ingestão**: Métricas sobre quantos arquivos de demo estão sendo processados por minuto, incluindo o tamanho do arquivo e a duração da análise.
-    - **Latência de Inferência**: Tempo preciso para solicitações de LLM e VLM, permitindo a otimização dos tempos de resposta do modelo.
-    - **Integridade do Sistema**: Heartbeats periódicos de processos de trabalho em segundo plano e do serviço de sincronização HLTV.
+Todos os arquivos abaixo sao gerados em runtime e gitignored (apenas os READMEs sao rastreados):
 
-## Estrutura do Diretório
+- **`cs2_analyzer.log`**: Copia de fallback do log principal backend/analise (linhas JSON: erros com stack traces, eventos de parsing e ingestao por demo). A copia primaria reside em `<USER_DATA_ROOT>/logs/`.
+- **`tools/`**: Logs JSON por-tool das execucoes (`<nome_tool>_<YYYYMMDD_HHMMSS>.json`) de `get_tool_logger()`, criados quando tools CLI (ex. `tools/build_pipeline.py`) sao executados da raiz do repo.
+- **`goliath_master_<YYYYMMDD>.json`**: Log master diario do operador Goliath (`goliath.py`), concatenado entre execucoes.
+- **`spawn_<tool>_<HHMMSS>.log`**: stderr de tools em background lancados via comando `svc spawn` do console (`console.py`).
+- **`wipe_audit_<YYYYMMDD>.jsonl`**: Trilha de auditoria append-only escrita por `tools/wipe_for_reingest_safe.py` para cada operacao de wipe/restore.
+
+## Estrutura do Diretorio
 
 ```text
 logs/
-├── cs2_analyzer.log        # Log principal de backend e análise
-├── README.md               # Esta documentação (EN)
-├── README_IT.md            # Versão Italiana
-└── README_PT.md            # Versione Portuguesa
+├── cs2_analyzer.log              # Log fallback backend/analise (gerado em runtime)
+├── tools/                        # Logs JSON com timestamp de execucoes de tools (gerados)
+├── goliath_master_<date>.json    # Log master diario do operador Goliath (gerado)
+├── spawn_<tool>_<time>.log       # stderr de tools em background lancados pelo console (gerados)
+├── wipe_audit_<date>.jsonl       # Trilha de auditoria wipe/restore (gerado)
+├── README.md                     # Esta documentacao
+├── README_IT.md                  # Versao Italiana
+└── README_PT.md                  # Versao Portuguesa
 ```
 
 ## Uso
 
 ### Monitoramento em Tempo Real
-Para monitorar os logs do sistema em tempo real durante uma sessão de ingestão ou treinamento em larga escala:
+Para monitorar os logs do sistema em tempo real durante uma sessao de ingestao ou treinamento em larga escala:
 ```bash
 tail -f logs/cs2_analyzer.log
 ```
 
-### Rotação de Log
-O sistema está configurado para girar automaticamente os logs quando eles atingem 100 MB, mantendo até 5 versões históricas (por exemplo, `cs2_analyzer.log.1`) para evitar o esgotamento do espaço em disco.
+### Rotacao de Log
+Um `RotatingFileHandler` rotaciona `cs2_analyzer.log` a 5 MB, mantendo 3 versoes historicas (ex. `cs2_analyzer.log.1`) para evitar o esgotamento do espaco em disco. Se o handler nao pode ser criado (PermissionError), o setup recai em um `FileHandler` simples (sem rotacao). Cada processo grava seu proprio arquivo de log (indexado pela variavel de ambiente `CS2_LOG_ROLE`), entao cada rotating handler tem um unico writer. Os outros arquivos aqui (`goliath_master_*`, `spawn_*`, `wipe_audit_*`) nao sao rotacionados; `configure_retention()` em `logger_setup.py` pode eliminar arquivos `.log`/`.json` com mais de 30 dias.
 
 ### Filtragem por Erros
-Para identificar rapidamente problemas críticos nos logs:
+Para identificar rapidamente problemas criticos nos logs:
 ```bash
 grep "ERROR" logs/cs2_analyzer.log
 ```
-
-### Análise de Desempenho
-As entradas de log incluem campos `latency_ms` para chamadas de inferenza, que podem ser extraídos para gerar histogramas de desempenho e identificar respostas lentas do modelo.

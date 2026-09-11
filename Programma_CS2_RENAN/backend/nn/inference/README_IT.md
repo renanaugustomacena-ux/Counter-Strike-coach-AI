@@ -20,14 +20,16 @@ L'intento e tenere i percorsi di training e inferenza fisicamente separati nell'
 | File | Scopo |
 |------|-------|
 | `__init__.py` | Marcatore di pacchetto. |
-| `ghost_engine.py` | `GhostEngine` -- proietta le posizioni predette dei giocatori sulla mappa tattica per l'overlay "ghost AI" nel Tactical Viewer. Carica il checkpoint JEPA / RAP attivo ed esegue inferenza forward-only su batch di tick. |
+| `ghost_engine.py` | `GhostEngine` -- proietta le posizioni predette dei giocatori sulla mappa tattica per l'overlay "ghost AI" nel Tactical Viewer. Gated dietro `USE_RAP_MODEL` (default `False`); carica il checkpoint `rap_coach` ed esegue inferenza forward-only per tick. |
 
 ## Riassunto di `GhostEngine`
 
-- Carica il modello tramite `ModelFactory.get_model(model_type).eval()` e disabilita il gradiente con `torch.no_grad()`.
-- Accetta una finestra scorrevole di feature di tick recenti (25-dim `METADATA_DIM`) ed emette i delta di posizione proiettati.
-- Cachea l'handle del modello cosi che chiamate ripetute riutilizzino gli stessi parametri; reset tramite l'helper pubblico `reset()` dopo uno swap di checkpoint.
-- Ricade in un percorso a predizione zero quando nessun checkpoint esiste, cosi l'UI rimane utilizzabile su un'installazione fresca.
+- Controlla prima `USE_RAP_MODEL` (default `False`) -- quando non impostato, nessun modello viene caricato e le predizioni restano disabilitate.
+- Carica il modello RAP tramite `ModelFactory.get_model(TYPE_RAP)` + `load_nn(ModelFactory.get_checkpoint_name(TYPE_RAP), ...)` (nome checkpoint `"rap_coach"`), poi `.eval()`; l'inferenza gira sotto `torch.no_grad()`.
+- `predict_tick()` accetta un singolo tick (dict o dataclass) piu un `game_state` dict opzionale, costruisce tensori di view / map / motion tramite `TensorFactory` e il vettore metadata a 25 dimensioni tramite `FeatureExtractor`, e restituisce `(ghost_x, ghost_y)` coordinate mondo (posizione corrente + delta x `RAP_POSITION_SCALE`).
+- I tensori provengono da un `TensorFactory` istanziato con `TrainingTensorConfig()` (risoluzione 64x64 per tutti i canali), corrispondente alla risoluzione di training (F-0026 chiuso).
+- La modalita tensori player-POV e opt-in tramite `USE_POV_TENSORS` (default `False`); altrimenti si usano i tensori legacy.
+- Restituisce `None` in caso di fallimento -- modello disabilitato, checkpoint mancante, `map_name` mancante o errore di inferenza. (R4: il vecchio sentinella `(0.0, 0.0)` era una coordinata mondo valida vicino al centro mappa ed e stato rimosso.)
 
 ## Punti di integrazione
 
@@ -41,11 +43,11 @@ L'intento e tenere i percorsi di training e inferenza fisicamente separati nell'
 - **Nessun import lato training.** I moduli qui non devono importare da `training_orchestrator.py`, trainer, helper EMA, o assemblaggi DataLoader.
 - **Nessuna mutazione di file.** Le utilita di inferenza non scrivono mai checkpoint. Il salvataggio appartiene a `nn/persistence.py:save_nn()` invocato dai percorsi di training.
 - **Determinismo.** L'inferenza viene invocata da thread UI -- proteggi qualsiasi operazione tensoriale non idempotente (es. dropout) con `model.eval()`.
-- **Degradazione graziosa.** Checkpoint mancante -> fallback a predizione zero, log a `WARNING`. Mai sollevare nel thread UI.
+- **Degradazione graziosa.** Checkpoint mancante o inferenza fallita -> restituisce `None`, log a `WARNING`. Mai sollevare nel thread UI.
 
 ## Correlati
 
 - Checkpoint addestrati: `Programma_CS2_RENAN/models/global/`
 - Helper di persistenza: `backend/nn/persistence.py`
-- Orchestrazione di inferenza: `backend/services/coaching_service.py`
+- Consumer con caricamento lazy: `apps/qt_app/viewmodels/tactical_vm.py` (`TacticalGhostVM`)
 - Tactical viewer (consumer): `apps/qt_app/screens/tactical_viewer_screen.py`

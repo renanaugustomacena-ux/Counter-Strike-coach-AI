@@ -78,9 +78,6 @@ def compute_trend(values: List[float]) -> Tuple[float, float, float]:
 | 20--29 | 0.67--0.97 | Tendencia confiavel |
 | 30+ | 1.0 | Confianca plena |
 
-O limiar de 30 corresponde ao requisito classico do intervalo de confianca bootstrap,
-produzindo erro amostral inferior a 8% no nivel de confianca de 95%.
-
 ## Integracao
 
 ```
@@ -101,20 +98,19 @@ PlayerMatchStats (registros historicos em database.db)
 |------------|--------|------------------------|
 | Coaching Service | `services/coaching_service.py` | Gera insights de coaching longitudinal a partir de slope/confidence |
 | Longitudinal Engine | `coaching/longitudinal_engine.py` | Produz narrativas de coaching baseadas em tendencias |
-| Analytics Engine | `reporting/analytics.py` | Alimenta graficos de tendencia do dashboard |
-| Explanation Generator | `coaching/explainability.py` | Inclui dados de tendencia nas explicacoes de coaching |
+| CLI de Ingestao | `run_ingestion.py` | Calcula tendencias por feature apos ingestao batch de demos |
 
 ### Fluxo de Dados
 
 1. A ingestao de demo popula as linhas `PlayerMatchStats` em `database.db`.
-2. `CoachingService.generate_new_insights()` busca o historico de partidas do
-   jogador.
-3. Para cada feature rastreada, `compute_trend(values)` e chamada com a serie
-   historica.
+2. `CoachingService.generate_new_insights()` chama `_run_longitudinal_coaching()`,
+   que busca as ultimas 10 partidas do jogador (minimo 3 necessarias).
+3. Para cada feature rastreada (`avg_kills`, `avg_adr`, `avg_kast`, `accuracy`),
+   `compute_trend(values)` e chamada com a serie historica.
 4. A tripla retornada `(slope, volatility, confidence)` e encapsulada em uma
    dataclass `FeatureTrend`.
-5. Tendencias com `confidence >= 0.6` sao passadas para
-   `generate_longitudinal_coaching()` para produzir insights de coaching legiveis.
+5. Todas as tendencias sao passadas para `generate_longitudinal_coaching()`, que
+   mantem apenas aquelas com `confidence >= 0.6` e emite no maximo 3 insights.
 6. Esses insights sao persistidos como linhas `CoachingInsight` no banco de dados.
 
 ## Notas de Desenvolvimento
@@ -129,8 +125,10 @@ PlayerMatchStats (registros historicos em database.db)
   Comparacoes entre features requerem normalizacao (nao feita aqui -- tratada pela
   camada de coaching).
 - **A volatilidade e absoluta**: Desvio padrao, nao coeficiente de variacao. Compare
-  apenas dentro da mesma feature.
+  apenas dentro da mesma feature. Uma volatilidade de 5.0 para ADR significa algo
+  muito diferente de 5.0 para K/D.
 - **Sem caching**: Os resultados sao calculados do zero a cada chamada. O servico de
   coaching decide quando chamar e como fazer caching.
-- **Thread safety**: Tanto `FeatureTrend` (dataclass imutavel) quanto
-  `compute_trend()` (funcao pura) sao inerentemente thread-safe.
+- **Thread safety**: `compute_trend()` e uma funcao pura sem estado compartilhado.
+  `FeatureTrend` e um simples `@dataclass` (nao frozen), portanto as instancias sao
+  mutaveis; os chamadores devem trata-las como somente leitura apos a construcao.

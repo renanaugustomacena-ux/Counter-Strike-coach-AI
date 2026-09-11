@@ -1,4 +1,4 @@
-# `apps/qt_app/widgets/` -- Libreria custom di widget Qt
+# `apps/qt_app/widgets/` — Libreria custom di widget Qt
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
@@ -34,36 +34,36 @@ widgets/
 | File | Scopo |
 |------|-------|
 | `__init__.py` | Marcatore di pacchetto. |
-| `skeleton.py` | `SkeletonLoader` -- placeholder shimmer mostrato mentre i dati del ViewModel caricano. |
-| `toast.py` | Toast di notifica transiente con auto-dismiss + bottone azione. Sottoscritto a `app_state.bus` per i toast globali. |
+| `skeleton.py` | `SkeletonRect` / `SkeletonCard` / `SkeletonTable` — placeholder shimmer mostrati mentre i dati del ViewModel caricano. |
+| `toast.py` | `ToastWidget` + `ToastContainer` — notifiche transienti con auto-dismiss basato sulla severita (CRITICAL non si chiude mai automaticamente); `MainWindow` connette `AppState.notification_received` al container. |
 
 ## Convenzioni
 
 ### Composizione sopra l'ereditarieta
 
-La maggior parte dei widget sono container `QWidget` che compongono pezzi piu piccoli. Evita alberi di ereditarieta profondi -- collidono col modello di segnali Qt e complicano il theming.
+La maggior parte dei widget sono container `QWidget` che compongono pezzi piu piccoli. Evita alberi di ereditarieta profondi — collidono col modello di segnali Qt e complicano il theming.
 
 ### Styling theme-aware
 
-Ogni widget legge colori / spaziature / tipografia da `core/design_tokens.py` invece di hard-codarli. Il QSS generator in `core/qss_generator.py` materializza i token in uno stylesheet applicato a tutta l'app.
+Ogni widget legge colori / spaziature / tipografia da `core/design_tokens.py` invece di hard-codarli. Il QSS generator in `core/qss_generator.py` materializza i token in uno stylesheet applicato a tutta l'app, e la `QPalette` dell'applicazione e derivata anch'essa dai token (`core/theme_engine.py`) — i file `.qss` legacy per-tema sono stati rimossi; il template guidato dai token e l'unica fonte di styling.
 
 ### API basata su segnali
 
-I widget espongono i cambi di stato tramite `Signal` (es. `clicked`, `selectionChanged`). Evita callback sincroni -- rompono la separazione MVVM.
+I widget espongono i cambi di stato tramite `Signal` (es. `clicked`, `selectionChanged`). Evita callback sincroni — rompono la separazione MVVM.
 
 ### Accessibilita
 
 - Imposta `setAccessibleName()` e `setAccessibleDescription()` per qualsiasi widget che renderizzi contenuto semantico (grafici, indicatori di stato).
-- Stato codificato a colore (rating, severita) deve essere accoppiato con testo o un'icona -- mai colore-only (WCAG 1.4.1).
+- Stato codificato a colore (rating, severita) deve essere accoppiato con testo o un'icona — mai colore-only (WCAG 1.4.1).
 
 ## Aggiungere un nuovo widget
 
 1. Decidi se appartiene a `widgets/` (generico), `widgets/components/` (primitiva UI) o a un sotto-pacchetto di dominio.
 2. Eredita dalla classe Qt piu piccola applicabile (`QWidget`, `QFrame`, `QLabel`).
-3. Leggi i token tramite `core/design_tokens` -- mai hard-codare colori.
+3. Leggi i token tramite `core/design_tokens` — mai hard-codare colori.
 4. Esponi lo stato via `Signal`, non getter che mutano.
 5. Aggiungi il widget alla tabella di inventario del README del suo sotto-pacchetto.
-6. Se il widget e theme-aware, sottoscrivi a `theme_engine.themeChanged`.
+6. Se il widget e theme-aware, risolvi i colori dal set di token attivo (`get_tokens()`) o connettiti a `theme_engine.theme_changed`.
 
 ## Correlati
 

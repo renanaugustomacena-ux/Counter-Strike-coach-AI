@@ -16,8 +16,8 @@ banco de dados.
 
 | Arquivo | Linhas | Propósito | Exports Principais |
 |---------|--------|-----------|-------------------|
-| `__init__.py` | 1 | Marcador de pacote | -- |
-| `new_user_flow.py` | ~136 | Gerenciamento de etapas de onboarding e cache de contagem de demos | `UserOnboardingManager`, `OnboardingStatus`, `OnboardingStage`, `get_onboarding_manager()` |
+| `__init__.py` | 0 | Marcador de pacote (vazio) | -- |
+| `new_user_flow.py` | ~140 | Gerenciamento de etapas de onboarding e cache de contagem de demos | `UserOnboardingManager`, `OnboardingStatus`, `OnboardingStage`, `get_onboarding_manager()` |
 
 ## Arquitetura e Conceitos
 
@@ -94,15 +94,14 @@ demos_uploaded >= RECOMMENDED_DEMOS  -->  COACH_READY
 
 ## Integração
 
-- **UI (Qt):** `HomeScreen` e o assistente de onboarding consultam
-  `get_status()` para exibir indicadores de progresso, mensagens de
-  boas-vindas e diálogos de controle de acesso.
-- **CoachingService:** Verifica `coach_ready` antes de gerar insights de
-  coaching de alta confiança. Quando `coach_ready` é `False`, os insights
-  ainda são gerados mas anotados com um aviso de baixa confiança.
-- **Pipeline de Ingestão:** Após a ingestão de uma demo, a pipeline chama
-  `invalidate_cache()` para que a próxima consulta da UI veja a contagem
-  atualizada.
+- **Consumidores atuais:** Em 2026-09-04, nenhum codigo de producao importa
+  este modulo -- e exercitado apenas por `tests/test_onboarding.py`. A Qt
+  `HomeScreen` mostra seu proprio hero card de onboarding guiado diretamente
+  pela presenca de dados de partida, sem consultar `get_status()`.
+- **Uso pretendido:** Superficies de UI e servicos podem chamar `get_status()`
+  para exibir progresso e derivar um nivel de confianca de `coach_ready` /
+  `baseline_stable`. Apos a ingestao de uma demo, os chamadores devem invocar
+  `invalidate_cache()` para que a proxima consulta veja a contagem atualizada.
 - **Banco de Dados:** O módulo lê de `PlayerMatchStats` em `database.db`.
   Não realiza escritas nem mutações.
 

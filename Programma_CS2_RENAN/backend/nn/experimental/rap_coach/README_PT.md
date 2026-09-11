@@ -24,13 +24,13 @@ Arquiteturalmente, é uma pipeline de 7 estágios — perception → memory → 
 | `__init__.py` | — | Marcador de pacote. |
 | `perception.py` | `RAPPerception` | Agregador de features visuais / espaciais. Consome views por tick, mini-mapa e tensores de movimento, projetando-os em um embedding unificado de percepção. |
 | `memory.py` | `RAPMemory` | Memória temporal baseada em LTC sobre a janela de 32 ticks. **Contém o monkey-patch RAP-LTC-FIX** sobre `ncps.LTCCell._ode_solver` (linhas 70–93) — corrige um shape mismatch 1-D / 2-D em `cm / (elapsed_time / ode_unfolds)`. |
-| `strategy.py` | `RAPStrategy` | Cabeça de strategy: superposition layer + softmax de 10 classes sobre os papéis táticos. |
-| `pedagogy.py` | `RAPPedagogy` | Cabeça de pedagogy: prior de explicação — produz uma representação de baixa dimensão downstream da decisão de strategy, usada para explicabilidade. |
-| `communication.py` | `RAPCommunication` | Cabeça de communication: pequeno MLP no qual a camada de RAG / coaching pode condicionar para gerar prosa policy-aware. |
+| `strategy.py` | `RAPStrategy` | Cabeça de strategy: roteamento MoE esparso top-2 (RAP-AUDIT-08) sobre 4 especialistas (SuperpositionLayer FiLM -> ReLU -> Linear). O gate emite logits brutos; os top-2 são renormalizados por softmax, o softmax completo do gate é retornado para a loss de esparsidade baseada em entropia. Context = metadata + belief, 89 dimensões (RAP-AUDIT-09). |
+| `pedagogy.py` | `RAPPedagogy`, `CausalAttributor` | `RAPPedagogy`: critic value head (256->64->1) com skill adapter (10->256). `CausalAttributor`: mapeia estado latente + delta de posição para 5 atribuições conceituais (Positioning, Crosshair Placement, Aggression, Utility, Rotation). |
+| `communication.py` | `RAPCommunication` | Camada de comunicação: motor de templates por nível de habilidade (classe simples, não um `nn.Module`) que transforma as saídas do modelo em conselhos baseados em templates; suprime conselhos abaixo do limiar de confiança 0.7. |
 | `chronovisor_scanner.py` | `ChronovisorScanner` | Identifica "moments" temporalmente críticos em um replay usando as cabeças de strategy + value. Fornece marcadores ao Tactical Viewer. |
 | `model.py` | `RAPCoachModel` | Compõe os 7 estágios. Carregado via `ModelFactory.get_model('rap')`. Dimensões inicializadas: `metadata_dim=25`, `output_dim=10`, `hidden=256`, `perception=128`. |
 | `trainer.py` | `RAPTrainer` | Driver de treinamento: loss composta (strategy + value + sparsity + position), penalidade no eixo Z, AMP, scheduler. Construído por `TrainingOrchestrator(model_type='rap')`. |
-| `conftest.py` | — | Fixtures do pytest locais a este pacote (por exemplo, fixture mínima de RAP para testes de arquitetura). |
+| `conftest.py` | — | Define `collect_ignore = ["test_arch.py"]` — exclui o utilitario de validacao da coleta do pytest. |
 | `test_arch.py` | — | Testes que verificam shapes do forward pass e fluxo de gradiente em um batch sintético mínimo. Roda em CI sem demos reais. |
 
 ## Ativação
@@ -95,4 +95,4 @@ Os testes destas invariantes vivem em `Programma_CS2_RENAN/tests/test_rap_traini
 - Orchestrator de treinamento: `backend/nn/training_orchestrator.py`
 - Smoke test / regressão: `Programma_CS2_RENAN/tests/test_rap_training_dry_run.py`
 - ncps upstream: <https://github.com/mlech26l/ncps>
-- Docs originais de arquitetura: `docs/Studies/` (volumes RAP)
+- Docs originais de arquitetura: `docs/research/` (volumes RAP)

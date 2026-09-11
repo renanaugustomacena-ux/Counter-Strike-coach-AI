@@ -50,6 +50,7 @@ The 2026-09-01 rebuild cleared all production weights; pre-rebuild checkpoints a
 | `advanced/` | **Intentional empty stub.** Original modules removed in remediation G-06. Namespace reserved for future experiments. See `advanced/README.md`. |
 | `inference/` | `GhostEngine` -- real-time prediction engine translating tick-level game state into coaching suggestions via `RAP_POSITION_SCALE`. |
 | `layers/` | `SuperpositionLayer` -- FiLM-conditioned linear layer (`y = gamma(context)*(Wx+b) + beta(context)`) with an L1 gate-sparsity loss hook and gate observability hooks. |
+| `jepa_v2/` | **JEPA v2 encoder.** Transformer-based architecture with CausalSelfAttention, RMSNorm, SwiGLU, FiLM conditioning, SIGReg regularization, and multi-horizon prediction. Config: `d_model=128`, 4 layers, 4 heads, horizons (1, 4, 16), bf16 training. |
 | `experimental/` | Canonical home of the RAP Coach implementation (`experimental/rap_coach/`): Perception, Memory, Strategy, Pedagogy, Communication, ChronovisorScanner. Gated behind `USE_RAP_MODEL`. |
 
 ## Model Architectures

@@ -24,9 +24,8 @@
 - Effettua scraping di **statistiche testuali pubblicamente visibili** dalle pagine dei giocatori
   professionisti su hltv.org
 - Recupera: Rating 2.0, K/D, KPR, DPR, ADR, KAST, HS%, Impact, Maps Played
-- Recupera sezioni trait: Firepower, Entrying, Utility
-- Recupera sotto-pagine: Clutches (1v1, 1v2, 1v3), Multikills (3k, 4k, 5k),
-  Storico rating carriera
+- Recupera dalla pagina panoramica: statistiche per ruolo (40 statistiche tra lati combined/CT/T) e punteggi di sezione (0-100, es. Firepower)
+- Recupera sotto-pagine: Individual (incl. round multikill 2k-5k e duelli di apertura), Storico rating carriera, Opponents, Clutches (conteggi per tier 1on1-1on5)
 - Scopre automaticamente gli URL dei giocatori tramite il ranking mondiale dei team HLTV (top 30 team, ~150 giocatori). Ricade su `/stats/players` se la discovery via team restituisce zero
 - Salva tutti i dati nelle tabelle `ProPlayer` + `ProPlayerStatCard` in `hltv_metadata.db`
 - Rispetta `robots.txt` e applica rate limiting tra le richieste
@@ -56,8 +55,8 @@ dell'utente con gli standard professionistici.
 |------|-------|-------|
 | `__init__.py` | 0 | Inizializzazione pacchetto (marcatore vuoto) |
 | `docker_manager.py` | 138 | Ciclo di vita container Docker/FlareSolverr: `ensure_flaresolverr()`, health-check, `stop_flaresolverr()` |
-| `flaresolverr_client.py` | 140 | Client REST per API FlareSolverr: gestione sessioni (`create_session`/`destroy_session`), `get()` tramite proxy |
-| `stat_fetcher.py` | 676 | `HLTVStatFetcher`: discovery (`fetch_top_teams`, `fetch_top_players`), parsing HTML tramite `soup.select()` inline, rate limiting tramite `CRAWL_DELAY_MIN/MAX_SECONDS`, persistenza database |
+| `flaresolverr_client.py` | 162 | Client REST per API FlareSolverr: gestione sessioni (`create_session`/`destroy_session`), `get()` tramite proxy con retry (backoff 5s/15s/45s) |
+| `stat_fetcher.py` | 969 | `HLTVStatFetcher`: discovery (`fetch_top_teams`, `fetch_top_players`), parsing HTML tramite `soup.select()` inline, rate limiting tramite `CRAWL_DELAY_MIN/MAX_SECONDS` (2-7s) + `random.uniform()` + backoff adattivo su fallimenti consecutivi, persistenza database |
 
 ---
 
@@ -143,9 +142,13 @@ dell'utente con gli standard professionistici.
    punta a `/stats/players` (nota: `/stats/players?rankingFilter=Top50` e vietato da
    `robots.txt` HLTV al 2026-04-12 — vedi stat_fetcher.py:57-108).
 4. **Fetch per giocatore**: Per ogni URL giocatore, `fetch_and_save_player()` avvia un deep crawl:
-   - Pagina panoramica: Rating 2.0, KPR, DPR, ADR, KAST, HS%, Impact, Maps Played
-   - Sezioni trait: Firepower, Entrying, Utility (analizzate dalla stessa pagina)
-   - Sotto-pagine: Clutches, Multikills, Storico carriera (richieste HTTP separate per ciascuna)
+   - Pagina panoramica: Rating 2.0, KPR, DPR, ADR, KAST, HS%, Impact, Maps Played, profilo
+     (nome reale, paese, eta), statistiche per ruolo e punteggi di sezione (analizzati dalla stessa pagina)
+   - Sotto-pagine (richiesta HTTP separata per ciascuna): Individual, Career, Opponents, Clutches.
+     Le sotto-pagine sono filtrate per data da `HLTV_STATS_START_DATE` (2021-06-01) a **oggi**,
+     calcolato al momento della richiesta (R4 MED: una data di fine hardcoded veniva usata per congelare la finestra).
+   - I conteggi multikill (2k-5k) e le statistiche dei duelli di apertura sono derivati dalla pagina Individual;
+     non esiste una sotto-pagina Multikills separata.
 5. **Parsing**: BeautifulSoup4 analizza le risposte HTML usando selettori CSS definiti inline
    in `stat_fetcher.py` tramite `soup.select()` con fallback multi-selettore (`_select_fallback()`).
 6. **Persistenza**: I dati analizzati vengono inseriti/aggiornati nelle tabelle `ProPlayer` e

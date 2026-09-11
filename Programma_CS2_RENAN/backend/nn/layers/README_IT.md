@@ -7,18 +7,18 @@
 
 ## Scopo
 
-Questo pacchetto possiede i piccoli `nn.Module` riutilizzabili da cui dipende piu di un modello del progetto. Tutto cio che e unico per una singola architettura di modello resta dentro il pacchetto di quel modello -- solo i blocchi con piu consumer vengono promossi qui.
+Questo pacchetto possiede le definizioni canoniche dei building block `nn.Module` condivisi. E stato creato durante la remediazione G-06 per consolidare implementazioni duplicate in un'unica posizione autorevole. Attualmente il suo unico occupante, `SuperpositionLayer`, e consumato dallo Strategy layer del RAP Coach.
 
 ## Inventario File
 
 | File | Scopo | Export Principali |
 |------|-------|-------------------|
 | `__init__.py` | Marcatore di pacchetto. | -- |
-| `superposition.py` | `SuperpositionLayer` -- linear layer context-gated con regolarizzazione di sparsita L1, hook di osservabilita del gate (`get_gate_statistics()`, `get_gate_activations()`) e controlli di tracing. | `SuperpositionLayer` |
+| `superposition.py` | `SuperpositionLayer` -- layer lineare con condizionamento FiLM (`y = γ(context)·(Wx+b) + β(context)`, RAP-AUDIT-06) con hook di loss per sparsita L1 del gate (`gate_sparsity_loss()`), hook di osservabilita del gate (`get_gate_statistics()`, `get_gate_activations()`) e controlli di tracing. | `SuperpositionLayer` |
 
 ## `SuperpositionLayer` in un paragrafo
 
-Una proiezione lineare standard avvolta in un gate apprendibile e condizionato dal contesto. L'output del gate e regolarizzato L1 cosicche il layer impari a tenere la maggior parte della sua capacita inattiva su un dato input, "accendendo" solo il sottospazio rilevante per lo stato corrente. Usato dal layer Strategy del RAP Coach per combinare piu sotto-policy esperte sotto una singola parametrizzazione condivisa. Fornisce hook di osservabilita cosi il trainer puo loggare la sparsita del gate per step.
+Una proiezione lineare standard modulata da Feature-wise Linear Modulation (FiLM): un gate sigmoide `γ(context)` scala la proiezione e uno shift additivo inizializzato a zero `β(context)` inietta feature guidate dal contesto (RAP-AUDIT-06 -- il precedente gate solo moltiplicativo poteva sopprimere feature ma mai aggiungerne). Ogni esperto nello Strategy layer del RAP Coach ne usa uno come primo layer adattabile al contesto. Fornisce un hook di loss per sparsita L1 del gate (`gate_sparsity_loss()`) e hook di osservabilita cosi il trainer puo loggare la sparsita del gate per step.
 
 ## Perche esiste questa directory
 
@@ -26,9 +26,9 @@ Prima della pulizia G-06, il progetto aveva brevemente due implementazioni paral
 
 ## Aggiungere un nuovo layer
 
-Un blocco appartiene qui solo quando e:
+Un blocco appartiene qui quando e:
 
-1. **Riusato da >= 2 modelli.** Un blocco usato da un singolo modello vive nel pacchetto di quel modello.
+1. **La singola definizione canonica** di un building block che non deve essere duplicato altrove (principio G-06).
 2. **Stateless rispetto alla modalita training/inferenza** oltre il classico switch `model.eval()` -- nessun registro globale, nessuno stato mutabile a livello di modulo.
 3. **Documentato in questo README.** Aggiorna la tabella di inventario file e aggiungi un riassunto di un paragrafo.
 

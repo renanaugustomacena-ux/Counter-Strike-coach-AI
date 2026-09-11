@@ -21,7 +21,7 @@ dei dati, l'accesso concorrente dai daemon e la portabilità tra macchine.
 | `db_models.py` | 25 classi tabella SQLModel che coprono l'intero modello dati |
 | `database.py` | `DatabaseManager` (monolite) + `HLTVDatabaseManager` + singleton |
 | `match_data_manager.py` | Partizioni SQLite per-partita (Tier 3) con cache engine LRU |
-| `backup_manager.py` | Backup a caldo via SQLite Online Backup API, ritenzione (ultimo + 7 giornalieri + 4 settimanali) |
+| `backup_manager.py` | Backup a caldo via SQLite Online Backup API, ritenzione (7 giornalieri incluso il piu recente + 4 settimanali) |
 | `db_backup.py` | Wrapper SQLite Online Backup API + archiviazione tar.gz per dati partita |
 | `db_migrate.py` | Esecutore migrazioni Alembic per aggiornamenti schema automatici all'avvio |
 | `maintenance.py` | Pulizia metadati: rimuove vecchi dati tick preservando le statistiche aggregate |
@@ -29,6 +29,8 @@ dei dati, l'accesso concorrente dai daemon e la portabilità tra macchine.
 | `stat_aggregator.py` | `StatCardAggregator`: output dello spider verso `ProPlayer`/`ProPlayerStatCard` |
 | `storage_manager.py` | `StorageManager`: percorsi file demo, gestione quota, deduplicazione |
 | `remote_file_server.py` | Server cloud personale FastAPI per accesso demo tra macchine |
+| `datasets/`, `models/` | Pacchetti placeholder con solo README (`__init__.py` vuoto, nessun codice) |
+| `remote_telemetry/` | Solo JSON telemetria di esempio (nessun codice) |
 
 ## Architettura Tri-Database
 
@@ -47,18 +49,20 @@ dei lock di scrittura tra daemon e mantenere bassa la profondità B-tree per par
                 v
 +-------------------------------+
 |    hltv_metadata.db (HLTV)    |
-|  3 tabelle: ProTeam,          |
-|  ProPlayer, ProPlayerStatCard |
+|  7 tabelle: ProTeam, ProPlayer|
+|  ProPlayerStatCard, ProEvent, |
+|  ProTournament, ProHead2Head, |
+|  ProMapRecord                 |
 +-------------------------------+
 
-+-------------------------------+
-|  match_data/{id}.db (Tier 3)  |
-|  Telemetria per-partita:      |
-|  MatchTickState,              |
-|  MatchEventState,             |
-|  MatchMetadata                |
-+-------------------------------+
-   Un file per partita (~1.7M righe ciascuno)
++--------------------------------------+
+|  match_data/match_{id}.db (Tier 3)   |
+|  Telemetria per-partita:             |
+|  MatchTickState,                     |
+|  MatchEventState,                    |
+|  MatchMetadata                       |
++--------------------------------------+
+   Un file per partita
 ```
 
 ### PRAGMA di Connessione (applicate ad ogni checkout)
@@ -90,8 +94,16 @@ Accesso singleton: **sempre** usare `get_db_manager()` (double-checked locking).
 ### HLTVDatabaseManager (`database.py`)
 
 Manager dedicato per `hltv_metadata.db`, isolato per evitare contesa WAL con i daemon
-del session engine. Include `_reconcile_stale_schema()` che elimina e ricrea le tabelle
-le cui colonne si sono disallineate dalla definizione del modello.
+del session engine. Include `_reconcile_stale_schema()` che riconcilia le tabelle il cui
+set di colonne si e disallineato dalla definizione del modello: il drift additivo (il
+modello ha nuove colonne, tutte le colonne DB esistenti sono ancora nel modello) viene
+gestito tramite `ALTER TABLE ADD COLUMN` in loco (righe preservate); il drift non-additivo
+(colonne tipizzate/rinominate/rimosse) rinomina la tabella in `<nome>_stale_<ts>` (dati
+preservati per recupero manuale) e la ricrea da zero. Le tabelle orfane assenti da
+`_HLTV_TABLES` vengono eliminate, ma gli snapshot `*_stale_*` non vengono mai toccati.
+`hltv_metadata.db` NON e ancora sotto Alembic -- il suo schema evolve solo tramite
+`create_all()` piu questa riconciliazione (item backlog #47 in `TASKS.md` traccia
+il passaggio sotto Alembic, differito alla Fase G7).
 
 Accesso singleton: `get_hltv_db_manager()`.
 
@@ -105,6 +117,7 @@ e `MatchMetadata`. Funzionalità:
 - Auto-migrazione via `_ensure_match_schema()` (passi incrementali `ALTER TABLE`)
 - Filtro `tables=` su `create_all()` per impedire che tabelle monolite finiscano nei DB partita
 - Utility di migrazione `migrate_match_data()` per rilocare dati su dischi esterni
+  (solo chiamata esplicita -- nulla la invoca implicitamente)
 
 ### StateManager (`state_manager.py`)
 
@@ -119,9 +132,13 @@ di risorse. Funzionalità:
 ### BackupManager (`backup_manager.py`)
 
 Backup a caldo usando l'Online Backup API di SQLite (`sqlite3.Connection.backup()` a
-`backup_manager.py:81-89`), WAL-safe e non-bloccante. Politica di
-ritenzione: mantiene l'ultimo + 7 giornalieri + 4 settimanali. Ogni backup è verificato
-con `PRAGMA quick_check` prima dell'accettazione.
+`backup_manager.py:119`), WAL-safe e non-bloccante. Politica di
+ritenzione: mantiene 7 backup giornalieri (il piu recente e sempre mantenuto) + 4
+settimanali. Ogni backup e verificato con `PRAGMA quick_check` prima dell'accettazione.
+Protezione dimensione (ST-BK-01, 2026-08-03): rifiuta di eseguire il backup di un
+database piu grande di 50 GiB (override tramite `CS2_BACKUP_MAX_DB_BYTES`) o quando
+lo spazio libero e inferiore a 1.2x la dimensione del database -- il monolite puo
+essere di centinaia di GB.
 
 ### StorageManager (`storage_manager.py`)
 
@@ -136,7 +153,7 @@ Il modulo definisce 25 classi tabella SQLModel organizzate in gruppi logici:
 - **Telemetria giocatore:** `PlayerMatchStats`, `PlayerTickState`, `RoundStats`, `PlayerProfile`
 - **Framework di coaching:** `CoachState`, `CoachingInsight`, `CoachingExperience` (COPER)
 - **Base di conoscenza:** `TacticalKnowledge` (RAG, embedding 384-dim)
-- **Dati pro:** `ProTeam`, `ProPlayer`, `ProPlayerStatCard`
+- **Dati pro:** `ProTeam`, `ProPlayer`, `ProPlayerStatCard`, `ProEvent`, `ProTournament`, `ProHead2Head`, `ProMapRecord`
 - **Struttura partita:** `MatchResult`, `MapVeto`
 - **Dati esterni:** `Ext_TeamRoundStats`, `Ext_PlayerPlaystyle`
 - **Controllo pipeline:** `IngestionTask`, `ServiceNotification`
@@ -169,5 +186,9 @@ pipeline ingestion ──> get_match_data_manager() ──> match_data/{id}.db
   pipeline completamente separata.
 - **Regole cascade FK:** `ON DELETE CASCADE` per dati dipendenti (stat card, map veto);
   `ON DELETE SET NULL` per dati che devono sopravvivere all'eliminazione del genitore (tick, esperienze).
-- **Rilocalizzazione dati partita:** migrazione una tantum da `backend/storage/match_data/` a
-  `PRO_DEMO_PATH/match_data/` eseguita automaticamente al primo avvio dopo il cambio percorso.
+- **La rilocalizzazione dati partita e solo esplicita.** Nulla rilocalizza gli shard
+  automaticamente: `warn_if_shards_in_legacy_location()` logga solo un warning quando
+  gli shard rimangono nella vecchia directory in-project. Chiamare `migrate_match_data()`
+  manualmente quando la rilocalizzazione e intenzionale (la vecchia migrazione implicita
+  "una tantum" e stata rimossa il 2026-07-26 dopo che aveva spostato il corpus di shard
+  di produzione come effetto collaterale della costruzione del singleton).

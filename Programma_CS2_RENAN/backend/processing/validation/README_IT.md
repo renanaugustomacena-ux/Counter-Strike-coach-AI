@@ -1,80 +1,77 @@
-# `backend/processing/validation/` — Gate di integrità dei dati
+# `backend/processing/validation/` -- Gate di integrita dei dati
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-> **Authority:** Rule 1 (Correctness), Rule 4 (Data Persistence)
+> **Autorita:** Regola 1 (Correttezza), Regola 4 (Persistenza dei Dati)
 > **Skill:** `/correctness-check`, `/data-lifecycle-review`
 
 ## Scopo
 
-Questo package possiede i gate di validazione che proteggono ogni consumer a valle (training, inferenza, dashboard) da input malformati. I file qui girano ai confini di ingestione, ai confini di batch del training e all'avvio. Sono il punto in cui dati corrotti o non sicuri devono fallire forte e presto — la degradazione silenziosa è una linea rossa del progetto (Rule 1).
+Questo package possiede i gate di validazione che proteggono ogni consumatore a valle (training, inferenza, dashboard) da input malformati. I file qui girano ai confini di ingestione, ai confini di batch del training e all'avvio. Sono il punto in cui dati corrotti o non sicuri devono fallire forte e presto -- la degradazione silenziosa e una linea rossa del progetto (Regola 1).
 
 ## Inventario dei file
 
 | File | Modulo | Scopo | Export chiave |
-|------|--------|---------|-------------|
-| `__init__.py` | — | Re-export pubblici per il package validation. | — |
-| `dem_validator.py` | DemValidator | Valida la struttura del file `.dem` prima del parse. Impone `MIN_DEMO_SIZE = 10 MB` (invariante `DS-12`), controlla i magic byte, rifiuta file troncati. | `DemValidator`, `validate_dem_file()` |
-| `drift.py` | Drift detection | Rilevamento statistico del drift tra distribuzioni di feature dei giocatori. Confronta la distribuzione rolling delle ultime N partite con la baseline storica; segnala quando il p-value del test KS supera una soglia. | `detect_feature_drift()`, `DriftReport` |
-| `sanity.py` | Sanity check | Asserzioni runtime leggere sullo stato a livello di tick (giocatori vivi hanno HP > 0, giocatori morti hanno HP = 0, valore equipaggiamento non negativo, ...). | `assert_tick_sanity()` |
-| `schema.py` | Schema | Validatori JSON schema per l'ingestione di sorgenti tournament. | `TOURNAMENT_JSON_SCHEMA`, `validate_tournament_json()` |
+|------|--------|-------|---------------|
+| `__init__.py` | -- | Marcatore di pacchetto vuoto. | -- |
+| `dem_validator.py` | DEMValidator | Valida la struttura del file `.dem` prima del parse: integrita del nome file (metacaratteri shell, `F2-26`), pre-screening formato limiti dimensione 100 KB -- 800 MB, magic byte (`PBDEMS2` CS2 / `HL2DEMO` CSGO), controllo troncamento. Deliberatamente piu permissivo del floor di ingestione `DS-12` (`MIN_DEMO_SIZE = 10 MB`, applicato in `data_sources/demo_format_adapter.py`). | `DEMValidator`, `DEMValidationError`, `validate_dem_file()` |
+| `drift.py` | Rilevamento drift | Rilevamento statistico del drift tra distribuzioni di feature dei giocatori. Confronta una finestra rolling recente (default 10) contro la cronologia passata e segnala feature il cui z-score supera una soglia (default 2.5). `DRIFT_FEATURES` copre statistiche aggregate per partita; `TickFeatureDriftMonitor` copre il vettore di input del modello a 25-dim (`DRIFT-01`). | `detect_feature_drift()`, `DriftReport`, `DriftMonitor`, `TickFeatureDriftMonitor`, `should_retrain()` |
+| `sanity.py` | Controlli di sanita | Controlli di intervallo su DataFrame demo parsati contro la tabella dei limiti `LIMITS` (kills, deaths, assists, ADR, headshot_pct, KAST). La modalita strict solleva `ValueError`; la modalita trim clamp gli outlier e auto-ripara KAST e headshot_pct in scala percentuale (`> 1.0` -> `/100`, `P-SAN-01`). | `validate_demo_sanity()`, `validate_and_trim()` |
+| `schema.py` | Schema | Validazione strutturale versionata dell'output del demo parser (`SCHEMA_VERSION = 2`: statistiche core v1 + `accuracy`). | `get_active_schema()`, `validate_demo_schema()` |
 
 ## Dove gira ogni validatore
 
 ```
 File .dem arriva nella cartella di ingest
-    +-- DemValidator.validate_dem_file()           [dem_validator.py]
-    |     - rifiuta file < MIN_DEMO_SIZE
+    +-- validate_dem_file()                        [dem_validator.py]
+    |     - rifiuta file fuori da 100 KB - 800 MB
     |     - rifiuta file con magic byte errati
     |     - rifiuta file troncati
     |
     +-- la pipeline parsa il demo (demoparser2)
     |
-    +-- per tick: assert_tick_sanity()              [sanity.py]
-    |     - bound HP / armor / equipment_value
-    |     - coerenza stato vivo vs morto
+    +-- DataFrame parsato: validate_demo_schema()   [schema.py]
+    |     - colonne richieste + tipi per SCHEMA_VERSION
     |
-    +-- righe per tick persistite in SQLite per match
+    +-- validate_demo_sanity() / validate_and_trim() [sanity.py]
+    |     - limiti kills / deaths / assists / adr / headshot_pct / kast (LIMITS)
+    |     - strict: solleva errore, non-strict: clamp outlier
+    |
+    +-- righe tick persistite in SQLite per-partita
 
-Feed JSON di tournament
-    +-- validate_tournament_json(payload)          [schema.py]
-    |     - chiavi richieste presenti
-    |     - chiavi per mappa presenti
-    |     - coercizione safe-int (DS-04)
-
-Confine della batch di training
+Confine batch di training
     +-- detect_feature_drift(...)                  [drift.py]
-    |     - test KS sulla distribuzione rolling
-    |     - segnala feature dei giocatori sospette prima del training
+    |     - confronto z-score su finestra rolling
+    |     - segnala feature giocatore sospette prima del training
 ```
 
 ## Invarianti critiche
 
-| ID | File / riga | Invariante |
+| ID | File / Riga | Invariante |
 |----|-------------|-----------|
-| `DS-12` | `dem_validator.py` | `MIN_DEMO_SIZE = 10 MB`. File più piccoli vengono rifiutati (i demo CS2 reali sono tipicamente ≥ 50 MB). |
-| `DS-04` | `schema.py` | `_safe_int()` coerce valori JSON non numerici a `0` invece di sollevare eccezione. |
-| `P-VEC-02` / `P3-A` | `vectorizer.py` upstream | Clamp NaN / Inf + > 5 % per batch → `DataQualityError`. La validazione qui assicura che il gate upstream non possa essere aggirato. |
+| `DS-12` | `data_sources/demo_format_adapter.py` | `MIN_DEMO_SIZE = 10 MB` floor di accettazione ingestione. `dem_validator.py` e un pre-screening formato deliberatamente piu permissivo (100 KB -- 800 MB). |
+| `P-VEC-02` / `P3-A` | `vectorizer.py` upstream | Clamp NaN / Inf + > 5 % per batch -> `DataQualityError`. La validazione qui assicura che il gate upstream non possa essere aggirato. |
+| `F-0019` (chiuso 2026-08-21) | `sanity.py` `LIMITS` | Sia `headshot_pct` che `kast` hanno bande in scala rapporto (0.0 -- 1.0) ed entrambi sono colonne auto-riparanti in `_RATIO_SELF_HEAL_COLUMNS` (`P-SAN-01`). Valori superiori a 1.0 vengono divisi per 100 e clamped. |
 
 ## Convenzioni
 
-- **Fallire forte.** I validatori sollevano eccezioni tipizzate (`DemValidationError`, `SchemaValidationError`, `DataQualityError`) — mai un `None` silenzioso.
-- **Funzioni pure dove possibile.** I validatori prendono input e restituiscono un verdetto; non scrivono su disco né sul database.
-- **Logging strutturato.** Tutti i fallimenti loggano via `get_logger("cs2analyzer.validation.<module>")` con un codice di errore stabile così le dashboard possono aggregare.
-- **Controlli economici per primi.** Ordinare le asserzioni dal più economico (size, magic byte) al più costoso (test statistici) così un file rotto fallisce prima che girino i percorsi costosi.
+- **Fallire forte.** I validatori sollevano eccezioni tipizzate (`DEMValidationError`) o `ValueError` con un messaggio esplicito -- mai degradare silenziosamente.
+- **Funzioni pure dove possibile.** I validatori prendono input e restituiscono un verdetto; non scrivono su disco ne sul database.
+- **Logging strutturato.** `drift.py`, `sanity.py` e `schema.py` loggano via `get_logger("cs2analyzer.<modulo>")`; `dem_validator.py` non effettua logging e restituisce invece un verdetto esplicito `(is_valid, game_version, error_message)`.
+- **Controlli economici per primi.** Ordinare le asserzioni dal piu economico (size, magic byte) al piu costoso (test statistici) cosi un file rotto fallisce prima che girino i percorsi costosi.
 
 ## Aggiungere un nuovo validatore
 
 1. Inserirlo in questo package, un file per concern.
-2. Definire una classe di eccezione tipizzata (`<Domain>ValidationError`) e usarla per tutte le modalità di fallimento — mai sollevare `RuntimeError`.
+2. Definire una classe di eccezione tipizzata (`<Domain>ValidationError`) e usarla per tutte le modalita di fallimento -- mai sollevare `RuntimeError`.
 3. Aggiungere una riga alla tabella inventario qui sopra con uno scopo in una riga.
 4. Cablarlo nella pipeline al **primo** confine in cui il dato sbagliato potrebbe arrivare.
-5. Fornire un unit test in `Programma_CS2_RENAN/tests/test_<domain>_validation.py`.
+5. Fornire un unit test in `Programma_CS2_RENAN/tests/` (es. `test_dem_validator.py`, `test_drift_and_heuristics.py`).
 
 ## Da non fare
 
-- Non coercere silenziosamente input malformati in valori "best-effort" senza registrare la deviazione in `DataLineage` / `DataQualityMetric`. La coercizione silenziosa viola Rule 1.
-- Non duplicare `MIN_DEMO_SIZE`. La costante vive qui; tutti gli altri lo importano.
+- Non coercere silenziosamente input malformati in valori "best-effort" senza registrare la deviazione in `DataLineage` / `DataQualityMetric`. La coercizione silenziosa viola Regola 1.
+- Non duplicare `MIN_DEMO_SIZE`. La costante vive in `data_sources/demo_format_adapter.py`; tutti gli altri la importano.
 - Non usare i validatori per controlli speculativi a tempo di inferenza ("se il dato sembra strano, salta"). I validatori decidono; il codice a valle rispetta la decisione.
 
 ## Correlati

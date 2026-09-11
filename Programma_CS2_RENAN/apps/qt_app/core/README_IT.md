@@ -16,28 +16,29 @@ I moduli qui sono framework-aware (importano da `PySide6`) ma sono agnostici ris
 | File | Scopo |
 |------|-------|
 | `__init__.py` | Marcatore di pacchetto. |
-| `animation.py` | Primitive di animazione Qt riutilizzabili (wrapper `QPropertyAnimation`, preset di easing, helper parallel/sequence). |
-| `app_state.py` | Singleton di stato a livello applicativo -- schermata corrente, tema, lingua, hub di segnali per broadcast cross-screen. |
-| `design_tokens.py` | Design token tematizzati CS2 (colori, spaziature, dimensioni tipografiche) consumati da `qss_generator.py`. |
-| `easing.py` | Curve di easing nominate (`ease_out_cubic`, `ease_in_out_quart`, ecc.) che supportano `animation.py`. |
+| `animation.py` | Helper di animazione Qt riutilizzabili basati su `QPropertyAnimation` (fade, slide, pulse, stagger-reveal, collapse-width, count-up, ring-sweep; default 200 ms). Kill-switch globale: `animations_enabled()` restituisce False quando `MACENA_UI_ANIMATIONS=0`. |
+| `app_state.py` | Singleton `AppState` -- interroga la riga DB `CoachState` ogni 10 s su un Worker in background e emette Signal change-only (stato del servizio, training, notifiche); inoltre persiste le impostazioni toggle dell'UI (suoni, finestra frameless, backend heatmap/marquee). |
+| `design_tokens.py` | Design token tematizzati (dataclass frozen CS2 / CSGO / CS1.6) consumati da `qss_generator.py` -- GENERATI da `design/tokens/design-tokens.json` tramite `tools/gen_design_tokens.py`. |
+| `easing.py` | Classe `Easing` -- alias `QEasingCurve` nominati (`Easing.OutCubic`, `Easing.OutBack`, ...) che portano il set di easing Remotion, piu `Easing.cubic_bezier(x1, y1, x2, y2)`. |
 | `i18n_bridge.py` | `QtLocalizationManager` -- tupla di lingue `("en", "pt", "it")` (riga 49), caricamento JSON da `assets/i18n/`, hot-swap al cambio di lingua. |
-| `icons.py` | Registro di icone SVG con override di colore theme-aware. |
-| `match_utils.py` | Helper puri per la formattazione dei metadati di match (data, nome mappa, punteggio). |
-| `qss_generator.py` | Genera Qt Style Sheet a partire da `design_tokens.py` + il tema attivo. |
+| `icons.py` | `IconProvider` -- percorso primario SVG-sprite (`design/assets/icons/sprite.svg`) con fallback `QPainterPath` disegnato a mano; il flag `USE_SVG_ICONS` forza il fallback per il debug. |
+| `match_utils.py` | Helper per i match: `extract_map_name` / `map_short_name` da nomi di file demo (mappe note SSOT in `core/known_maps.py`) e `count_personal_and_pro`. |
+| `qss_generator.py` | Renderizza `themes/base.qss.template` con sostituzione di token da `design_tokens.py` -- un foglio di stile in cache per tema. |
 | `qt_playback_engine.py` | Driver di playback Qt-nativo che incapsula `core/playback_engine.PlaybackEngine` con avanzamento tick guidato da `QTimer`. |
-| `sound.py` | Audio di notifica (toast, achievement). Caricamento lazy; degrada silenziosamente se il backend audio non e disponibile. |
-| `svg_icon_provider.py` | `QQmlImageProvider` per icone SVG -- usato dalla web view embedded. |
-| `theme_engine.py` | Commuta tra i temi CS2 / CSGO / CS1.6, emette il segnale `themeChanged`. |
-| `typography.py` | Registrazione font (Roboto, fallback monospaziato), scala dimensione font legata al setting `FONT_SIZE`. |
-| `web_bridge.py` | Bridge bidirezionale tra Qt e la `web/tactical-viewer/` embedded (TypeScript) -- slot e segnali `QWebChannel`. |
-| `widgets_helpers.py` | Piccoli helper di convenienza Qt (centred-on-screen, find-ancestor, signal-disconnect-all). |
-| `worker.py` | Pattern worker `QThread` con supporto per cancellazione -- usato dai ViewModel per il caricamento in background. |
+| `sound.py` | `SoundManager` -- quattro `QSoundEffect` WAV precaricati (click, success, error, notification) da `PHOTO_GUI/sounds/`, controllati da `AppState.sounds_enabled` (default off); file mancanti avvisano una volta. |
+| `svg_icon_provider.py` | `SvgIconProvider` -- factory di `QIcon` basata su sprite, scambiabile con il provider `QPainterPath` tramite `USE_SVG_ICONS` in `icons.py`. |
+| `theme_engine.py` | Commuta tra i temi CS2 / CSGO / CS1.6, emette `theme_changed` (signal di istanza + relay a livello di modulo); registra font e risolve wallpaper (inclusa una sentinella `WALLPAPER_SLIDESHOW` per la rotazione crossfade di 2 minuti tramite `_BackgroundWidget`); `rating_color()` / `rating_label()` e helper di severita (WCAG 1.4.1). |
+| `tray.py` | Integrazione system-tray: `build_tray()` crea l'icona tray (dipinta a runtime dai design token) con tre azioni sempre presenti (Open Macena, AI Coach, Quit) piu una voce condizionale CLI Console (solo layout sorgente Windows); restituisce `None` quando il system tray non e disponibile. |
+| `typography.py` | Scala di ruoli tipografici e helper per-ruolo (sans: Roboto, display: Space Grotesk, mono: JetBrains Mono); le dimensioni vengono lette da `get_tokens()`. |
+| `web_bridge.py` | `MarqueeBridge` (QObject) -- bridge `QWebChannel` bidirezionale tra Qt e le web app embedded (`web/`). |
+| `widgets_helpers.py` | Piccoli helper di convenienza Qt basati sul template QSS (`make_button`, `navigate_to`). |
+| `worker.py` | `Worker` (`QRunnable`) + `WorkerSignals` (result / error / finished, piu progress opt-in tramite `wants_progress=True`) eseguiti su `QThreadPool` -- usato dai ViewModel per il caricamento in background. |
 
 ## Concetti chiave
 
 ### Singleton di stato applicativo (`app_state.py`)
 
-Centralizza i broadcast cross-screen. I ViewModel emettono attraverso `app_state.bus`, le schermate sottoscrivono. Evita l'alternativa di cablare ogni schermata direttamente a ogni altra schermata.
+`AppState` (tramite `get_app_state()`) interroga la riga di database `CoachState` ogni 10 secondi su un `Worker` in background e emette Signal tipizzati e change-only (stato del servizio, avanzamento parsing, training, notifiche). Le schermate si connettono in `on_enter()` invece di interrogare il database direttamente.
 
 ### Tupla di localizzazione (`i18n_bridge.py:49`)
 
@@ -45,7 +46,7 @@ La lista delle lingue e `("en", "pt", "it")` -- la **singola sorgente di verita*
 
 ### Theme engine (`theme_engine.py`)
 
-Tre temi (CS2 / CSGO / CS1.6). Lo switch emette `themeChanged`; `qss_generator.py` rigenera lo style sheet; ogni widget sottoscritto a `setStyleSheet()` raccoglie il cambiamento senza riavvio.
+Tre temi (CS2 / CSGO / CS1.6). Lo switch emette `theme_changed`; il foglio di stile viene rigenerato da `themes/base.qss.template` tramite sostituzione token di `qss_generator.py` e riapplicato a livello applicativo senza riavvio.
 
 ## Integrazione
 

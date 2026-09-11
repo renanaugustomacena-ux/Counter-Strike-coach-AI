@@ -22,7 +22,7 @@ Durante la fase di remediazione G-06, un audit del codice morto ha rivelato che 
 Le funzionalità sopravvissute sono migrate nelle posizioni canoniche prima di G-06:
 
 - **SuperpositionLayer** -- `backend/nn/layers/superposition.py`. Il layer lineare canonico con gating contestuale, regolarizzazione L1 di sparsità, hook di osservabilità dei gate (`get_gate_statistics()`, `get_gate_activations()`) e controlli di tracciamento. Utilizzato dallo Strategy layer del RAP Coach.
-- **Orchestrazione BrainBridge** -- Assorbita in `backend/nn/rap_coach/model.py` (`RAPCoachModel`). Il modello stesso gestisce il coordinamento tra i livelli perception, memory, strategy, pedagogy e communication.
+- **Orchestrazione BrainBridge** -- Assorbita in `backend/nn/experimental/rap_coach/model.py` (`RAPCoachModel`). Il modello stesso gestisce il coordinamento tra i livelli perception, memory, strategy, pedagogy e communication.
 - **Feature engineering** -- `backend/processing/feature_engineering/vectorizer.py` (`FeatureExtractor`). Questa è l'unica fonte di verità per il vettore di feature a 25 dimensioni (`METADATA_DIM = 25`). Non deve mai esistere una seconda implementazione.
 
 ## Perché il Namespace è Preservato
