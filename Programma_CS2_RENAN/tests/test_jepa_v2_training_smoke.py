@@ -12,7 +12,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 import torch
-from safetensors.torch import save_file
 
 from Programma_CS2_RENAN.backend.nn import persistence
 from Programma_CS2_RENAN.backend.nn.config import set_global_seed
@@ -21,6 +20,7 @@ from Programma_CS2_RENAN.backend.nn.jepa_v2.encoder import EncoderV2
 from Programma_CS2_RENAN.backend.nn.jepa_v2.sampler import ShardIndex, WindowSampler, probe_batch
 from Programma_CS2_RENAN.backend.nn.jepa_v2.telemetry import Telemetry
 from Programma_CS2_RENAN.backend.nn.jepa_v2.trainer import JepaV2Trainer, cosine_lr
+from Programma_CS2_RENAN.tests.jepa_v2_synth import episode_spec, write_synthetic_shard
 
 pytestmark = pytest.mark.timeout(120)
 
@@ -54,31 +54,28 @@ def _write_shard(
     length: int,
     demo_id: int = 0,
 ) -> None:
-    """Write a synthetic safetensors shard with varied labels."""
-    rng = np.random.default_rng(42 + demo_id)
-    x_num = torch.from_numpy(rng.standard_normal((length, 21)).astype(np.float32))
-    x_num[:, 0] = 100.0
-    x_num[:, 8] = 0.0
-    x_cat = torch.zeros(length, 3, dtype=torch.int64)
-    x_cat[:, 0] = demo_id % 10
-    x_cat[:, 2] = demo_id % 2
-
-    labels_round = torch.zeros(length, 3)
-    round_won = float(demo_id % 2)
-    labels_round[:, 0] = round_won
-    labels_round[length // 2 :, 0] = 1.0 - round_won
-    labels_round[:, 1] = float((demo_id + 1) % 2)
-    labels_round[:, 2] = float(demo_id % 2)
-    labels_mask = torch.ones(length)
-
-    save_file(
-        {
-            "x_num": x_num,
-            "x_cat": x_cat,
-            "labels_round": labels_round,
-            "labels_mask": labels_mask,
-        },
-        str(path),
+    """Write a D-11 shard with two episodes (one per player) and varied labels."""
+    write_synthetic_shard(
+        path,
+        [
+            episode_spec(
+                length // 2,
+                round_number=1,
+                player_idx=0,
+                round_won=float(demo_id % 2),
+                opening_death=float((demo_id + 1) % 2),
+                side_is_ct=float(demo_id % 2),
+            ),
+            episode_spec(
+                length - length // 2,
+                round_number=2,
+                player_idx=1,
+                round_won=1.0 - float(demo_id % 2),
+                opening_death=float(demo_id % 2),
+                side_is_ct=1.0 - float(demo_id % 2),
+            ),
+        ],
+        seed=42 + demo_id,
     )
 
 
