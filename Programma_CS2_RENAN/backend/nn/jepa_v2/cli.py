@@ -38,6 +38,12 @@ def run_jepa_v2(args: Any) -> bool:
     if getattr(args, "dry_run", False):
         cfg = dataclasses.replace(cfg, steps=60, probe_every=20)
         log.info("dry_run: capped steps=%d probe_every=%d", cfg.steps, cfg.probe_every)
+    steps_override = getattr(args, "steps", None)
+    if steps_override:
+        cfg = dataclasses.replace(cfg, steps=int(steps_override))
+    probe_every_override = getattr(args, "probe_every", None)
+    if probe_every_override:
+        cfg = dataclasses.replace(cfg, probe_every=int(probe_every_override))
     cfg.validate()
 
     seed = getattr(args, "seed", None) or cfg.seed
@@ -45,7 +51,9 @@ def run_jepa_v2(args: Any) -> bool:
 
     device = get_device()
 
-    data_dir = get_setting("JEPA_V2_DATA_DIR", "/data/PROIECT/cs2_v2")
+    data_dir = getattr(args, "data_dir", None) or get_setting(
+        "JEPA_V2_DATA_DIR", "/data/PROIECT/cs2_v2"
+    )
     log.info("JEPA v2 data dir: %s", data_dir)
 
     train_index = ShardIndex(data_dir, "train")
@@ -89,9 +97,12 @@ def run_jepa_v2(args: Any) -> bool:
         run_dir=run_dir,
     )
 
-    resumed = trainer.load_full_checkpoint()
-    if resumed:
-        log.info("Resumed from step %d", trainer.step)
+    if getattr(args, "no_resume", False):
+        log.info("no_resume: starting from fresh weights")
+    else:
+        resumed = trainer.load_full_checkpoint()
+        if resumed:
+            log.info("Resumed from step %d", trainer.step)
 
     success = trainer.run(train_sampler)
 
@@ -108,6 +119,11 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--no-tensorboard", action="store_true")
     parser.add_argument("--tb-logdir", type=str, default=None)
+    parser.add_argument("--data-dir", type=str, default=None, help="export root (default: setting)")
+    parser.add_argument("--steps", type=int, default=None, help="override JepaV2Config.steps")
+    parser.add_argument("--probe-every", type=int, default=None, help="override probe cadence")
+    parser.add_argument("--dry-run", action="store_true", help="60 steps, probe every 20")
+    parser.add_argument("--no-resume", action="store_true", help="ignore an existing jepa_v2_full")
     args = parser.parse_args()
     success = run_jepa_v2(args)
     raise SystemExit(0 if success else 3)
