@@ -174,6 +174,7 @@ class TestCheckpointNameResolution:
             "vl-jepa": "vl_jepa_brain",
             "rap": "rap_coach",
             "role_head": "role_head",
+            "jepa_v2": "jepa_v2_encoder",
         }
         for model_type, expected_name in expected.items():
             actual = ModelFactory.get_checkpoint_name(model_type)
@@ -200,6 +201,7 @@ class TestTypeConstants:
         assert ModelFactory.TYPE_VL_JEPA == "vl-jepa"
         assert ModelFactory.TYPE_RAP == "rap"
         assert ModelFactory.TYPE_ROLE_HEAD == "role_head"
+        assert ModelFactory.TYPE_JEPA_V2 == "jepa_v2"
 
     def test_all_constants_produce_valid_models(self):
         """Every TYPE_* constant must be a valid input to get_model (with available deps)."""
