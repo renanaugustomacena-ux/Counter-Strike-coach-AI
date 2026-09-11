@@ -593,11 +593,16 @@ def _apply_profile(episodes: List[Dict[str, Any]], profile: str, seed: int) -> L
         for ep in episodes:
             pidx = ep["player_idx"]
             by_player.setdefault(pidx, []).append(ep)
+        # Seeded random choice (not the longest): the longest episodes are the
+        # rounds the player survived, which starves the death labels (A17/A18).
         result: List[Dict[str, Any]] = []
         for pidx in sorted(by_player):
-            eps = by_player[pidx]
-            eps.sort(key=lambda e: len(e["df"]), reverse=True)
-            result.extend(eps[:8])
+            eps = sorted(by_player[pidx], key=lambda e: e["tick_start"])
+            if len(eps) > 8:
+                rng = np.random.default_rng(seed * 1_000_003 + pidx)
+                keep = sorted(rng.choice(len(eps), size=8, replace=False).tolist())
+                eps = [eps[i] for i in keep]
+            result.extend(eps)
         return result
 
     if profile == "sample":
