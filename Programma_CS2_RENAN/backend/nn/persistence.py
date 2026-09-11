@@ -29,6 +29,10 @@ class StaleCheckpointError(RuntimeError):
     """
 
 
+class SchemaMismatchError(StaleCheckpointError):
+    """Schema-fingerprint drift between a v2 sidecar and the running CS2_V2 (§2.3)."""
+
+
 def get_model_path(version, user_id=None):
     if user_id:
         target_dir = BASE_NN_DIR / user_id
@@ -142,6 +146,28 @@ def _build_current_meta() -> dict:
     }
 
 
+def _current_schema_meta() -> dict:
+    """Snapshot of the running v2 schema for sidecar comparison (§2.3, D-09).
+
+    Lazy import: ``schema_v2.CS2_V2`` is built by a concurrent agent and
+    may not exist yet.  ImportError → SchemaMismatchError so callers get
+    a clear signal instead of a traceback.
+    """
+    try:
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.schema_v2 import CS2_V2
+    except ImportError as exc:
+        raise SchemaMismatchError(
+            "Cannot validate v2 sidecar: schema_v2.CS2_V2 is not available "
+            f"({exc}). The feature-engineering schema module may not be "
+            "deployed yet."
+        ) from exc
+    return {
+        "schema_fingerprint": CS2_V2.fingerprint(),
+        "numeric_dim": CS2_V2.numeric_dim,
+        "categorical_vocab_sizes": list(CS2_V2.categorical_vocab_sizes),
+    }
+
+
 def _validate_loaded_meta(meta: dict, checkpoint_path: Path) -> None:
     """Raise StaleCheckpointError if the sidecar says the checkpoint was trained
     against a different feature schema than the code currently expects.
@@ -156,11 +182,38 @@ def _validate_loaded_meta(meta: dict, checkpoint_path: Path) -> None:
     )
 
     got_ver = meta.get("schema_version")
+
+    if got_ver == "v2":
+        running = _current_schema_meta()
+        got_fp = meta.get("schema_fingerprint")
+        if got_fp != running["schema_fingerprint"]:
+            raise SchemaMismatchError(
+                f"GAP-07/v2: schema_fingerprint {got_fp!r} in {checkpoint_path} "
+                f"differs from running {running['schema_fingerprint']!r}. "
+                "Retrain required."
+            )
+        got_ndim = meta.get("numeric_dim")
+        if got_ndim != running["numeric_dim"]:
+            raise SchemaMismatchError(
+                f"GAP-07/v2: numeric_dim={got_ndim} in {checkpoint_path} "
+                f"but running schema has {running['numeric_dim']}. "
+                "Retrain required."
+            )
+        got_vocab = meta.get("categorical_vocab_sizes")
+        if list(got_vocab or []) != list(running["categorical_vocab_sizes"]):
+            raise SchemaMismatchError(
+                f"GAP-07/v2: categorical_vocab_sizes={got_vocab} in "
+                f"{checkpoint_path} but running schema has "
+                f"{running['categorical_vocab_sizes']}. Retrain required."
+            )
+        return
+
     if got_ver != _META_SCHEMA_VERSION:
         raise StaleCheckpointError(
             f"GAP-07: sidecar schema_version={got_ver!r} for {checkpoint_path} "
             f"does not match current {_META_SCHEMA_VERSION!r}. Retrain required."
         )
+
     got_dim = meta.get("metadata_dim")
     if got_dim != METADATA_DIM:
         raise StaleCheckpointError(
@@ -181,21 +234,31 @@ def _validate_loaded_meta(meta: dict, checkpoint_path: Path) -> None:
         )
 
 
-def save_nn(model, version, user_id=None, extra_meta: Optional[dict] = None):
+def save_nn(
+    model,
+    version,
+    user_id=None,
+    extra_meta: Optional[dict] = None,
+    schema_meta: Optional[dict] = None,
+):
     """Save model checkpoint with atomic write to prevent corruption on crash.
 
-    GAP-07: also writes a `.pt.meta.json` sidecar capturing the feature-schema
-    and normalizer config used at training time. load_nn() validates this
-    sidecar on read and raises StaleCheckpointError on drift — preventing the
-    silent train/serve skew that previously occurred when heuristic_config.json
-    was edited after training.
+    GAP-07: also writes a ``.pt.meta.json`` sidecar capturing the feature-schema
+    and normalizer config used at training time.  ``load_nn()`` validates this
+    sidecar on read and raises ``StaleCheckpointError`` on drift.
+
+    When *schema_meta* is supplied the sidecar uses the v2 envelope
+    (§2.3, D-09) instead of the v1 layout built by ``_build_current_meta``.
 
     Args:
         model: torch.nn.Module — state_dict is serialized.
         version: model version identifier (e.g. "jepa_brain", "rap_coach").
         user_id: optional per-user scope; None → global checkpoint dir.
-        extra_meta: optional dict of additional metadata to persist (e.g.
-            EMA step, training epoch, optimizer kind). Must be JSON-serializable.
+        extra_meta: optional dict of additional metadata to persist.
+        schema_meta: when given, top-level keys ``schema_version``,
+            ``schema_id``, ``schema_fingerprint``, ``numeric_dim``, and
+            ``categorical_vocab_sizes`` are written verbatim and the v1
+            ``_build_current_meta`` path is skipped entirely.
     """
     path = get_model_path(version, user_id)
     tmp_path = path.with_suffix(".pt.tmp")
@@ -203,9 +266,13 @@ def save_nn(model, version, user_id=None, extra_meta: Optional[dict] = None):
     tmp_sidecar = sidecar.with_suffix(".json.tmp")
     try:
         torch.save(model.state_dict(), tmp_path)
-        meta = _build_current_meta()
-        if extra_meta:
-            meta["extra"] = extra_meta
+        if schema_meta is not None:
+            meta = dict(schema_meta)
+            meta["extra"] = extra_meta or {}
+        else:
+            meta = _build_current_meta()
+            if extra_meta:
+                meta["extra"] = extra_meta
         tmp_sidecar.write_text(json.dumps(meta, indent=2, sort_keys=True))
         # Promote both files to final names — checkpoint first so consumers
         # never see a sidecar without its matching weights.

@@ -12,6 +12,8 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.nn.orchestrator")
 
+_LEGACY_TRAIN_TYPES = frozenset({"jepa", "vl-jepa", "rap", "rap-lite"})
+
 
 def _flush_all_loggers() -> None:
     """Force-flush all logging handlers to prevent silent loss on process kill."""
@@ -138,6 +140,16 @@ class TrainingOrchestrator:
             self._use_vl = False
         else:
             raise ValueError(f"Unknown model type: {model_type}")
+
+        # CORREZIONE_NUCLEO_NEURALE Parte III §1.1 — freeze legacy training.
+        if model_type in _LEGACY_TRAIN_TYPES and not get_setting(
+            "ALLOW_LEGACY_NEURAL_TRAINING", default=False
+        ):
+            raise RuntimeError(
+                f"{model_type!r} training is frozen (CORREZIONE_NUCLEO_NEURALE Parte I §4-5): "
+                "the objective is degenerate at B=1 / 1-tick horizon. Use model_type='jepa_v2' "
+                "or set ALLOW_LEGACY_NEURAL_TRAINING=True for A/B baselines only."
+            )
 
     def _warn_no_gpu(self):
         """Emit GPU-absent warning so user knows training will be slow."""

@@ -56,6 +56,31 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_integration)
 
 
+@pytest.fixture(autouse=True)
+def _allow_legacy_neural_training(request, monkeypatch):
+    """D-01: let existing tests construct legacy TrainingOrchestrator types.
+
+    Every module except test_legacy_frozen gets ALLOW_LEGACY_NEURAL_TRAINING=True
+    injected via a delegating wrapper on get_setting, so tests that fully replace
+    get_setting with their own side_effect are unaffected — they must handle the
+    key themselves.
+    """
+    if request.module.__name__.endswith("test_legacy_frozen"):
+        yield
+        return
+    from Programma_CS2_RENAN.core import config
+
+    real = config.get_setting
+    monkeypatch.setattr(
+        config,
+        "get_setting",
+        lambda key, default=None: (
+            True if key == "ALLOW_LEGACY_NEURAL_TRAINING" else real(key, default)
+        ),
+    )
+    yield
+
+
 @pytest.fixture
 def in_memory_db():
     """Create an isolated in-memory SQLite database with all tables.

@@ -847,12 +847,23 @@ print("\n[Phase 6e] Training Pipeline Smoke")
 
 def verify_training_orchestrator_init():
     """Verify TrainingOrchestrator can be instantiated with a mock manager."""
-    from unittest.mock import MagicMock
+    from unittest.mock import MagicMock, patch
 
     from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
+    from Programma_CS2_RENAN.core import config as _cfg
+
+    real_get_setting = _cfg.get_setting
+
+    def _lift_freeze(key, default=None):
+        # The legacy JEPA is frozen by default (CORREZIONE Parte III §1.1); this smoke
+        # only checks that the orchestrator still constructs, so lift the gate here.
+        if key == "ALLOW_LEGACY_NEURAL_TRAINING":
+            return True
+        return real_get_setting(key, default)
 
     mock_manager = MagicMock()
-    orch = TrainingOrchestrator(manager=mock_manager, model_type="jepa", max_epochs=1)
+    with patch("Programma_CS2_RENAN.core.config.get_setting", side_effect=_lift_freeze):
+        orch = TrainingOrchestrator(manager=mock_manager, model_type="jepa", max_epochs=1)
     if not hasattr(orch, "device"):
         raise AssertionError("TrainingOrchestrator missing 'device' attribute")
     if not hasattr(orch, "run_training"):

@@ -1014,7 +1014,9 @@ class TestTrainDriftWiring(TestPrepareTensorBatchJEPA):
         import Programma_CS2_RENAN.core.config as cfg
 
         def _setting(key, default=None):
-            return True if key == "DRIFT_RETRAIN_ENABLED" else default
+            if key in ("DRIFT_RETRAIN_ENABLED", "ALLOW_LEGACY_NEURAL_TRAINING"):
+                return True
+            return default
 
         monkeypatch.setattr(cfg, "get_setting", _setting)
         orch = _make_orchestrator(model_type="jepa")

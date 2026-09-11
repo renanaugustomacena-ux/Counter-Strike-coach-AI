@@ -1,25 +1,29 @@
 #!/bin/bash
 # Macena CS2 Analyzer — full-cycle AI training.
 #
-# Runs run_full_training_cycle.py across every architecture enabled in
-# user_settings.json:
-#   - JEPA   (USE_JEPA_MODEL, always)
-#   - RAP    (USE_RAP_MODEL, soft-gated by coach_manager.check_maturity_gate — 50 demos)
+# Runs run_full_training_cycle.py.
+#
+# --model-type is REQUIRED. Choices:
+#   jepa_v2   — JEPA v2 pre-training (wave-2 module; exits 1 if not yet available)
+#   coach_v2  — Coach v2 (not yet implemented; raises NotImplementedError)
+#   all       — jepa_v2 then coach_v2 (currently fails until coach_v2 lands in step 6)
+#   jepa      — Legacy JEPA (requires ALLOW_LEGACY_NEURAL_TRAINING=True)
+#   rap       — Legacy RAP  (requires ALLOW_LEGACY_NEURAL_TRAINING=True + USE_RAP_MODEL=True)
+#
 # Checkpoints land in Programma_CS2_RENAN/models/.
 # TensorBoard events land in Programma_CS2_RENAN/runs/ (see RUNS_DIR in config).
 #
 # Env overrides:
-#   EPOCHS=30 ./train.sh                 # cap at 30 epochs instead of 100
-#   MODEL_TYPE=jepa ./train.sh           # JEPA only (skip RAP)
+#   EPOCHS=30 ./train.sh --model-type jepa_v2   # cap at 30 epochs
+#   MODEL_TYPE=jepa_v2 ./train.sh               # via env (fallback to 'all' if unset)
 #
 # Usage:
-#   ./train.sh                           # all models, default 100 epochs
-#   ./train.sh -d | --dry-run            # 1-epoch smoke test
-#   ./train.sh -r | --resume             # resume from latest checkpoint
-#   ./train.sh -e 30 | --epochs 30       # cap epochs (overrides env)
-#   ./train.sh -m jepa | --model-type jepa   # pick a model subset
-#   ./train.sh -t PATH | --tb-logdir PATH    # TensorBoard log directory
-#   ./train.sh -T | --no-tensorboard     # disable TensorBoard
+#   ./train.sh --model-type jepa_v2              # v2 pre-training
+#   ./train.sh -d --model-type jepa_v2           # 1-epoch smoke test
+#   ./train.sh -e 30 --model-type jepa_v2        # cap epochs (overrides env)
+#   ./train.sh -m jepa --model-type jepa         # legacy JEPA (gated)
+#   ./train.sh -t PATH --model-type jepa_v2      # TensorBoard log directory
+#   ./train.sh -T --model-type jepa_v2           # disable TensorBoard
 #
 # Short flags are rewritten to the canonical long form before forwarding to
 # run_full_training_cycle.py (whose argparse only declares long options).

@@ -83,3 +83,20 @@ class TestEmaDrift:
         near = compute_ema_drift(p, [torch.full((4, 4), 0.1)])
         far = compute_ema_drift(p, [torch.full((4, 4), 1.0)])
         assert far > near > 0.0
+
+
+class TestIsotropicGaussianRankMe:
+    """Isotropic Gaussian should have effective_rank ~ D (measured 255.4/256).
+
+    CORREZIONE_NUCLEO_NEURALE Parte III entry 12.12.
+    """
+
+    def test_gaussian_effective_rank(self):
+        torch.manual_seed(0)
+        d = 64
+        n = 4096
+        z = torch.randn(n, d)
+        m = compute_collapse_metrics(z)
+        assert (
+            m["effective_rank"] >= 0.95 * d
+        ), f"effective_rank={m['effective_rank']}, expected >= {0.95 * d}"
