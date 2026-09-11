@@ -57,6 +57,20 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_checkpoint_dir(tmp_path, monkeypatch):
+    """Never let a test write into the real models/ directory.
+
+    save_nn/load_nn resolve paths through persistence.BASE_NN_DIR; pointing it at
+    tmp_path keeps every checkpoint and hash-registry write out of the repository.
+    Reads of shipped checkpoints still work through the factory-bundle fallback.
+    """
+    from Programma_CS2_RENAN.backend.nn import persistence
+
+    monkeypatch.setattr(persistence, "BASE_NN_DIR", tmp_path / "models")
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _allow_legacy_neural_training(request, monkeypatch):
     """D-01: let existing tests construct legacy TrainingOrchestrator types.
 
