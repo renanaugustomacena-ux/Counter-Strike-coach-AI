@@ -4,7 +4,7 @@
 
 **Authority:** `Programma_CS2_RENAN/tests/` -- Comprehensive regression and correctness suite for the Macena CS2 Analyzer.
 
-The test suite contains 2,500+ tests distributed across 182 files (177 topic-organised files
+The test suite contains 2,500+ tests distributed across 193 files (177 topic-organised files
 here plus 5 in `automated_suite/`), following the test pyramid (unit > integration > e2e).
 Every subsystem -- from the 25-dim feature vector through the neural networks, coaching engine,
 database layer, and UI screens -- is covered by deterministic, reproducible assertions. Tests

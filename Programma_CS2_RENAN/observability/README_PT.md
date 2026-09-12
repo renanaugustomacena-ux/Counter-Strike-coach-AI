@@ -18,7 +18,7 @@ que qualquer dado deixe a fronteira do processo.
 
 | Arquivo | Proposito | Exports Principais |
 |---------|-----------|-------------------|
-| `logger_setup.py` | Logging estruturado JSON centralizado com IDs de correlacao | `get_logger()`, `get_tool_logger()`, `set_correlation_id()`, `configure_log_dir()`, `configure_retention()` |
+| `logger_setup.py` | Logging estruturado JSON centralizado com IDs de correlacao | `get_logger()`, `get_tool_logger()`, `set_correlation_id()`, `configure_log_dir()`, `configure_log_level()`, `configure_retention()` |
 | `rasp.py` | Guarda de integridade Runtime Application Self-Protection | `RASPGuard`, `run_rasp_audit()`, `IntegrityError` |
 | `sentry_setup.py` | Integracao SDK Sentry com duplo opt-in e limpeza de PII | `init_sentry()`, `add_breadcrumb()` |
 | `error_codes.py` | Registro centralizado de codigos de erro com severidade e remediacao | `ErrorCode`, `log_with_code()`, `get_all_codes()` |
@@ -68,8 +68,9 @@ o sistema de arquivos corrente.
 Comportamentos-chave:
 
 - **Assinatura HMAC** (`R1-12`): o manifesto em si e assinado com uma chave
-  HMAC-SHA256. Builds de producao injetam a chave via `CS2_MANIFEST_KEY`;
-  desenvolvimento recai para uma chave estatica com um warning logado (`RP-01`).
+  HMAC-SHA256 injetada via `CS2_MANIFEST_KEY`. Desenvolvimento recai para uma
+  chave estatica com um warning logado (`RP-01`); builds frozen (PyInstaller)
+  falham de forma fechada, recusando iniciar quando a chave env esta ausente.
 - **Suporte a binarios frozen**: quando executando dentro de um bundle PyInstaller,
   o manifesto e resolvido a partir de `sys._MEIPASS` com multiplos caminhos candidatos.
 - **Entry point de conveniencia**: `run_rasp_audit(project_root)` instancia a guarda,
@@ -116,9 +117,9 @@ opcional `error_code` para logging estruturado. Os subtipos incluem
 | `core/config.py` | `configure_log_dir(LOG_DIR)` apos resolucao de caminho para quebrar import circular |
 | Pipeline `ingestion/` | `get_logger()` + IDs de correlacao para rastreamento por-demo |
 | Treinamento `backend/nn/` | `get_logger()` para logging de epoch/loss; `add_breadcrumb()` nos checkpoints |
-| `apps/qt_app/` | `init_sentry()` na inicializacao da aplicacao com DSN consentido pelo usuario |
+| Opt-in Sentry | `init_sentry()` esta disponivel para wiring na inicializacao da aplicacao com um DSN consentido pelo usuario (nenhum chamador o invoca atualmente) |
 | Scripts `tools/` | `get_tool_logger()` para diagnostico isolado de ferramentas |
-| Hooks pre-commit | `run_rasp_audit()` via `tools/headless_validator.py` |
+| Hooks pre-commit | `sync_integrity_manifest.py --verify-only` verifica o manifesto; `tools/headless_validator.py` instancia `RASPGuard` na fase Security |
 
 ## Notas de Desenvolvimento
 
@@ -128,8 +129,15 @@ opcional `error_code` para logging estruturado. Os subtipos incluem
 - **Thread safety**: `_correlation_local` usa `threading.local()`, entao IDs de
   correlacao sao isolados por thread. Threads daemon no Quad-Daemon engine definem
   cada um seu proprio ID no inicio do ciclo.
+- **Rotacao e single-writer only (F-0011)**: cada logger nomeado anexa seu proprio
+  `RotatingFileHandler` ao arquivo compartilhado `cs2_analyzer.log`, entao handlers
+  concorrentes -- e especialmente processos concorrentes -- podem competir pela mesma
+  rotacao e intercalar linhas. O uso atual e single-writer; o redesign de logging
+  multiprocesso esta rastreado em `docs/OPEN_ISSUES.md` (F-0011).
 - **Testes**: nas suites de teste, `CS2_LOG_LEVEL=DEBUG` e
   `configure_log_dir(tmp_path)` redirecionam toda saida para um diretorio temporario.
   Sentry e automaticamente ignorado quando `pytest` e detectado em `sys.modules`.
-- **Pre-commit**: o hook `integrity-manifest` regenera e assina o manifesto;
-  `headless_validator.py` executa `run_rasp_audit()` para verifica-lo.
+- **Pre-commit**: o hook `integrity-manifest-check` executa
+  `sync_integrity_manifest.py --verify-only` e falha o commit se o manifesto em disco
+  divergir dos hashes calculados; execute a ferramenta sem `--verify-only` para
+  regenerar e re-assinar o manifesto.

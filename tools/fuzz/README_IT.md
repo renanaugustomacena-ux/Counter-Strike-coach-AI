@@ -7,49 +7,53 @@
 
 ## Scopo
 
-Questa directory contiene un harness di fuzz-testing per il parser di demo basato su `demoparser2`. Il suo compito e sollecitare il parser con file `.dem` malformati, troncati e ostili, e confermare che:
+Questa directory contiene un harness di fuzz-testing per la libreria `demoparser2` stessa (mappa al controllo C-SBX-02). Il suo compito e sollecitare il parser con byte di demo malformati, troncati e ostili, e confermare che:
 
 1. Il parser **non** vada in segfault, panico o blocco su input invalidi.
 2. I fallimenti emergano come eccezioni Python (catturabili, recuperabili).
-3. Il gate di pre-validazione (`MIN_DEMO_SIZE = 10 MB`, controllo magic-byte) rifiuti i file spazzatura prima che il parser li veda.
+
+Bypassa deliberatamente i gate di pre-validazione dell'app (`MIN_DEMO_SIZE = 10 MB`, controllo magic-byte) e chiama `demoparser2.DemoParser(...)` direttamente — la robustezza della libreria stessa e la superficie sotto test.
 
 ## Inventario File
 
 | File | Scopo |
 |------|-------|
 | `__init__.py` | Marcatore di pacchetto. |
-| `fuzz_demo_parser.py` | Fuzzer principale. Genera byte di demo corrotti e li passa a `backend/data_sources/demo_parser.parse_demo()`. |
+| `fuzz_demo_parser.py` | Fuzzer principale. Genera byte di demo casuali (70% con il prefisso magic `PBDEMS2\0`, fino a 64 KiB) e li passa a `demoparser2.DemoParser` + `parse_event("round_start")`. |
 
 ## Esecuzione del fuzzer
 
 ```bash
-# Singola iterazione (smoke)
-./.venv/bin/python tools/fuzz/fuzz_demo_parser.py --iterations 1
+# Esecuzione predefinita (budget di tempo 30 minuti)
+python tools/fuzz/fuzz_demo_parser.py
 
-# Fuzzing prolungato (CI / esecuzioni notturne)
-./.venv/bin/python tools/fuzz/fuzz_demo_parser.py --iterations 10000 \
-    --seed 42 --report /tmp/fuzz_report.json
+# Esecuzione breve
+python tools/fuzz/fuzz_demo_parser.py --time-budget 600 --seed 42
+
+# Riprodurre un singolo crash input (exit 1 se si riproduce)
+python tools/fuzz/fuzz_demo_parser.py --reproduce .fuzz/crashes/<hash>-<size>.dem
 ```
 
-L'harness segnala ogni modalita di fallimento osservata, con il byte-offset della corruzione e la classe di eccezione risultante.
+Quando [Atheris](https://github.com/google/atheris) e installato, l'esecuzione e coverage-guided; altrimenti ricade su un loop deterministico di input casuali (`--force-fallback` salta Atheris esplicitamente). Gli input di crash vengono scritti in `--crash-dir` (default `.fuzz/crashes/`) come `<sha256-prefix>-<size>.dem` (primi 16 caratteri hex dello SHA-256) piu un sidecar `.meta` che registra la classe dell'eccezione e il messaggio.
 
 ## Modalita di fallimento da cui il fuzzer protegge
 
 - Header troncati (il parser deve abortire in modo pulito).
 - Campi di lunghezza messaggio incoerenti (il parser non deve sovra-leggere).
 - Indici di string-table invalidi (il parser non deve crashare su lookup fuori range).
-- Densita patologica di tick (il parser deve rispettare i limiti di memoria).
-- File piu piccoli di `MIN_DEMO_SIZE` (devono essere rifiutati prima del parsing -- invariante `DS-12`).
+- Dati spazzatura casuali con e senza il prefisso magic `PBDEMS2\0`.
+
+Nell'applicazione stessa, dati spazzatura cosi piccoli non raggiungono mai il parser: i gate di pre-validazione dell'ingestione (`MIN_DEMO_SIZE = 10 MB`, controllo magic-byte — invariante `DS-12`) li rifiutano prima. Il fuzzer esiste per irrobustire il layer *dietro* quei gate.
 
 ## Correlati
 
 - Parser di demo: `Programma_CS2_RENAN/backend/data_sources/demo_parser.py`
 - Gate di validazione: `Programma_CS2_RENAN/backend/processing/validation/dem_validator.py`
 - Pipeline di ingestione: `Programma_CS2_RENAN/ingestion/pipelines/README.md`
-- Logging strutturato: i fallimenti sono emessi tramite `get_logger("cs2analyzer.fuzz")` e finiscono in `Programma_CS2_RENAN/logs/cs2_analyzer.log`.
+- CI: esecuzioni notturne tramite `.github/workflows/fuzz-nightly.yml`; l'harness logga su stdout/stderr (`logging.basicConfig`, logger `fuzz_demo_parser`).
 
 ## Da non fare
 
-- **Non** dare in pasto al fuzzer demo reali degli utenti -- la fase di corruzione le distruggerebbe. L'harness genera input scratch propri.
-- **Non** disabilitare la guardia `MIN_DEMO_SIZE` per "velocizzare" il fuzzing. La guardia fa parte della superficie sotto test.
-- **Non** committare file demo contenenti casi di fallimento nel repo. Cattura la sequenza di byte (o il seed) nel report e riproduci on demand.
+- **Non** dare in pasto al fuzzer demo reali degli utenti — genera i propri input scratch; tenere le demo reali fuori da `.fuzz/`.
+- **Non** disabilitare la guardia `MIN_DEMO_SIZE` dell'ingestione perche "il fuzzer passa" — la guardia e la prima linea di difesa in produzione.
+- **Non** committare file demo contenenti casi di fallimento nel repo. `.fuzz/crashes/` rimane locale; cattura il seed (o il contenuto del sidecar `.meta`) e riproduci con `--reproduce` on demand.

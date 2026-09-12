@@ -50,6 +50,7 @@ La ricostruzione del 2026-09-01 ha azzerato tutti i pesi di produzione; i checkp
 | `advanced/` | **Stub vuoto intenzionale.** Moduli originali rimossi nella remediazione G-06. Namespace riservato per esperimenti futuri. Vedere `advanced/README.md`. |
 | `inference/` | `GhostEngine` -- motore di previsione in tempo reale che traduce lo stato di gioco tick-level in suggerimenti di coaching tramite `RAP_POSITION_SCALE`. |
 | `layers/` | `SuperpositionLayer` -- layer lineare condizionato FiLM (`y = gamma(context)*(Wx+b) + beta(context)`) con hook di loss per sparsità L1 del gate e hook di osservabilità del gate. |
+| `jepa_v2/` | **Encoder JEPA v2.** Architettura basata su Transformer con CausalSelfAttention, RMSNorm, SwiGLU, condizionamento FiLM, regolarizzazione SIGReg e predizione multi-orizzonte. Config: `d_model=128`, 4 livelli, 4 teste, orizzonti (1, 4, 16), addestramento bf16. |
 | `experimental/` | Sede canonica dell'implementazione RAP Coach (`experimental/rap_coach/`): Perception, Memory, Strategy, Pedagogy, Communication, ChronovisorScanner. Gated dietro `USE_RAP_MODEL`. |
 
 ## Architetture dei Modelli

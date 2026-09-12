@@ -7,7 +7,7 @@
 
 ## Finalidade
 
-Subclasses customizadas e reutilizáveis de `QWidget` que se compõem em telas. Qualquer coisa usada por mais de uma tela, ou qualquer coisa grande o bastante para merecer arquivo próprio, vive aqui. Visuais puros de tela única ficam dentro do módulo da tela proprietária.
+Subclasses customizadas e reutilizaveis de `QWidget` que se compoem em telas. Qualquer coisa usada por mais de uma tela, ou qualquer coisa grande o bastante para merecer arquivo proprio, vive aqui. Visuais puros de tela unica ficam dentro do modulo da tela proprietaria.
 
 ## Layout
 
@@ -15,17 +15,17 @@ Subclasses customizadas e reutilizáveis de `QWidget` que se compõem em telas. 
 widgets/
 ├── __init__.py
 ├── skeleton.py             # Skeletons de carregamento (placeholders shimmer)
-├── toast.py                # Toasts de notificação transientes
-├── components/             # Primitivas genéricas de UI (cards, badges, chips, ...)
-├── charts/                 # Gráficos QPainter (QtCharts removido — somente GPL)
+├── toast.py                # Toasts de notificacao transientes
+├── components/             # Primitivas genericas de UI (cards, badges, chips, ...)
+├── charts/                 # Graficos QPainter (QtCharts removido — somente GPL)
 ├── coaching/               # Widgets de coaching (ChatPanel integrado)
-└── tactical/               # Widgets específicos do tactical viewer
+└── tactical/               # Widgets especificos do tactical viewer
 ```
 
 | Sub-pacote | Finalidade | README |
 |------------|------------|--------|
-| `components/` | Primitivas genéricas de UI reutilizadas entre telas | [components/README.md](components/README.md) |
-| `charts/` | Gráficos QPainter para o dashboard (QtCharts removido por conformidade GPL) | [charts/README.md](charts/README.md) |
+| `components/` | Primitivas genericas de UI reutilizadas entre telas | [components/README.md](components/README.md) |
+| `charts/` | Graficos QPainter para o dashboard (QtCharts removido por conformidade GPL) | [charts/README.md](charts/README.md) |
 | `coaching/` | Widgets de coaching — `ChatPanel` integrado na CoachScreen | [coaching/README.md](coaching/README.md) |
 | `tactical/` | Widgets do tactical viewer (mapa, sidebar, timeline) | [tactical/README.md](tactical/README.md) |
 
@@ -34,39 +34,39 @@ widgets/
 | Arquivo | Finalidade |
 |---------|------------|
 | `__init__.py` | Marcador de pacote. |
-| `skeleton.py` | `SkeletonLoader` — placeholder shimmer mostrado enquanto os dados da ViewModel carregam. |
-| `toast.py` | Toast de notificação transiente com auto-dismiss + botão de ação. Inscrito em `app_state.bus` para toasts globais. |
+| `skeleton.py` | `SkeletonRect` / `SkeletonCard` / `SkeletonTable` — placeholders shimmer mostrados enquanto os dados da ViewModel carregam. |
+| `toast.py` | `ToastWidget` + `ToastContainer` — notificacoes transientes com auto-dismiss baseado em severidade (CRITICAL nunca fecha automaticamente); `MainWindow` conecta `AppState.notification_received` ao container. |
 
-## Convenções
+## Convencoes
 
-### Composição em vez de herança
+### Composicao em vez de heranca
 
-A maioria dos widgets são containers `QWidget` que compõem peças menores. Evite árvores de herança profundas — elas colidem com o modelo de signals do Qt e complicam o theming.
+A maioria dos widgets sao containers `QWidget` que compoem pecas menores. Evite arvores de heranca profundas — elas colidem com o modelo de signals do Qt e complicam o theming.
 
-### Estilização ciente do tema
+### Estilizacao ciente do tema
 
-Cada widget lê cores / espaçamento / tipografia de `core/design_tokens.py` em vez de hard-codá-los. O gerador QSS em `core/qss_generator.py` materializa os tokens num stylesheet aplicado a toda a aplicação.
+Cada widget le cores / espacamento / tipografia de `core/design_tokens.py` em vez de hard-coda-los. O gerador QSS em `core/qss_generator.py` materializa os tokens num stylesheet aplicado a toda a aplicacao, e a `QPalette` da aplicacao tambem e derivada dos tokens (`core/theme_engine.py`) — os arquivos `.qss` legacy por tema foram removidos; o template orientado por tokens e a unica fonte de estilo.
 
 ### API baseada em signals
 
-Widgets expõem mudanças de estado via `Signal` (por exemplo, `clicked`, `selectionChanged`). Evite callbacks síncronos — eles quebram a separação MVVM.
+Widgets expoem mudancas de estado via `Signal` (por exemplo, `clicked`, `selectionChanged`). Evite callbacks sincronos — eles quebram a separacao MVVM.
 
 ### Acessibilidade
 
-- Defina `setAccessibleName()` e `setAccessibleDescription()` para qualquer widget que renderize conteúdo semântico (gráficos, indicadores de status).
-- Status codificado por cor (rating, severidade) deve ser acompanhado de texto ou ícone — nunca apenas cor (WCAG 1.4.1).
+- Defina `setAccessibleName()` e `setAccessibleDescription()` para qualquer widget que renderize conteudo semantico (graficos, indicadores de status).
+- Status codificado por cor (rating, severidade) deve ser acompanhado de texto ou icone — nunca apenas cor (WCAG 1.4.1).
 
 ## Adicionando um novo widget
 
-1. Decida se ele pertence a `widgets/` (genérico), `widgets/components/` (primitiva de UI) ou a um sub-pacote de domínio.
-2. Herde da menor classe Qt aplicável (`QWidget`, `QFrame`, `QLabel`).
+1. Decida se ele pertence a `widgets/` (generico), `widgets/components/` (primitiva de UI) ou a um sub-pacote de dominio.
+2. Herde da menor classe Qt aplicavel (`QWidget`, `QFrame`, `QLabel`).
 3. Leia tokens via `core/design_tokens` — nunca hard-code cores.
-4. Exponha estado via `Signal`s, não via getters que mutam.
-5. Adicione o widget à tabela de inventário do README do sub-pacote.
-6. Se o widget for ciente do tema, inscreva-se em `theme_engine.themeChanged`.
+4. Exponha estado via `Signal`s, nao via getters que mutam.
+5. Adicione o widget a tabela de inventario do README do sub-pacote.
+6. Se o widget for ciente do tema, resolva cores a partir do conjunto de tokens ativo (`get_tokens()`) ou conecte-se a `theme_engine.theme_changed`.
 
 ## Relacionados
 
-- Core da aplicação: `apps/qt_app/core/README.md`
+- Core da aplicacao: `apps/qt_app/core/README.md`
 - Telas (consumidoras): `apps/qt_app/screens/README.md`
 - App pai: `apps/qt_app/README.md`

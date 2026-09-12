@@ -11,7 +11,7 @@
 python evals/cs2_coach_bench/run_eval.py --model coach --limit 10
 
 # Run against raw Ollama (no RAG, isolates model knowledge)
-python evals/cs2_coach_bench/run_eval.py --model ollama:llama3.1:8b --limit 10
+python evals/cs2_coach_bench/run_eval.py --model ollama:gemma4:e2b --limit 10
 
 # Score responses manually
 python evals/cs2_coach_bench/score_responses.py score --input evals/cs2_coach_bench/reports/2026-04-12_coach.jsonl
@@ -53,6 +53,6 @@ See `rubric.md` for full descriptions. Each 0-3:
 
 ## Ship Criterion
 
-`cs2coach` (the planned fine-tuned coach model) must beat vanilla Llama 3.1 8B by >25% on total score AND beat GPT-4 by >5% on CS2-currentness and pro-grounding dimensions.
+`cs2coach` (the planned fine-tuned coach model) must beat vanilla Gemma4 e2b by >25% on total score AND beat GPT-4 by >5% on CS2-currentness and pro-grounding dimensions.
 
 Notes: the criterion originated in the retired `COACH_QUALITY_ROADMAP` doc (consolidated away on 2026-05-03, see `docs/DIAGNOSIS_2026-05.md`) — this README now carries it. Fine-tuning runs on the dedicated Linux training machine, not this workstation. `run_eval.py` only wires the `coach` and `ollama:<model>` backends, so the GPT-4 baseline must be collected externally and scored with the same rubric.

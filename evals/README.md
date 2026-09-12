@@ -47,7 +47,7 @@ Execute the benchmark against the current coach implementation (full pipeline or
 python evals/cs2_coach_bench/run_eval.py --model coach
 
 # Quick smoke (10 questions) against a raw Ollama baseline
-python evals/cs2_coach_bench/run_eval.py --model ollama:llama3.1:8b --limit 10
+python evals/cs2_coach_bench/run_eval.py --model ollama:gemma4:e2b --limit 10
 ```
 Responses land in `cs2_coach_bench/reports/<date>_<model>.jsonl` by default (`--output` overrides; `--category` filters to one category).
 

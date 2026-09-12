@@ -2,76 +2,72 @@
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-> **Authority:** Rule 3 (Frontend & UX)
+> **Authority:** Regola 3 (Frontend & UX)
 > **Skill:** `/frontend-ux-review`
 
 ## Scopo
 
-Widget custom esclusivi della schermata **Tactical Viewer**. Renderizzano il replay 2D della mappa, la sidebar live dei giocatori e lo scrubber della timeline. Nessuno di questi è riutilizzabile altrove — sono fortemente accoppiati allo stato del playback, alle proiezioni della Ghost AI e agli highlight del chronovisor.
+Widget custom esclusivi della schermata **Tactical Viewer**. Renderizzano il replay 2D della mappa, la sidebar live dei giocatori e lo scrubber della timeline. Nessuno di questi e riutilizzabile altrove — sono fortemente accoppiati allo stato del playback, alle proiezioni della Ghost AI e agli highlight del chronovisor.
 
 ## Inventario dei file
 
 | File | Widget | Scopo |
-|------|--------|---------|
+|------|--------|-------|
 | `__init__.py` | — | Marker di package. |
-| `map_widget.py` | `MapWidget` | La "Living Map" — renderer 2D accelerato in GPU per posizioni dei giocatori, traiettorie delle granate, marker delle kill, proiezioni della Ghost AI. Si abbona a `TacticalPlaybackViewModel.tickAdvanced`. |
-| `player_sidebar.py` | `PlayerSidebar` | Roster dei giocatori a due squadre con visualizzazione live di HP / armatura / arma / economia. Usa il pooling dei widget (riuso degli oggetti) così il refresh per tick non alloca. |
-| `timeline_widget.py` | `TimelineWidget` | Scrubber interattivo con marker degli eventi codificati a colori (kill, plant, defuse, transizioni di round). Click e drag per posizionare il cursore. |
+| `_paint_utils.py` | — | Helper QPainter condivisi per i widget tattici (`with_alpha()` — copia un `QColor` con un dato alpha). |
+| `map_widget.py` | `TacticalMapWidget` | La "Living Map" — renderer 2D della mappa basato su QPainter (carica overview `PHOTO_GUI/maps/*.png`) per posizioni dei giocatori e scie, callout delle zone, stato C4/bomba, traiettorie delle granate e overlay di detonazione, proiezioni della Ghost AI, il riquadro punteggio e l'overlay Ghost Mode frame-14 (percorsi doppi tu-vs-ghost, punti di divergenza, legenda — `set_ghost_overlay()`). Guidato per frame da `TacticalPlaybackVM.frame_updated`; emette `selected_player_changed`. |
+| `player_sidebar.py` | `PlayerSidebar` | Colonna roster singola squadra (la schermata ne istanzia due — CT e T): intestazione squadra con conteggio vivi e denaro squadra, sopra card roster frame-13 con HP / armatura / arma / economia / utility inline. Riusa widget per-giocatore cosi il refresh per tick non alloca. |
+| `timeline_widget.py` | `TimelineWidget` | Scrubber interattivo con marker degli eventi codificati a colore (kill, plant, defuse), divisori dei round, striscia caption mono `t={tick}`, e glifi momento del chronovisor differenziati per tipo (stella = critico/errore, diamante = clutch, cerchio = giocata; click su un glifo cerca al tick di inizio del momento). Click e drag per fare seek. |
 
 ## Architettura
 
 ```
 TacticalViewerScreen
     |
-    +-- MapWidget         <-- TacticalPlaybackViewModel.tickAdvanced
-    |   +-- TacticalGhostViewModel.predictionReady       (overlay Ghost AI)
-    |   +-- TacticalChronovisorViewModel.criticalMoment  (marker di highlight)
+    +-- TacticalMapWidget  <-- TacticalPlaybackVM.frame_updated (tramite la schermata)
+    |   +-- proiezioni ghost da TacticalGhostVM.predict_ghosts (tramite la schermata)
     |
-    +-- PlayerSidebar     <-- TacticalPlaybackViewModel.playersUpdated
+    +-- PlayerSidebar x2 (CT / T)  <-- TacticalPlaybackVM.frame_updated (tramite la schermata)
     |
-    +-- TimelineWidget    <-- TacticalPlaybackViewModel.timelineReady
-                          --> TacticalPlaybackViewModel.seekRequested
+    +-- TimelineWidget     <-- TacticalPlaybackVM.current_tick_changed / total_ticks_changed
+                           <-- TacticalChronovisorVM.scan_complete  (glifi momento, tramite la schermata)
+                           <-- TacticalChronovisorVM.navigate_to    (seek, tramite la schermata)
+                           --> seek tramite TacticalPlaybackVM
 ```
 
 ## Considerazioni di performance
 
-### MapWidget
+### TacticalMapWidget
 
-La mappa viene renderizzata **a ogni tick** durante il playback (64 tick al secondo). Eventuali colli di bottiglia bloccherebbero l'intero thread UI. Mitigazioni:
+La mappa ridisegna **ogni frame** durante il playback, quindi il lavoro per-frame deve restare minimale:
 
-- La texture della mappa viene caricata **una sola volta** per cambio mappa, non per tick.
-- Le posizioni dei giocatori sono raggruppate in una singola chiamata `QPainter.drawPoints()`.
-- Le traiettorie delle granate vengono pre-calcolate al momento del lancio e mantenute in cache fino alla detonazione.
-- I marker delle kill svaniscono tramite un `QTimer` invece di essere ridisegnati per tick.
+- Il pixmap della mappa scalato e in cache e ricalcolato solo su ridimensionamento o cambio mappa — i repaint per-frame lo riutilizzano.
+- Quando nessuna overview della mappa viene trovata, `paintEvent` disegna un rettangolo scuro di fallback invece di fallire.
 
 ### PlayerSidebar
 
-- 10 card giocatore (5 per squadra) riutilizzano istanze del widget `PlayerCard` invece di crearle / distruggerle a ogni tick (pooling dei widget — stesso pattern dell'app legacy in Kivy).
-- Le barre di salute / armatura usano il disegno diretto con `QPainter` dentro un `paintEvent` invece di widget `QProgressBar` annidati, per evitare il churn di layout.
+- Le righe giocatore riutilizzano istanze widget per-giocatore (aggiornate in-place, entry obsolete rimosse) invece di crearle / distruggerle per tick.
 
 ### TimelineWidget
 
-- I marker degli eventi vengono renderizzati in una cache `QPixmap` offscreen una sola volta per partita e poi blitted al widget in `paintEvent`.
-- Il cursore (tick corrente) è disegnato separatamente, sopra, così il movimento del cursore non invalida la cache dei marker.
+- I marker e il cursore sono disegnati in `paintEvent`; mantieni le allocazioni per-frame fuori dal percorso di disegno.
 
-## Accessibilità
+## Accessibilita
 
-- Le card giocatore includono riepiloghi screen-reader-friendly (`setAccessibleName("Giocatore 'Renan' — CT — 100 HP — 4750 di equip")`).
-- I marker di evento della timeline portano descrizioni testuali, così uno screen reader annuncia "kill alle 1:23 nel round 12" invece di una semplice posizione di icona.
-- Gli eventi codificati a colori (kill = rosso, plant = giallo, defuse = blu) sono abbinati a differenze di forma / posizione (kill a metà altezza, plant / defuse a piena altezza) così gli utenti daltonici possono comunque leggere lo stato (WCAG 1.4.1).
+- Segui la convenzione del progetto: accoppia ogni stato codificato a colore (marker kill / plant / defuse, barre HP) con differenze di testo o forma cosi gli utenti daltonici possano comunque leggerlo (WCAG 1.4.1).
 
 ## Integrazione
 
 ```
 TacticalViewerScreen (apps/qt_app/screens/tactical_viewer_screen.py)
-    +-- MapWidget
-    +-- PlayerSidebar
+    +-- TacticalMapWidget
+    +-- PlayerSidebar (x2)
     +-- TimelineWidget
             |
             +-- ViewModel in apps/qt_app/viewmodels/tactical_vm.py
                     |
-                    +-- core/playback_engine.PlaybackEngine
-                    +-- core/qt_playback_engine.QtPlaybackEngine (timer Qt)
+                    +-- Programma_CS2_RENAN/core/playback_engine.PlaybackEngine
+                    +-- apps/qt_app/core/qt_playback_engine.QtPlaybackEngine (timer Qt, tenuto dalla schermata)
                     +-- backend/nn/inference/ghost_engine.GhostEngine
 ```
 
@@ -79,12 +75,12 @@ TacticalViewerScreen (apps/qt_app/screens/tactical_viewer_screen.py)
 
 - Non importare questi widget da schermate non tattiche — assumono un contesto di playback che non esiste altrove.
 - Non allocare `QPixmap` / `QImage` dentro `paintEvent` — pre-allocare e mettere in cache.
-- Non abbonarsi a segnali ad alta frequenza dal thread UI senza batching — 64 tick/s × N subscriber bloccano l'app.
+- Non abbonarsi a segnali ad alta frequenza dal thread UI senza batching — 64 tick/s x N subscriber bloccano l'app.
 
 ## Correlati
 
 - Cluster di ViewModel tattici: `apps/qt_app/viewmodels/tactical_vm.py`
 - Playback engine: `Programma_CS2_RENAN/core/playback_engine.py`
 - Inferenza Ghost AI: `Programma_CS2_RENAN/backend/nn/inference/ghost_engine.py`
-- Asset delle mappe: `Programma_CS2_RENAN/assets/maps/`
+- Immagini overview mappa: `Programma_CS2_RENAN/PHOTO_GUI/maps/`
 - Parent: `apps/qt_app/widgets/README.md`

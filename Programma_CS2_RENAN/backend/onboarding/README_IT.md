@@ -16,8 +16,8 @@ effettuare ripetuti round-trip al database.
 
 | File | Righe | Scopo | Export Principali |
 |------|-------|-------|-------------------|
-| `__init__.py` | 1 | Marcatore di package | -- |
-| `new_user_flow.py` | ~136 | Gestione fasi di onboarding e cache conteggio demo | `UserOnboardingManager`, `OnboardingStatus`, `OnboardingStage`, `get_onboarding_manager()` |
+| `__init__.py` | 0 | Marcatore di package (vuoto) | -- |
+| `new_user_flow.py` | ~140 | Gestione fasi di onboarding e cache conteggio demo | `UserOnboardingManager`, `OnboardingStatus`, `OnboardingStage`, `get_onboarding_manager()` |
 
 ## Architettura e Concetti
 
@@ -95,15 +95,15 @@ demos_uploaded >= RECOMMENDED_DEMOS  -->  COACH_READY
 
 ## Integrazione
 
-- **UI (Qt):** `HomeScreen` e la procedura guidata di onboarding interrogano
-  `get_status()` per visualizzare indicatori di progresso, messaggi di
-  benvenuto e dialoghi di gating.
-- **CoachingService:** Verifica `coach_ready` prima di generare insight di
-  coaching ad alta confidenza. Quando `coach_ready` è `False`, gli insight
-  vengono comunque generati ma annotati con un avviso di bassa confidenza.
-- **Pipeline di Ingestione:** Dopo l'importazione di una demo, la pipeline
-  chiama `invalidate_cache()` affinché il prossimo polling della UI veda
-  il conteggio aggiornato.
+- **Consumatori attuali:** Al 2026-09-04, nessun codice di produzione importa
+  questo modulo -- e esercitato solo da `tests/test_onboarding.py`. La Qt
+  `HomeScreen` mostra la propria hero card di onboarding guidata direttamente
+  dalla presenza dei dati di partita, senza interrogare `get_status()`.
+- **Utilizzo previsto:** Le superfici UI e i servizi possono chiamare
+  `get_status()` per visualizzare il progresso e derivare un livello di
+  confidenza da `coach_ready` / `baseline_stable`. Dopo l'ingestione di una
+  demo, i chiamanti dovrebbero invocare `invalidate_cache()` affinche il
+  prossimo polling veda il conteggio aggiornato.
 - **Database:** Il modulo legge da `PlayerMatchStats` in `database.db`.
   Non esegue scritture né mutazioni.
 

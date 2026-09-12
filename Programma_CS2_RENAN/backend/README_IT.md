@@ -203,7 +203,7 @@ Livello 5 (Orchestrazione): services/  reporting/  control/
 
 ### Testing
 
-- Framework: `pytest`, 182 file `test_*.py` in `Programma_CS2_RENAN/tests/` (+10 in `tests/` root).
+- Framework: `pytest`, 193 file `test_*.py` in `Programma_CS2_RENAN/tests/` (+10 in `tests/` root).
 - I test di integrazione richiedono `CS2_INTEGRATION_TESTS=1`.
 - Fixture chiave: `in_memory_db`, `seeded_db_session`, `mock_db_manager`, `torch_no_grad`.
 

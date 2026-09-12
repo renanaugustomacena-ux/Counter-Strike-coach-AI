@@ -7,29 +7,29 @@
 
 ## Scopo
 
-Questo pacchetto contiene ogni schermata di primo livello nel frontend Qt. Ogni modulo definisce una sottoclasse di `QWidget` (o `QStackedWidget`) che possiede il layout, il wiring dei segnali e gli hook di lifecycle per-schermata di una rotta nel grafo di navigazione dell'applicazione. I ViewModel (in `apps/qt_app/viewmodels/`) possiedono i dati e la logica di business; le schermate possiedono la composizione visuale.
+Questo pacchetto contiene ogni schermata di primo livello nel frontend Qt. Ogni modulo definisce una sottoclasse di `QWidget` che possiede il layout, il wiring dei segnali e gli hook di lifecycle per-schermata per una rotta nel grafo di navigazione dell'applicazione. I ViewModel (in `apps/qt_app/viewmodels/`) possiedono i dati e la logica di business; le schermate possiedono la composizione visuale.
 
 ## Inventario File
 
 | File | Schermata | Scopo |
 |------|-----------|-------|
 | `__init__.py` | -- | Marcatore di pacchetto. |
-| `home_screen.py` | Home | Landing page: riassunto ultimo match, focus insight, hub di navigazione. |
-| `coach_screen.py` | Coach | Chat con AI coach: dialogo con `CoachingDialogueEngine`, risposte aumentate via RAG, model picker. |
-| `match_history_screen.py` | Match History | Lista filtrabile dei match utente con rating HLTV 2.0. |
-| `match_detail_screen.py` | Match Detail | Drilldown per-match: round, economy, highlight, momentum. |
+| `home_screen.py` | Home | Landing page: coppia hero ultimo match + focus settimanale, strip match recenti, launcher analisi demo / ingestione pro, hub di navigazione. |
+| `coach_screen.py` | Coach | Dashboard RAP Coach: anello di confidenza belief-state, righe di insight recenti, piu un dock `ChatPanel` embedded (attivato dal pulsante Chat) supportato da `CoachingDialogueEngine` (via `CoachingChatViewModel`). |
+| `match_history_screen.py` | Match History | Lista raggruppata (Oggi / Questa Settimana / Precedenti) delle demo analizzate con filtri sorgente (Tutti / Personali / Pro) e mappa; rating per-match rispetto alla baseline personale. |
+| `match_detail_screen.py` | Match Detail | Drilldown per-match a schede: panoramica, round, economia, highlight (momentum + coaching insight). |
 | `performance_screen.py` | Performance | Dashboard aggregata: trend di rating, statistiche per-mappa, punti di forza / debolezza, breakdown utility. |
-| `pro_comparison_screen.py` | Pro Comparison | Confronto fianco a fianco delle statistiche utente vs pro selezionato. |
+| `pro_comparison_screen.py` | Pro Comparison | Confronto Pro vs Pro o Me vs Pro: radar di abilita + metriche head-to-head; Me vs Pro e bloccato finche non sono analizzati abbastanza match personali. |
 | `pro_player_detail_screen.py` | Pro Player Detail | Profilo pro player con stat card HLTV, match recenti, classificazione di ruolo. |
 | `tactical_viewer_screen.py` | Tactical Viewer | Replay 2D della mappa con controlli di playback, overlay ghost AI, highlight chronovisor. |
-| `profile_screen.py` | Profile | Editor profilo utente (display name, preferenza ruolo). |
-| `user_profile_screen.py` | User Profile | Profilo autenticato con stato di integrazione Steam / FaceIT. |
-| `settings_screen.py` | Settings | Tema, lingua, path, modalita di ingestione, model picker, toggle telemetria. |
-| `steam_config_screen.py` | Steam Config | Inserimento Steam ID / API key con validazione. |
-| `faceit_config_screen.py` | FaceIT Config | Inserimento FaceIT API key con validazione. |
-| `wizard_screen.py` | First-Run Wizard | Setup in 4 step: intro -> path brain -> path demo -> finish. |
-| `help_screen.py` | Help | Help in-app supportato da `backend/knowledge_base/help_system.py`. |
-| `placeholder.py` | (utilita) | Stub `EmptyPlaceholderScreen` mostrato quando una rotta non e ancora implementata. |
+| `profile_screen.py` | Profile | Editor del nome in-game del giocatore; persiste `CS2_PLAYER_NAME` e assicura la riga DB `PlayerProfile` tramite un `Worker` in background. |
+| `user_profile_screen.py` | User Profile | Visualizzazione e modifica del profilo utente (bio, ruolo) tramite `UserProfileViewModel`. |
+| `settings_screen.py` | Settings | A schede (Aspetto - Percorsi & Dati - Generale): tema, font, lingua, percorsi dati, modalita di ingestione, toggle UI. |
+| `steam_config_screen.py` | Steam Config | Inserimento SteamID64 / API key con validazione. |
+| `faceit_config_screen.py` | FaceIT Config | Inserimento FaceIT API key. |
+| `wizard_screen.py` | First-Run Wizard | Setup in 5 step: intro -> nome -> percorso brain -> percorso demo -> avvio. |
+| `help_screen.py` | Help | Help in-app supportato da `backend/knowledge_base/help_system.py` (argomenti da `Programma_CS2_RENAN/data/docs/*.md`). |
+| `placeholder.py` | (utilita) | Stub legacy `PlaceholderScreen` (titolo centrato); non piu registrato -- ogni rotta ha una schermata reale. |
 
 ## Pattern architetturale
 
@@ -37,38 +37,38 @@ Ogni schermata segue lo stesso template:
 
 ```
 class FooScreen(QWidget):
-    def __init__(self, app_state, viewmodel: FooViewModel, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self._vm = viewmodel
-        self._build_ui()             # composizione widget
-        self._wire_signals()         # collega self._vm.* a self._on_*
-        self._apply_theme()          # sottoscrivi a theme_engine.themeChanged
+        self._vm = FooViewModel(self)   # la schermata possiede il suo ViewModel
+        self._build_ui()                # composizione widget
+        self._vm.data_changed.connect(self._on_data)   # wiring segnali
 
-    def on_enter(self):              # chiamato dal navigation router al focus
-        self._vm.refresh()
+    def on_enter(self):                 # chiamato da MainWindow.switch_screen()
+        self._vm.load()
 
-    def on_leave(self):              # chiamato quando l'utente naviga via
-        self._vm.cancel_loads()
+    def on_leave(self):                 # opzionale -- implementato dove necessario
+        self._vm.cancel()
 ```
 
-I ViewModel fanno tutto il caricamento dati; le schermate marshallano i risultati nei widget. Il lavoro di background usa `core/worker.QThread` cosi il thread UI resta reattivo.
+I ViewModel fanno tutto il caricamento dati; le schermate marshallano i risultati nei widget. Il lavoro di background usa `core/worker.Worker` (un `QRunnable` su `QThreadPool`) cosi il thread UI resta reattivo.
 
 ## Invarianti chiave
 
-- **`on_enter` / `on_leave` sono obbligatori.** Il navigation router li chiama; implementazioni mancanti causano leak di thread o sottoscrizioni stantie.
-- **I segnali devono essere disconnessi su `on_leave`.** Usa `core/widgets_helpers.disconnect_all()` per evitare double-firing al re-entry.
-- **Nessun accesso DB diretto da una schermata.** Tutta la persistenza passa attraverso il ViewModel.
+- **`on_enter()` e chiamato da `MainWindow.switch_screen()`** quando una schermata diventa visibile -- usalo per aggiornare i dati.
+- **Implementa `on_leave()` quando la schermata ha lavoro in corso** (coach, match history, performance e tactical viewer lo fanno) e annulla i caricamenti ViewModel pendenti.
+- **Nessun accesso DB sul thread GUI.** Le schermate con un ViewModel persistono attraverso di esso; i pochi tocchi DB diretti (upsert `PlayerProfile` in profile / wizard, lookup match-id nel tactical viewer) usano un `Worker` off-thread (F-0038).
 - **Nessuna stringa hard-coded.** Il testo visibile all'utente passa attraverso `core/i18n_bridge.QtLocalizationManager.get_text()`.
 
 ## Integrazione
 
 ```
-qt_app/app.py (router)
-    +-- HomeScreen        --> HomeViewModel        --> backend/services/*
-    +-- CoachScreen       --> CoachViewModel       --> CoachingDialogueEngine + LLMService
-    +-- MatchDetailScreen --> MatchDetailViewModel --> AnalyticsEngine + storage
-    +-- PerformanceScreen --> PerformanceViewModel --> reporting/analytics.py
-    +-- TacticalViewer    --> TacticalPlaybackVM   --> core/playback_engine + GhostEngine
+qt_app/app.py (registro schermate) --> MainWindow.switch_screen() (router)
+    +-- HomeScreen        --> MatchHistoryViewModel + FocusInsightViewModel
+    +-- CoachScreen       --> CoachViewModel + CoachingChatViewModel --> CoachingDialogueEngine
+    +-- MatchDetailScreen --> MatchDetailViewModel --> backend storage
+    +-- PerformanceScreen --> PerformanceViewModel
+    +-- TacticalViewer    --> TacticalPlaybackVM / TacticalGhostVM / TacticalChronovisorVM
+                              --> core/playback_engine + GhostEngine
     ... (una rotta per schermata)
 ```
 

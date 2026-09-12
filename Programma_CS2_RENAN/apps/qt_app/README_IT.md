@@ -6,7 +6,7 @@
 
 ## Panoramica
 
-Applicazione desktop PySide6/Qt che implementa l'architettura Model-View-ViewModel (MVVM) con Qt Signal/Slot per l'analisi tattica CS2 e il coaching AI. Questo e il **frontend primario** (91 file Python). L'applicazione include 15 schermate, 10 ViewModel, 6 widget grafici QPainter (QtCharts e stato rimosso per conformita di licenza), 3 widget tattici, una libreria di componenti del design system (26 moduli) piu una ChatPanel di coaching integrata, notifiche toast, 3 temi guidati dai token (CS2, CSGO, CS1.6), wallpaper di sfondo opzionale (default: piatto), internazionalizzazione (Inglese/Italiano/Portoghese, ~565 chiavi per lingua) e una sequenza di spegnimento controllato.
+Applicazione desktop PySide6/Qt che implementa l'architettura Model-View-ViewModel (MVVM) con Qt Signal/Slot per l'analisi tattica CS2 e il coaching AI. Questo e il **frontend primario** (93 file Python). L'applicazione include 15 schermate, 10 ViewModel, 6 widget grafici QPainter (QtCharts e stato rimosso per conformita di licenza), 3 widget tattici, una libreria di componenti del design system (26 moduli) piu una ChatPanel di coaching integrata, notifiche toast, 3 temi guidati dai token (CS2, CSGO, CS1.6), wallpaper di sfondo opzionale (default: piatto) con una modalita slideshow, un'icona nella system tray con comportamento chiudi-nella-tray, una modalita finestra senza bordi opzionale con barra del titolo personalizzata, internazionalizzazione (Inglese/Italiano/Portoghese, 584 chiavi per lingua) e una sequenza di spegnimento controllato.
 
 ## Punto di Ingresso
 
@@ -18,14 +18,18 @@ La funzione `main()` in `app.py` esegue la seguente sequenza di avvio:
 
 1. Abilita lo scaling High-DPI (policy di arrotondamento `PassThrough`)
 2. Crea `QApplication` e risolve la versione del pacchetto
-3. Connette il gestore di spegnimento controllato (signal `aboutToQuit`)
-4. Istanzia `ThemeEngine`, registra i font personalizzati, applica il tema attivo
-5. Crea `MainWindow` e imposta il wallpaper iniziale
-6. Istanzia e registra tutte le 15 schermate (implementazioni reali, non placeholder)
-7. Collega i signal inter-schermata (selezione partita: history -> detail, completamento wizard -> home)
-8. Gate primo avvio: mostra WizardScreen se `SETUP_COMPLETED` e False, altrimenti HomeScreen
-9. Avvia la console backend (audit DB, FlareSolverr/Hunter condizionale) con finestra di errore di fallback
-10. Avvia il polling in background di AppState (intervallo di 10 secondi)
+3. Guardia istanza singola (`lifecycle.ensure_single_instance()`) — mostra un dialogo di avviso ed esce se un'altra istanza e gia in esecuzione
+4. Istanzia `ThemeEngine`, registra i font personalizzati, mostra uno splash screen tematizzato (gradiente + branding renderizzato dai design token del tema salvato)
+5. Connette il gestore di spegnimento controllato (signal `aboutToQuit`)
+6. Applica il tema attivo con le impostazioni persistite di font-family/dimensione
+7. Crea `MainWindow` e imposta il wallpaper iniziale
+8. Istanzia e registra tutte le 15 schermate (le implementazioni reali sovrascrivono il registro placeholder)
+9. Collega i signal inter-schermata (selezione partita: history/home -> detail, completamento wizard -> home, momenti salienti -> visualizzatore tattico, confronto pro -> dettaglio pro)
+10. Gate primo avvio: mostra WizardScreen se `SETUP_COMPLETED` e False, altrimenti HomeScreen
+11. Avvia la console backend (FlareSolverr/Hunter condizionale, inizializzazione schema database) e lancia il daemon del Session Engine, con dialogo di errore come fallback
+12. Verifica che il modello linguistico SBERT sia presente (~90 MB download al primo avvio, progresso sullo splash)
+13. System tray costruita (`build_tray`); se una tray e disponibile, `setQuitOnLastWindowClosed(False)` abilita il comportamento chiudi-nella-tray
+14. Avvia il polling in background di AppState (intervallo di 10 secondi) e installa un excepthook compatibile con Qt
 
 ## Struttura Directory
 
@@ -51,6 +55,7 @@ qt_app/
 │   ├── worker.py                   # Worker QRunnable + WorkerSignals per task in background
 │   ├── i18n_bridge.py              # QtLocalizationManager: i18n basato su JSON con Signal al cambio lingua
 │   ├── qt_playback_engine.py       # QtPlaybackEngine: riproduzione demo basata su QTimer a ~60 FPS
+│   ├── tray.py                     # Icona system tray + menu (chiudi-nella-tray, scorciatoia AI Coach)
 │   └── __init__.py
 ├── screens/
 │   ├── home_screen.py              # Dashboard e panoramica
@@ -68,7 +73,7 @@ qt_app/
 │   ├── faceit_config_screen.py     # Configurazione integrazione Faceit
 │   ├── pro_comparison_screen.py    # Analisi comparativa utente vs giocatore pro
 │   ├── pro_player_detail_screen.py # Vista profilo giocatore pro
-│   ├── placeholder.py              # Factory placeholder per schermate non ancora portate
+│   ├── placeholder.py              # Factory placeholder (tutte le voci sostituite da schermate reali)
 │   └── __init__.py
 ├── viewmodels/
 │   ├── match_history_vm.py         # Dati lista partite, filtraggio e ordinamento
@@ -125,6 +130,7 @@ qt_app/
 │   │   ├── tip_box.py              # TipBox: box suggerimento con bordo accentato
 │   │   └── toggle_switch.py        # Interruttore booleano animato
 │   ├── tactical/
+│   │   ├── _paint_utils.py         # Helper QPainter condivisi per i widget tattici
 │   │   ├── map_widget.py           # TacticalMapWidget: rendering mappa 2D + overlay zone (assets/map_zones/) + scie di movimento
 │   │   ├── player_sidebar.py       # PlayerSidebar: stato giocatore in tempo reale (salute, armatura, armi)
 │   │   ├── timeline_widget.py      # TimelineWidget: scrubbing, divisori round, glifi momenti ★/◆/●
@@ -155,8 +161,8 @@ qt_app/
 │  │  History  │  │  │  ViewModel (QObject)                      │ │  │
 │  │  Stats    │  │  │   │ Signal ──────> Screen aggiorna la UI  │ │  │
 │  │  Tactical │  │  │   │                                       │ │  │
-│  │           │  │  │   │ Worker (QRunnable)                    │ │  │
-│  │           │  │  │   │ └──> DB/calcolo in background         │ │  │
+│  │  Settings │  │  │   │ Worker (QRunnable)                    │ │  │
+│  │  Help     │  │  │   │ └──> DB/calcolo in background         │ │  │
 │  │           │  │  │   │      └──> Signal.result ──> ViewModel │ │  │
 │  │           │  │  └───────────────────────────────────────────┘ │  │
 │  └──────────┘  └─────────────────────────────────────────────────┘  │

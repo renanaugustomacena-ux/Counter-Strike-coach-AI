@@ -4,7 +4,7 @@
 
 **Autoridade:** `Programma_CS2_RENAN/tests/` -- Suite abrangente de regressao e corretude para o Macena CS2 Analyzer.
 
-A suite de testes contem mais de 2.024 testes distribuidos em 118 arquivos, seguindo a piramide
+A suite de testes contem mais de 2.500 testes distribuidos em 193 arquivos, seguindo a piramide
 de testes (unit > integration > e2e). Cada subsistema -- do vetor de features de 25 dimensoes
 passando pelas redes neurais, motor de coaching, camada de banco de dados e telas de UI -- e
 coberto por assercoes deterministicas e reprodutiveis. Os testes rodam sob pytest com uma guarda
@@ -98,7 +98,7 @@ ambiente `CS2_INTEGRATION_TESTS`.
 | `test_spatial_engine.py` | Analise | Transformacoes de coordenadas do motor espacial |
 | `test_state_reconstructor.py` | Processing | Reconstrucao de estado RAP a partir de ticks |
 | `test_tactical_features.py` | Processing | Extracao de features taticas |
-| `test_temporal_baseline.py` | Analise | 20 testes de decaimento de baseline temporal |
+| `test_temporal_baseline.py` | Analise | 22 testes de decaimento de baseline temporal |
 | `test_tensor_factory.py` | NN | Contratos de forma e dtype do `TensorFactory` |
 | `test_trade_kill_detector.py` | Analise | Logica de deteccao de trade kill |
 | `test_training_callbacks.py` | NN | Testes do registro de callbacks de treinamento |
@@ -115,7 +115,7 @@ Todas as fixtures compartilhadas residem em `conftest.py`. A hierarquia e:
 
 ```
 in_memory_db          -- Schema vazio via SQLModel.metadata.create_all()
-  seeded_db_session   -- Pre-populado com 6 PlayerMatchStats, 12 RoundStats, 1 PlayerProfile
+  seeded_db_session   -- Pre-populado com 6 PlayerMatchStats, 8 RoundStats, 1 PlayerProfile
     seeded_player_stats  -- Primeiro PlayerMatchStats do DB com seed
     seeded_round_stats   -- Primeiro RoundStats do DB com seed
 
@@ -153,7 +153,7 @@ confusas quando os testes sao executados acidentalmente com o Python do sistema.
 
 ```bash
 # Ativar o ambiente virtual primeiro
-source ~/.venvs/cs2analyzer/bin/activate
+source .venv/bin/activate
 
 # Executar todos os testes (parar na primeira falha)
 python -m pytest Programma_CS2_RENAN/tests/ -x -q

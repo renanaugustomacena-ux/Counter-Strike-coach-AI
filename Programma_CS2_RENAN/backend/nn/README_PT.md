@@ -10,7 +10,7 @@
 
 Este pacote é o núcleo de machine learning do sistema de coaching CS2. Contém seis arquiteturas de redes neurais distintas, um orquestrador de treinamento unificado com instrumentação baseada em callbacks de plugin, e um motor de inferência em tempo real (GhostEngine). Todo modelo consome o vetor canônico de features de 25 dimensões produzido por `FeatureExtractor` em `backend/processing/feature_engineering/vectorizer.py`. Toda aleatoriedade é semeada via `GLOBAL_SEED = 42` para execuções de treinamento determinísticas e reproduzíveis.
 
-O pipeline de treinamento foi validado de ponta a ponta em 12 de março de 2026: 11 demos profissionais ingeridas (17.3M linhas de tick, banco de dados de 6.4 GB), dry-run do JEPA completado produzindo `jepa_brain.pt` (3.6 MB).
+A reconstrução de 2026-09-01 zerou todos os pesos de produção; checkpoints pré-reconstrução estão arquivados em `models/global/archive_pre_rebuild_2026-09-01/`.
 
 ## Inventário de Arquivos
 
@@ -22,7 +22,7 @@ O pipeline de treinamento foi validado de ponta a ponta em 12 de março de 2026:
 | `jepa_train.py` | Script de treinamento JEPA em duas fases (pré-treinamento + fine-tuning), `_MIN_ROUNDS_FOR_SEQUENCE = 6` |
 | `jepa_trainer.py` | Loop de treinamento JEPA de baixo nível com atualização EMA do encoder alvo |
 | `ema.py` | Classe `EMA` -- média móvel exponencial para gerenciamento de pesos shadow (invariante NN-16: `.clone()` em `apply_shadow()`) |
-| `role_head.py` | `NeuralRoleHead` (entrada 5-dim, saída softmax 5-dim, ~750 parâmetros), helpers de treinamento e inferência para classificação de papel do jogador |
+| `role_head.py` | `NeuralRoleHead` (entrada 5-dim, saída softmax 5-dim, ~870 parâmetros), helpers de treinamento e inferência para classificação de papel do jogador |
 | `win_probability_trainer.py` | `WinProbabilityTrainerNN` -- modelo leve de 9 features para probabilidade de vitória offline em DataFrames de partidas pro |
 | `dataset.py` | `ProPerformanceDataset` (supervisionado) e `SelfSupervisedDataset` (pares contexto/alvo JEPA com janela deslizante) |
 | `factory.py` | `ModelFactory` -- fábrica estática para instanciação unificada de todos os tipos de modelo (`default`, `jepa`, `vl-jepa`, `rap`, `rap-lite`, `role_head`) |
@@ -35,6 +35,7 @@ O pipeline de treinamento foi validado de ponta a ponta em 12 de março de 2026:
 | `train.py` | `train_nn()` -- ponto de entrada legado para treinamento do `AdvancedCoachNN` |
 | `training_callbacks.py` | `TrainingCallback` (ABC, hooks opt-in) e `CallbackRegistry` (despachante de eventos com isolamento de erros) |
 | `tensorboard_callback.py` | `TensorBoardCallback` -- registra 9+ sinais escalares, histogramas de parâmetros/gradientes, layouts escalares personalizados |
+| `collapse_metrics.py` | Telemetria pure-tensor de colapso de representações para embeddings JEPA: `compute_collapse_metrics()` (std_mean, std_min, RankMe `effective_rank`, cosine_offdiag_mean sobre embeddings L2-normalizados) e `compute_ema_drift()`; consumido por `TensorBoardCallback`, nunca altera o fluxo de controle |
 | `maturity_observatory.py` | `MaturityObservatory` -- índice de convicção de 5 sinais (belief entropy, gate specialization, concept focus, value accuracy, role stability), máquina de 5 estados (doubt / crisis / learning / conviction / mature) |
 | `embedding_projector.py` | `EmbeddingProjector` -- projeções UMAP 2D e exportação de embeddings TensorBoard para visualização do espaço belief/concept |
 | `training_monitor.py` | `TrainingMonitor` -- métricas por época persistidas em JSON com escrita atômica para monitoramento de progresso em tempo real |
@@ -45,10 +46,11 @@ O pipeline de treinamento foi validado de ponta a ponta em 12 de março de 2026:
 
 | Pacote | Propósito |
 |--------|-----------|
-| `rap_coach/` | Modelo RAP Coach: arquitetura pedagógica de 7 camadas (Perception, Memory, Strategy, Pedagogy, Communication, ChronovisorScanner, SkillModel). Requer `ncps` + `hflayers` para memória LTC-Hopfield. |
+| `rap_coach/` | **Shims de compatibilidade retroativa depreciados (P9-01).** Cada módulo reexporta de `experimental/rap_coach/`; `skill_model.py` reexporta de `backend/processing/skill_assessment.py`. Consulte `rap_coach/README.md`. |
 | `advanced/` | **Stub vazio intencional.** Módulos originais removidos na remediação G-06. Namespace reservado para experimentos futuros. Consulte `advanced/README.md`. |
 | `inference/` | `GhostEngine` -- motor de previsão em tempo real que traduz estado de jogo em nível de tick em sugestões de coaching via `RAP_POSITION_SCALE`. |
 | `layers/` | `SuperpositionLayer` -- camada linear com gating contextual que habilita fusão dinâmica de modos com regularização L1 de esparsidade e hooks de observabilidade. |
+| `jepa_v2/` | **Encoder JEPA v2.** Arquitetura baseada em Transformer com CausalSelfAttention, RMSNorm, SwiGLU, condicionamento FiLM, regularização SIGReg e predição multi-horizonte. Config: `d_model=128`, 4 camadas, 4 cabeças, horizontes (1, 4, 16), treinamento bf16. |
 | `experimental/` | Variante experimental do RAP Coach com módulos separados de Perception, Strategy, Pedagogy, Communication, Memory e harness de teste. |
 
 ## Arquiteturas de Modelos
@@ -67,7 +69,7 @@ Encoder de sequência LSTM + Mixture of Experts (3 especialistas por padrão) co
 
 ### 4. NeuralRoleHead (`role_head.py`) -- Classificação de Papéis
 
-MLP leve (5 -> 32 -> 16 -> 5, ~750 parâmetros) que prevê probabilidades de papel do jogador a partir de métricas de estilo de jogo (TAPD, OAP, PODT, rating impact, aggression). Loss KL-divergence com label smoothing. Funciona como opinião secundária junto ao classificador heurístico `RoleClassifier`.
+MLP leve (5 -> 32 -> 16 -> 5, ~870 parâmetros) que prevê probabilidades de papel do jogador a partir de métricas de estilo de jogo (TAPD, OAP, PODT, rating impact, aggression). Loss KL-divergence com label smoothing. Funciona como opinião secundária junto ao classificador heurístico `RoleClassifier`.
 
 ### 5. WinProbabilityTrainerNN (`win_probability_trainer.py`) -- Predição de Vitória Offline
 

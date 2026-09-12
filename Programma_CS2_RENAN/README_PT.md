@@ -84,7 +84,7 @@ Programma_CS2_RENAN/
 ├── PHOTO_GUI/                  # Assets de tema e fontes runtime (temas cs16/csgo/cs2, mapas)
 ├── runs/                       # Logs de treinamento TensorBoard
 ├── tactics/                    # Metadados táticos de mapas (JSON)
-├── tests/                      # Suíte de testes (mais de 2.500 definições de função de teste em 182 arquivos)
+├── tests/                      # Suíte de testes (mais de 2.500 definições de função de teste em 193 arquivos)
 ├── tools/                      # Ferramentas de validação a nível de pacote
 ├── __init__.py                 # Init do pacote (__version__ = "1.0.0")
 ├── run_ingestion.py            # Ponto de entrada para ingestão de demos

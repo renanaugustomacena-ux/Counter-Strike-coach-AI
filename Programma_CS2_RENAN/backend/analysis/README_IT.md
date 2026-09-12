@@ -9,9 +9,9 @@
 
 ## Panoramica
 
-Questa directory contiene 11 motori analitici che costituiscono il livello di intelligenza tattica del sistema di coaching CS2. Trasformano i dati grezzi delle demo (posizioni tick, eventi kill, snapshot economici, lanci utility) in consigli di coaching utilizzabili tramite teoria dei giochi, modellazione probabilistica e analisi statistica.
+Questa directory contiene 12 motori analitici su 11 moduli che costituiscono il livello di intelligenza tattica del sistema di coaching CS2. Trasformano i dati grezzi delle demo (posizioni tick, eventi kill, snapshot economici, lanci utility) in consigli di coaching utilizzabili tramite teoria dei giochi, modellazione probabilistica e analisi statistica.
 
-Ogni modulo segue il pattern factory function per accesso singleton thread-safe. Tutti i motori sono orchestrati da `backend/services/coaching_service.py` ed esposti alla UI attraverso l'analysis orchestrator.
+Ogni modulo segue il pattern factory function per accesso singleton thread-safe. Tutti i motori sono orchestrati da `backend/services/analysis_orchestrator.py` (invocato da `coaching_service.py`), che espone i loro insight alla UI.
 
 ---
 
@@ -69,7 +69,7 @@ Il metodo `generate_training_plan()` produce un piano di coaching in linguaggio 
 
 Calcola le distanze euclidee dei kill da posizioni 3D e le classifica in quattro fasce: close (<500u), medium (500-1500u), long (1500-3000u), extreme (>3000u). L'`EngagementProfile` viene confrontato con le baseline pro specifiche per ruolo (AWPer, Entry, Support, Lurker, IGL, Flex) con una soglia di deviazione del 15%.
 
-Include `NamedPositionRegistry` con 60+ posizioni callout hardcoded su 9 mappe competitive (Mirage, Inferno, Dust2, Anubis, Nuke, Ancient, Overpass, Vertigo, Train). Supporta estensione JSON per callout della community. Gli eventi kill sono annotati con la posizione nominata piu vicina per output leggibile.
+Utilizza `NamedPositionRegistry` (definito in `core/map_callouts.py`, ri-esportato qui) con 160 posizioni callout su 9 mappe competitive (Mirage, Inferno, Dust2, Anubis, Nuke, Ancient, Overpass, Vertigo, Train). Supporta estensione JSON per callout della community. Gli eventi kill sono annotati con la posizione nominata piu vicina per output leggibile.
 
 #### entropy_analysis.py — Valutazione Utility basata sulla Teoria dell'Informazione
 
@@ -182,6 +182,7 @@ from Programma_CS2_RENAN.backend.analysis import (
     get_utility_analyzer,       # -> UtilityAnalyzer
     get_economy_optimizer,      # -> EconomyOptimizer
     get_momentum_tracker,       # -> MomentumTracker
+    get_movement_quality_analyzer,  # -> MovementQualityAnalyzer
 )
 ```
 
@@ -216,7 +217,7 @@ from Programma_CS2_RENAN.backend.analysis import (
 
 5. **Isolamento checkpoint.** `WinProbabilityNN` (predictor 12-dim) e `WinProbabilityTrainerNN` (trainer 9-dim) sono architetture separate. La regola A-12 valida la dimensione input prima di `load_state_dict` per prevenire corruzione silenziosa.
 
-6. **Posizioni nominate.** Il `NamedPositionRegistry` include 60+ callout su 9 mappe. Posizioni aggiuntive possono essere caricate da JSON senza modifiche al codice tramite `load_from_json()`.
+6. **Posizioni nominate.** Il `NamedPositionRegistry` (in `core/map_callouts.py`) include 160 callout su 9 mappe. Posizioni aggiuntive possono essere caricate da JSON senza modifiche al codice tramite `load_from_json()`.
 
 7. **Safety bounds.** Tutti i parametri calibrati sono limitati: prior [0.05, 0.95], letalita armi [0.1, 3.0], lambda decay [0.01, 1.0], momentum [0.7, 1.4]. Questo previene valori patologici dal corrompere le analisi a valle.
 

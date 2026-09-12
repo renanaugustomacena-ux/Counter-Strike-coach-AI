@@ -37,8 +37,10 @@ banale in questa directory è difesa con **rischio affrontato / rischio residuo 
 2. **Mentre si scrive** — `tools/policy_runner.py` gira nel pre-commit (warn-mode inizialmente) e previene il drift.
 3. **Prima del merge** — se la modifica tocca un path in `BOUNDARY_FILES.txt`, la CI etichetta il PR
    `security-review-required` e `CODEOWNERS` impone una security review.
-4. **Al rilascio** — `goliath.py audit` esegue l'intera catena (SBOM, attestazione SLSA, manifest di integrità, RASP).
-5. **Durante un incidente** — `INCIDENT_RESPONSE.md` definisce gli scenari nominati; `goliath.py panic` è il kill-switch.
+4. **Al rilascio** — seguire `packaging/BUILD_CHECKLIST.md`: `goliath.py integrity` rigenera il
+   manifest di integrità sorgente (RASP), e `tools/audit_binaries.py` effettua l'audit dei binari compilati.
+   `tools/sbom_generator.py` produce lo SBOM CycloneDX (tool standalone; non ancora uno step della checklist).
+5. **Durante un incidente** — `INCIDENT_RESPONSE.md` definisce gli scenari nominati (IR-01…IR-05).
 
 ## Standard di riferimento
 
@@ -63,4 +65,5 @@ banale in questa directory è difesa con **rischio affrontato / rischio residuo 
 Le segnalazioni di vulnerabilità o di problemi di sicurezza devono raggiungere il proprietario del repository:
 **Renan Augusto Macena** — vedere CODEOWNERS per il routing dei contatti.
 
-Per la disclosure coordinata, **non** aprire una issue pubblica. Usare un canale privato.
+Per la disclosure coordinata, **non** aprire una issue pubblica. Usare un canale privato — il
+[`SECURITY.md`](../SECURITY.md) a livello di repository definisce il processo di segnalazione.

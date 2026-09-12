@@ -22,7 +22,7 @@ O backend implementa o **pipeline completo de coaching com IA** de ponta a ponta
 4. **Saida de coaching** -- resultados da analise sao transformados em conselhos de coaching acionaveis em linguagem natural.
 
 Nenhuma logica de UI reside aqui. O backend expoe suas funcionalidades atraves de uma **camada de servicos**
-(`services/`) que e consumida tanto pela UI primaria PySide6/Qt quanto pela UI legacy Kivy.
+(`services/`) que e consumida pela UI PySide6/Qt (`apps/qt_app/`).
 
 ---
 
@@ -31,10 +31,10 @@ Nenhuma logica de UI reside aqui. O backend expoe suas funcionalidades atraves d
 | # | Sub-Pacote | Arquivos | Proposito | Pontos de Entrada Chave |
 |---|------------|----------|-----------|------------------------|
 | 1 | `analysis/` | 12 | Motores de teoria dos jogos: belief model, rastreamento de momentum, win probability, analise de entropia, indice de engano, deteccao de pontos cegos | `belief_model.py`, `win_probability.py`, `momentum.py` |
-| 2 | `coaching/` | 8 | Pipeline de coaching em 4 modos: COPER baseado em experiencia, Hybrid (NN + regras), RAG retrieval-augmented, refinamento puro NN | `hybrid_engine.py`, `correction_engine.py`, `pro_bridge.py` |
+| 2 | `coaching/` | 9 | Pipeline de coaching em 4 modos: COPER baseado em experiencia, Hybrid (NN + regras), RAG retrieval-augmented, refinamento puro NN | `hybrid_engine.py`, `correction_engine.py`, `pro_bridge.py` |
 | 3 | `control/` | 5 | Gerenciamento do ciclo de vida de daemons, governanca de fila de ingestion, controle de training ML, limites de recursos de database | `ingest_manager.py`, `ml_controller.py`, `db_governor.py` |
-| 4 | `data_sources/` | 15 | Integracao de dados externos: demo parser (demoparser2), scraper de estatisticas pro HLTV (FlareSolverr/Docker), Steam API, FACEIT API | `demo_parser.py`, `hltv/`, `steam_api.py`, `faceit_api.py` |
-| 5 | `ingestion/` | 4 | Monitoramento runtime de arquivos para novas demos, migracao CSV de formatos legacy, governanca de recursos do OS | `watcher.py`, `resource_manager.py`, `csv_migrator.py` |
+| 4 | `data_sources/` | 16 | Integracao de dados externos: demo parser (demoparser2), scraper de estatisticas pro HLTV (FlareSolverr/Docker), Steam API, FACEIT API | `demo_parser.py`, `hltv/`, `steam_api.py`, `faceit_api.py` |
+| 5 | `ingestion/` | 5 | Monitoramento runtime de arquivos para novas demos, resolucao de datas de partida, migracao CSV de formatos legacy, governanca de recursos do OS | `watcher.py`, `resource_manager.py`, `csv_migrator.py`, `match_date_resolver.py` |
 | 6 | `knowledge/` | 8 | Knowledge base RAG com indice vetorial FAISS, banco de experiencias COPER, mineracao de demos pro, grafo de conhecimento tatico | `rag_knowledge.py`, `experience_bank.py`, `vector_index.py` |
 | 7 | `knowledge_base/` | 2 | Sistema de ajuda in-app: tooltips contextuais, glossario, guias passo a passo para a interface | `help_system.py` |
 | 8 | `nn/` | 52 | Arquiteturas de redes neurais (6 tipos de modelo), pipeline de training, inferencia, EMA, early stopping, data quality, RAP Coach, JEPA | `jepa_model.py`, `rap_coach/`, `train.py`, `config.py` |
@@ -194,16 +194,16 @@ Nivel 5 (Orquestracao):   services/  reporting/  control/
 
 ### Testes
 
-- Framework: `pytest`, 112 arquivos de teste em `Programma_CS2_RENAN/tests/` (+6 em `tests/` raiz).
+- Framework: `pytest`, 193 arquivos de teste em `Programma_CS2_RENAN/tests/` (+10 em `tests/` raiz).
 - Testes de integracao requerem `CS2_INTEGRATION_TESTS=1`.
 - Fixtures chave: `in_memory_db`, `seeded_db_session`, `mock_db_manager`, `torch_no_grad`.
 
 ### Hooks Pre-Commit
 
-13 hooks devem passar antes de qualquer commit: headless-validator, dead-code-detector,
+14 hooks devem passar antes de qualquer commit: headless-validator, dead-code-detector,
 integrity-manifest, dev-health, trailing-whitespace, end-of-file-fixer,
 check-yaml, check-json, large-files (1 MB), merge-conflict, detect-private-key,
-black (100 colunas, py3.12), isort (profile=black).
+ruff (--fix), black (100 colunas, py3.12), isort (profile=black).
 
 ### Validacao Pos-Tarefa
 

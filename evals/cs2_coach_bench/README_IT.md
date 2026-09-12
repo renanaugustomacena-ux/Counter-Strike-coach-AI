@@ -11,7 +11,7 @@ Benchmark di valutazione da 200 domande per la qualità del coaching AI di CS2.
 python evals/cs2_coach_bench/run_eval.py --model coach --limit 10
 
 # Esegui contro Ollama puro (senza RAG, isola la conoscenza del modello)
-python evals/cs2_coach_bench/run_eval.py --model ollama:llama3.1:8b --limit 10
+python evals/cs2_coach_bench/run_eval.py --model ollama:gemma4:e2b --limit 10
 
 # Assegna manualmente i punteggi alle risposte
 python evals/cs2_coach_bench/score_responses.py score --input reports/2026-04-12_coach.jsonl
@@ -51,6 +51,8 @@ Vedere `rubric.md` per le descrizioni complete. Ogni dimensione 0-3:
 4. **Grounding sui pro** — fa riferimento a pro reali?
 5. **Azionabilità** — ti dice cosa fare?
 
-## Criterio di ship (da COACH_QUALITY_ROADMAP)
+## Criterio di Ship
 
-`cs2coach` deve battere Llama 3.1 8B vanilla di >25% sul punteggio totale E battere GPT-4 di >5% sulle dimensioni di aderenza a CS2 e di grounding sui pro.
+`cs2coach` (il modello coach fine-tuned pianificato) deve battere Gemma4 e2b vanilla di >25% sul punteggio totale E battere GPT-4 di >5% sulle dimensioni di aderenza a CS2 e di grounding sui pro.
+
+Note: il criterio ha origine nel documento ritirato `COACH_QUALITY_ROADMAP` (consolidato il 03-05-2026, vedi `docs/DIAGNOSIS_2026-05.md`) — questo README ora lo contiene. Il fine-tuning viene eseguito sulla macchina Linux dedicata, non su questa workstation. `run_eval.py` collega solo i backend `coach` e `ollama:<model>`, quindi la baseline GPT-4 deve essere raccolta esternamente e valutata con la stessa rubrica.

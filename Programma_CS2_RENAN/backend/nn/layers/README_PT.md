@@ -7,18 +7,18 @@
 
 ## Finalidade
 
-Este pacote possui os pequenos blocos `nn.Module` reutilizáveis dos quais mais de um modelo no projeto depende. Qualquer coisa única a uma só arquitetura de modelo permanece dentro do pacote daquele modelo — apenas blocos com múltiplos consumidores são promovidos para cá.
+Este pacote possui as definições canônicas dos building blocks `nn.Module` compartilhados. Foi criado durante a remediação G-06 para consolidar implementações duplicadas em uma única localização autoritativa. Atualmente seu único ocupante, `SuperpositionLayer`, é consumido pela camada Strategy do RAP Coach.
 
 ## Inventário de arquivos
 
 | Arquivo | Finalidade | Exports principais |
 |---------|------------|--------------------|
 | `__init__.py` | Marcador de pacote. | — |
-| `superposition.py` | `SuperpositionLayer` — camada linear context-gated com regularização de esparsidade L1, hooks de observabilidade do gate (`get_gate_statistics()`, `get_gate_activations()`) e controles de tracing. | `SuperpositionLayer` |
+| `superposition.py` | `SuperpositionLayer` — camada linear com condicionamento FiLM (`y = γ(context)·(Wx+b) + β(context)`, RAP-AUDIT-06) com hook de loss para esparsidade L1 do gate (`gate_sparsity_loss()`), hooks de observabilidade do gate (`get_gate_statistics()`, `get_gate_activations()`) e controles de tracing. | `SuperpositionLayer` |
 
 ## `SuperpositionLayer` em um parágrafo
 
-Uma projeção linear padrão envolvida num gate aprendível e condicionado por contexto. A saída do gate é regularizada por L1 para que a camada aprenda a manter a maior parte da sua capacidade inativa para um dado input, "acendendo" apenas o subespaço relevante para o estado atual. Usada pela camada Strategy do RAP Coach para combinar múltiplas sub-políticas especialistas sob uma única parametrização compartilhada. Fornece hooks de observabilidade para que o trainer possa logar a esparsidade do gate por passo.
+Uma projeção linear padrão modulada por Feature-wise Linear Modulation (FiLM): um gate sigmoide `γ(context)` escala a projeção e um shift aditivo inicializado em zero `β(context)` injeta features orientadas pelo contexto (RAP-AUDIT-06 — o gate anterior, apenas multiplicativo, podia suprimir features mas nunca adicioná-las). Cada especialista na camada Strategy do RAP Coach usa um como sua primeira camada adaptável ao contexto. Fornece um hook de loss para esparsidade L1 do gate (`gate_sparsity_loss()`) e hooks de observabilidade para que o trainer possa logar a esparsidade do gate por passo.
 
 ## Por que este diretório existe
 
@@ -26,9 +26,9 @@ Antes da limpeza G-06, o projeto teve brevemente duas implementações paralelas
 
 ## Adicionando uma nova camada
 
-Um bloco pertence aqui apenas quando ele é:
+Um bloco pertence aqui quando ele é:
 
-1. **Reutilizado por ≥ 2 modelos.** Um bloco usado por um único modelo vive no pacote daquele modelo.
+1. **A única definição canônica** de um building block que não deve ser duplicado em outro lugar (princípio G-06).
 2. **Stateless quanto ao modo de treinamento/inferência** além do switch padrão `model.eval()` — sem registries globais, sem estado mutável a nível de módulo.
 3. **Documentado neste README.** Atualize a tabela de inventário de arquivos e adicione um resumo de um parágrafo.
 

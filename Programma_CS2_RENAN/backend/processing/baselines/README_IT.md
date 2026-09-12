@@ -128,11 +128,12 @@ accettabile per < 1000 pro registrati.
 
 | Consumatore | Utilizzo |
 |-------------|----------|
-| `CoachingService` | Chiama `get_pro_baseline()` e `calculate_deviations()` per generare report Z-score |
-| Daemon `Teacher` | Chiama `MetaDriftEngine.calculate_drift_coefficient()` dopo il riaddestramento |
-| `AnalysisOrchestrator` | Usa `TemporalBaselineDecay.get_temporal_baseline()` per confronti pesati per recenza |
-| `RoleClassifier` | Legge `get_role_threshold_store()` per le soglie apprese |
-| `NicknameResolver` | Chiamato durante l'ingestione demo per taggare giocatori pro |
+| `CoachingService` (`backend/services/coaching_service.py`) | Chiama `get_pro_baseline()` / `calculate_deviations()` e `TemporalBaselineDecay` per report Z-score |
+| `SkillLatentModel` (`backend/processing/skill_assessment.py`) | `get_pro_baseline()` per Z-score degli assi skill |
+| `HybridCoachingEngine` (`backend/coaching/hybrid_engine.py`) | `get_pro_baseline()` + `MetaDriftEngine.get_meta_confidence_adjustment()` |
+| `RoleClassifier` (`backend/analysis/role_classifier.py`) | Legge `get_role_threshold_store()` per le soglie apprese |
+| `PlayerLookupService` (`backend/services/player_lookup.py`) | `NicknameResolver.find_pro_player_id()` per query chat |
+| `tools/aggregate_match_stats_sql.py` | `ProPlayerLinker.backfill_all()` (backfill D2C; disponibile anche un hook per-ingestione) |
 | `role_features.py` | Chiama `MetaDriftEngine.get_meta_confidence_adjustment()` per firme adattive |
 
 ## Fonti Dati

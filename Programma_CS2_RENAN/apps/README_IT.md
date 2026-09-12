@@ -289,7 +289,7 @@ I cambi di lingua emettono un segnale `language_changed`. Le schermate implement
 
 ## Note di Sviluppo
 
-- L'app Qt richiede **PySide6 6.11.0** (fissato in `requirements.txt`) e **Python 3.10+**.
+- L'app Qt richiede **PySide6 6.11.0** (fissato in `requirements.txt`) e **Python 3.11+**.
 - L'unica sorgente QSS è `qt_app/themes/base.qss.template`; i vecchi file `.qss` per tema
   sono stati rimossi (commit `73ec5ed`, `5ce891b`). Le modifiche visive passano attraverso
   i design token e il template; non usare stili inline nel codice Python.

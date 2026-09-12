@@ -24,20 +24,29 @@ excludes:               # pattern glob da saltare
 kind: line_regex        # uno di: line_regex | text_regex | yaml_walker | file_compare | ast_walker
 config:                 # blocco specifico per kind (vedere sotto)
   ...
+mapping:                # cross-reference opzionale verso standard (ID CWE / ASVS / SSDF)
+  cwe: ['CWE-1327']
+  ssdf: ['PO.5']
 ```
 
 ## Kind
 
 ### `line_regex`
 
-Scansiona ogni riga di ogni file che matcha `applies_to` contro `config.pattern`. Riporta ogni match
-a meno che non sia soppresso da un commento inline `# noqa: <id>` sulla stessa riga (o sulla riga sopra).
+Scansiona ogni riga di ogni file che matcha `applies_to` contro ciascuna voce in `config.patterns`.
+Riporta ogni match a meno che la riga non contenga una delle stringhe `inline_waivers` configurate
+dalla regola (es. `# noqa: POL-NET-01` o un tag `# SEC: <reason>`).
 
 ```yaml
 kind: line_regex
 config:
-  pattern: '\bsubprocess\b\s*\([^)]*shell\s*=\s*True'
-  inline_waiver: '# SEC: justified'
+  patterns:
+    - id: shell_true
+      pattern: '\bsubprocess\b\s*\([^)]*shell\s*=\s*True'
+      message: 'shell=True is forbidden; use an argv list.'
+  inline_waivers:
+    - '# SEC: justified'
+    - '# noqa: POL-CODE-01'
 ```
 
 ### `text_regex`
@@ -54,7 +63,7 @@ config:
   query: '.services.*.ports[*]'
   rule: must_not_match
   pattern: '^0\.0\.0\.0:'
-  message: 'Service binds to all interfaces; use 127.0.0.1 or add a # SEC: bind-public waiver.'
+  message: 'Service binds to all interfaces; use 127.0.0.1.'
 ```
 
 ### `file_compare`
@@ -75,7 +84,8 @@ config:
 
 ### `ast_walker`
 
-(Phase 2) Cammina sull'AST Python. Richiederà `libcst==1.5.0` come dipendenza di dev.
+(Phase 2 — non ancora implementato; il runner attualmente emette un avviso info-level per le regole
+`ast_walker`.) Cammina sull'AST Python. Richiederà `libcst` come dipendenza di dev.
 
 ## Aggiungere una nuova regola
 
@@ -87,11 +97,14 @@ config:
 ## Modi
 
 - **Default (warn-mode)**: `python tools/policy_runner.py` — esce 0 anche in presenza di violazioni; stampa il report.
-- **Strict (block)**: `python tools/policy_runner.py --strict` — esce 1 su qualsiasi violazione non waiverata.
-- **Singola regola**: `python tools/policy_runner.py --rule POL-DEPS-01` — esegue solo la regola specificata.
+- **Strict (block)**: `python tools/policy_runner.py --strict` — esce 1 su qualsiasi violazione
+  error-severity non waiverata o waiver scaduto.
+- **Singola regola**: `python tools/policy_runner.py --rule POL-DEPS-01` — esegue solo la regola specificata
+  (ripetibile).
+- **JSON**: `python tools/policy_runner.py --json` — output machine-readable al posto del report human.
 
-## Integrazione con l'audit log
+## Waiver
 
-Ogni violazione osservata (a prescindere da strict / warn) emette un evento di audit log
-`policy.violation.observed` con il path del file, la riga, l'ID della regola e la severità. La scadenza di un waiver emette
-`policy.waiver.expired`.
+Le eccezioni a livello di repo risiedono in `SECURITY/waivers.yaml`; ogni voce ha un limite temporale
+(`expires:`) e il runner riporta i waiver scaduti (che fanno fallire `--strict`). Le eccezioni per-riga
+usano le stringhe `inline_waivers` della regola.

@@ -22,10 +22,10 @@ causa corrupcao silenciosa do modelo conhecida como *Inference-Training Skew*.
 |---------|-----------|-------------------|
 | `vectorizer.py` | Extracao e validacao do vetor de features 25-dim | `FeatureExtractor`, `FEATURE_NAMES`, `METADATA_DIM`, `DataQualityError`, `WEAPON_CLASS_MAP` |
 | `base_features.py` | Limiares heuristicos configuraveis + agregacao a nivel de partida | `HeuristicConfig`, `extract_match_stats()`, `load_learned_heuristics()`, `save_heuristic_config()` |
-| `rating.py` | Formula unificada HLTV 2.0 rating (componentes + regressao) | `compute_hltv2_rating()`, `compute_impact_rating()`, `compute_survival_rating()`, `compute_hltv2_rating_regression()` |
+| `rating.py` | Formula unificada HLTV 2.0 rating e componentes RAW `rating_*` | `compute_hltv2_rating()`, `compute_rating_components()`, `compute_impact_rating()`, `compute_survival_rating()` |
 | `kast.py` | Calculo KAST (Kill/Assist/Survive/Trade) | `calculate_kast_for_round()`, `calculate_kast_percentage()`, `estimate_kast_from_stats()` |
 | `role_features.py` | Features especificas por papel e classificacao | `classify_role()`, `extract_role_features()`, `get_role_coaching_focus()`, `get_adaptive_signatures()`, `ROLE_SIGNATURES`, `PlayerRole` |
-| `__init__.py` | Dispatcher lazy-import (previne deadlocks de import-lock) | Reexporta todos os nomes publicos dos submodulos |
+| `__init__.py` | Dispatcher lazy-import (previne deadlocks de import-lock) | Reexporta lazily os nomes publicos de `vectorizer`, `kast` e `role_features`; `base_features` e `rating` sao importados diretamente pelos seus consumidores |
 
 ## O Vetor de Features de 25 Dimensoes
 
@@ -70,9 +70,10 @@ ordem e fixa e imposta pela assercao compile-time
 - **As features de contexto 20-24** sao lidas primeiro de `tick_data`
   (enriquecidos durante a ingestao), com fallback para um dict `context`
   (DemoFrame na inferencia), eliminando o skew treinamento/inferencia.
-- **Weapon class** (indice 19) mapeia cerca de 70 nomes de armas CS2 (nomes
-  internos + nomes display demoparser2) em 6 categorias via
-  `WEAPON_CLASS_MAP`.
+- **Weapon class** (indice 19) mapeia cerca de 90 nomes de armas CS2 (nomes
+  internos + nomes display demoparser2) em 8 valores de categoria via
+  `WEAPON_CLASS_MAP` (knife 0.0, special 0.05, grenade 0.1, niveis 0.2-1.0;
+  unknown 0.5).
 
 ## Arquitetura & Conceitos
 
@@ -111,16 +112,25 @@ de partida, calculando o rating HLTV 2.0 unificado atraves das funcoes de
 
 ### HLTV 2.0 Rating (`rating.py`)
 
-Duas implementacoes coexistem por design (`F2-40`):
+Uma formula de producao mais um contrato de componentes:
 
 1. **`compute_hltv2_rating()`** -- media por componente, cada termo
-   independentemente interpretavel. Usado para analise de desvios de coaching.
-2. **`compute_hltv2_rating_regression()`** -- coeficientes de regressao que
-   correspondem aos valores publicados HLTV (R^2=0.995). Usado para
-   validacao de display UI. Inclui uma guarda runtime contra confusao
-   razao/percentual kast.
+   normalizado contra uma baseline de formula e independentemente
+   interpretavel. Usado para analise de desvios de coaching. O argumento
+   `kast` e um RATIO (0.0-1.0), nunca uma porcentagem.
+2. **`compute_rating_components()`** -- unica fonte de verdade para as
+   colunas `rating_*` de `PlayerMatchStats`. Contrato: as colunas armazenam
+   componentes RAW (`rating_kpr = kpr`, `rating_survival = 1 - dpr`,
+   `rating_kast` = ratio KAST [0, 1], `rating_adr` = ADR bruto) --
+   normalizacao de baseline acontece APENAS dentro do agregado `rating`.
 
-As duas funcoes divergem deliberadamente -- NAO as reconcilie.
+A anterior `compute_hltv2_rating_regression()` foi ELIMINADA (F2-39/R4
+LOW, 2026-07-17): tinha zero call sites em producao e carregava
+semanticas kast em porcentagem que convidavam ratings x100 silenciosamente
+errados. Os coeficientes de regressao (R^2=0.995) permanecem no modulo
+como constantes de documentacao. A media por componente diverge
+deliberadamente da formula de regressao publicada pelo HLTV (`F2-40`)
+-- NAO as reconcilie.
 
 ### Calculo KAST (`kast.py`)
 
@@ -148,19 +158,19 @@ Tres granularidades:
 
 Usa `__getattr__` para adiar imports de submodulos ate o primeiro acesso a
 atributo. Isso previne deadlocks `_ModuleLock` quando threads daemon (workers
-de ingestao) importam submodulos enquanto a thread UI Kivy detem o lock de
+de ingestao) importam submodulos enquanto a thread UI detem o lock de
 import.
 
 ## Pontos de Integracao
 
 | Consumidor | Uso |
 |------------|-----|
-| `backend/nn/rap_coach/trainer.py` | `FeatureExtractor.extract_batch()` para dados de treinamento |
-| `backend/nn/jepa_trainer.py` | `FeatureExtractor.extract_batch()` com `validate_feature_parity()` |
-| `backend/services/coaching_service.py` | `FeatureExtractor.extract()` para inferencia ao vivo |
-| `backend/services/analysis_orchestrator.py` | `extract_match_stats()` para analise a nivel de partida |
-| `backend/processing/baselines/role_thresholds.py` | `classify_role()` para validacao de limiares |
-| `core/session_engine.py` | `FeatureExtractor.configure()` na inicializacao |
+| `backend/nn/training_orchestrator.py` | `FeatureExtractor.extract_batch()` para dados de treinamento |
+| `backend/nn/jepa_train.py` | `FeatureExtractor.extract_batch()` para treinamento JEPA |
+| `backend/processing/state_reconstructor.py` | `extract_batch()` + `validate_feature_parity()` para tensores RAP-Coach |
+| `backend/nn/inference/ghost_engine.py` | `validate_feature_parity()` no limite de inferencia |
+| `backend/services/coaching_service.py` | `FeatureExtractor` extracao para inferencia ao vivo |
+| `backend/coaching/pro_bridge.py`, `ingestion/pipelines/user_ingest.py` | `extract_match_stats()` para estatisticas a nivel de partida |
 
 ## Notas de Desenvolvimento
 

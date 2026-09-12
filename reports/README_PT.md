@@ -1,48 +1,53 @@
-# `reports/` — Artefatos gerados de auditoria e avaliação
+# `reports/` — Artefatos gerados de auditoria e avaliacao
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-> **Authority:** Repositório de artefatos gerados (read-only por convenção)
+> **Authority:** Repositorio de artefatos gerados (read-only por convencao)
 
 ## O que vive aqui
 
-Este diretório coleta os relatórios JSON gerados automaticamente pelas ferramentas de avaliação, auditoria e diagnóstico do projeto. Os arquivos aqui são **saídas** da execução de scripts, não documentos-fonte — são mantidos sob controle de versão como evidência histórica.
+Este diretorio coleta os relatorios JSON gerados automaticamente pelas ferramentas de avaliacao, auditoria e diagnostico do projeto. Os arquivos aqui sao **saidas** da execucao de scripts, nao documentos-fonte. O diretorio e distribuido vazio (apenas os READMEs sao rastreados — `reports/*` e gitignored); os relatorios se acumulam localmente conforme voce executa as ferramentas.
 
 ```
 reports/
-├── audit/                                # Saídas JSON das auditorias Goliath
-├── eval_<UTC-timestamp>.json             # Execuções do benchmark cs2_coach_bench
-└── goliath_hospital_<timestamp>.json     # Execuções Goliath em modo hospital (recuperação de DB)
+├── assets/                               # Graficos PNG do MatchVisualizer (nomes fixos, sobrescritos)
+├── audit/                                # Saidas JSON do audit_scanner.py (via --output)
+├── coach_answer_eval_<UTC-timestamp>.json  # Execucoes de tools/coach_answer_eval.py (groundedness)
+├── eval_<UTC-timestamp>.json             # Execucoes de tools/eval_harness.py (coaching-eval)
+└── hltv_seed_<timestamp>/                # Relatorios de execucao seed_hltv_top_n.py (pending_vision.json, ...)
 ```
 
 ## Categorias de arquivo
 
-| Padrão | Origem | Propósito |
+| Padrao | Origem | Proposito |
 |--------|--------|-----------|
-| `eval_*.json` | `evals/cs2_coach_bench/run_eval.py` | Scoring do benchmark de coaching |
-| `goliath_hospital_*.json` | `goliath.py audit --hospital` | Scan de integridade do banco |
-| `audit/*.json` | `goliath.py audit` | Auditorias direcionadas de módulo |
+| `eval_*.json` | `tools/eval_harness.py` | Execucoes de avaliacao de coaching (com timestamp) |
+| `coach_answer_eval_*.json` | `tools/coach_answer_eval.py` | Execucoes eval groundedness de respostas LLM (com timestamp) |
+| `audit/*.json` | `tools/audit_scanner.py --output reports/audit/<nome>.json` | Auditorias direcionadas de subsistemas |
+| `hltv_seed_*/` | `tools/seed_hltv_top_n.py` (consumido por `seed_hltv_apply_vision.py`) | Artefatos de execucoes de seeding HLTV |
+| `assets/*.png` | `Programma_CS2_RENAN/reporting/visualizer.py` (`MatchVisualizer`, dir padrao relativo a cwd) | Graficos de heatmap / analise de rounds |
 
-## Convenções
+(O benchmark `cs2_coach_bench` grava suas proprias respostas JSONL em `evals/cs2_coach_bench/reports/`, nao aqui.)
 
-- **Nomes de arquivo são timestampados** (`UTC` ou local) para que os relatórios nunca se sobrescrevam.
-- **Relatórios são imutáveis.** Re-executar um script produz um novo arquivo — nunca edite no lugar.
-- **Relatórios antigos são preservados** até que a pressão de armazenamento justifique poda. Diferenciar entre relatórios consecutivos revela regressões.
-- **Sem PII.** Relatórios contêm nomes de demos e aliases de jogadores, mas nunca credenciais cruas, tokens Steam ou chaves de API HLTV.
+## Convencoes
+
+- **Nomes de arquivo de relatorios JSON sao com timestamp** (`UTC` ou local) para que os relatorios nunca se sobrescrevam. Excecao: PNGs em `assets/` usam nomes fixos por mapa/grafico e sao sobrescritos na re-geracao.
+- **Relatorios sao imutaveis.** Re-executar um script produz um novo arquivo — nunca edite no lugar.
+- **Relatorios sao apenas locais.** `reports/*` e gitignored; preserve os antigos ate que a pressao de armazenamento justifique poda. Diferenciar entre relatorios consecutivos revela regressoes.
+- **Sem PII.** Relatorios contem nomes de demos e aliases de jogadores, mas nunca credenciais cruas, tokens Steam ou chaves de API HLTV.
 
 ## Relacionados
 
 - Harness do benchmark: `evals/README.md`
 - Operador Goliath: `goliath.py` na raiz do repo
-- Saída do validador (stream separado): consulte `tools/headless_validator.py` (escreve em stdout, não aqui)
+- Saida do validador (stream separado): consulte `tools/headless_validator.py` (escreve em stdout, nao aqui)
 
 ## Limpeza
 
-Quando o diretório passa de algumas centenas de arquivos, pode por mês com:
+Quando o diretorio passa de algumas centenas de arquivos, pode por idade com:
 
 ```bash
 find reports -name "eval_*.json" -mtime +90 -delete
-find reports -name "goliath_hospital_*.json" -mtime +60 -delete
 ```
 
-Ajuste os limiares de acordo com sua preferência de retenção. Não existe limpeza automática.
+Ajuste os limiares de acordo com sua preferencia de retencao. Nao existe limpeza automatica.

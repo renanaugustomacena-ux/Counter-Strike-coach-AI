@@ -68,7 +68,8 @@ Questo ordine consistente previene i deadlock.
 
 Le scritture usano una strategia write-ahead per prevenire la corruzione:
 
-1. Crea un backup del registro esistente (`.json.backup`).
+1. Crea un backup del registro esistente (`.json.backup`) -- saltato alla
+   prima scrittura, quando nessun file registro esiste ancora.
 2. Scrive il nuovo stato in un file temporaneo (`tempfile.mkstemp()`).
 3. Sostituisce atomicamente il file originale tramite `os.replace()`.
 4. Se un passo fallisce, il file temporaneo viene pulito e l'eccezione si
@@ -107,21 +108,19 @@ INFO.
 ### `schema.sql` -- Riservato
 
 Il file `schema.sql` e' riservato per una futura migrazione dal registro basato
-su JSON al registro basato su SQL.  Attualmente vuoto.  Quando implementato,
-definira' una tabella `demo_file_records` con colonne per percorso file, hash,
-dimensione, tipo sorgente, stato lifecycle, codice errore, contatore retry e
-timestamp.
+su JSON al registro basato su SQL.  E' attualmente vuoto (0 bytes).
 
 ## Integrazione
 
 ### Consumatori Upstream
 
-| Consumatore | Utilizzo |
-|-------------|----------|
-| `ingestion/pipelines/user_ingest.py` | Chiama `is_processed()` prima dell'ingestion, `mark_processed()` dopo il successo |
-| `ingestion/pipelines/json_tournament_ingestor.py` | Elaborazione batch con controlli registro |
-| `run_ingestion.py` | Gestione registro a livello orchestratore |
-| `core/session_engine.py` (IngestionWatcher) | Thread daemon che attiva pipeline e consulta il registro |
+`DemoRegistry` e `DemoLifecycleManager` attualmente **non hanno consumatori
+in-code**: l'orchestratore di produzione (`run_ingestion.py`) esegue la propria
+deduplicazione in `_check_duplicate_demo()`, che controlla la tabella
+`IngestionTask` (percorso demo esatto), `PlayerMatchStats` (nome stem demo),
+e l'esistenza del file DB per-match (`match_id` derivato dallo SHA-256 del
+nome stem) -- nessun hashing del contenuto file.  Le classi restano disponibili
+come utility standalone di dedup/retention del package.
 
 ### Dipendenze
 
@@ -174,9 +173,10 @@ timestamp.
   venga mai lasciato in uno stato di scrittura parziale.  Questo e' critico
   perche' un crash durante la scrittura corromprebbe altrimenti l'intera
   storia di ingestion.
-- **Sicurezza backup:** Prima di ogni scrittura, una copia del registro
-  corrente viene creata a `<path>.json.backup`.  Il backup viene validato al
-  recovery per prevenire il ripristino da un backup corrotto.
+- **Sicurezza backup:** Prima di ogni scrittura che sovrascrive un registro
+  esistente, una copia del file corrente viene creata a `<path>.json.backup`.
+  Il backup viene validato al recovery per prevenire il ripristino da un backup
+  corrotto, e un backup recuperato con successo viene copiato sul file primario.
 - **Retention default:** Il periodo di retention di 30 giorni e' un
   compromesso conservativo tra spazio disco e la possibilita' di rianalizzare
   demo recenti.  Puo' essere sovrascritto tramite il parametro `days`.
