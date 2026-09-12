@@ -34,6 +34,23 @@ class _TrayStub:
         self.messages.append((title, body))
 
 
+def _release(window) -> None:
+    """Destroy a MainWindow NOW, not "later" (D-37).
+
+    ``deleteLater()`` only queues a DeferredDelete; pytest never returns to
+    the Qt event loop, so the hidden C++ window outlives the module and the
+    next test that pumps events (the splash test on the Windows CI runner)
+    faults natively.  Flush the queue here so nothing survives.
+    """
+    from PySide6.QtCore import QEvent
+    from PySide6.QtWidgets import QApplication
+
+    window.close()
+    window.deleteLater()
+    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.processEvents()
+
+
 def test_render_tray_icon_paints(qapp):
     from Programma_CS2_RENAN.apps.qt_app.core.tray import render_tray_icon
 
@@ -70,7 +87,7 @@ def test_close_event_hides_to_tray_when_armed(qapp, monkeypatch):
     window.close()
     assert len(stub.messages) == 1, "the balloon shows once per process"
     window.attach_tray(None)  # allow real teardown
-    window.deleteLater()
+    _release(window)
 
 
 def test_close_event_falls_through_when_disarmed(qapp, monkeypatch):
@@ -86,7 +103,7 @@ def test_close_event_falls_through_when_disarmed(qapp, monkeypatch):
     window.show()
     closed = window.close()  # no tray attached at all — plain close
     assert closed is True
-    window.deleteLater()
+    _release(window)
 
 
 def test_app_boot_wires_the_single_instance_guard():
@@ -96,3 +113,21 @@ def test_app_boot_wires_the_single_instance_guard():
         "app.py no longer calls lifecycle.ensure_single_instance — two GUI "
         "processes would mean concurrent SQLite writers (Q6-TRAY)"
     )
+
+
+def test_no_main_window_survives_this_module(qapp):
+    """D-37: the two MainWindows built above must be GONE when the module ends.
+
+    ``deleteLater()`` only queues a DeferredDelete; nothing in this module
+    pumps that queue, so both hidden C++ windows outlived the module.  The
+    next module to pump events on the Windows CI runner was
+    ``test_v1_blockers.py::TestSplashScreen::test_splash_status_updates``
+    (``QSplashScreen.showMessage`` pumps internally) — red with a native
+    access violation since de1af57, the commit that added this file.
+    """
+    from PySide6.QtWidgets import QApplication
+
+    from Programma_CS2_RENAN.apps.qt_app.main_window import MainWindow
+
+    survivors = [w for w in QApplication.topLevelWidgets() if isinstance(w, MainWindow)]
+    assert survivors == [], f"{len(survivors)} MainWindow(s) still alive after teardown"
