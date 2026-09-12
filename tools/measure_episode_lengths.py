@@ -645,7 +645,7 @@ def main() -> int:
     }
     result["meta"]["runtime_seconds"] = round(time.time() - t0, 1)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(result, indent=2))
+    args.out.write_text(json.dumps(result, indent=2), encoding="utf-8")
     _log(
         f"wrote {args.out} ({args.out.stat().st_size / 1024:.0f} KB) in {result['meta']['runtime_seconds']} s"
     )

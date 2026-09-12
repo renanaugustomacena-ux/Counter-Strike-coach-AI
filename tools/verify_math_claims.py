@@ -600,7 +600,7 @@ def main() -> int:
     results["meta"]["elapsed_s"] = round(time.time() - t0, 1)
     out = REPO / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(results, indent=2))
+    out.write_text(json.dumps(results, indent=2), encoding="utf-8")
     _log(f"wrote {out} in {results['meta']['elapsed_s']} s")
     # short console summary
     d1 = results["T2_deltas"]["h1"]

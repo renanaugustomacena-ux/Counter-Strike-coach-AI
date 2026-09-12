@@ -564,7 +564,7 @@ def main() -> int:
     }
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(result, indent=2))
+    out.write_text(json.dumps(result, indent=2), encoding="utf-8")
     _log(f"wrote {out}  ({runtime:.1f}s)")
 
     print("\nSUMMARY (d=64, M=1024, 17 knots on [0,3])")

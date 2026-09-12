@@ -240,3 +240,30 @@ class TestEndToEnd:
             assert seed_data["rankme"] > 0
             assert "probes" in seed_data
             assert "round_won" in seed_data["probes"]
+
+
+class TestLegacyBridgeAlignment:
+    """D-39: the 21→25-d bridge for contender A must respect the v1 slot order.
+
+    v2 numerics are v1 slots ``[0..15, 20..24]`` (schema_v2.py); the four
+    retired slots 16-19 (kast_estimate, map_id, round_phase, weapon_class)
+    sit in the MIDDLE.  Padding four zeros at the END fed time_in_round /
+    bomb_planted / teammates_alive / enemies_alive into the legacy encoder's
+    slots 16-19 and team_economy into slot 20 — contender A was garbage,
+    not "approximate".
+    """
+
+    def test_bridge_round_trips_through_remap_v1_to_v2(self) -> None:
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
+            remap_v1_to_v2,
+        )
+        from tools.benchmark_jepa_v2_vs_legacy import _bridge_v2_to_v1
+
+        x21 = torch.randn(3, 5, 21)
+        x25 = _bridge_v2_to_v1(x21)
+        assert x25.shape == (3, 5, 25)
+        assert torch.equal(x25[..., 16:20], torch.zeros(3, 5, 4))
+        for b in range(3):
+            for t in range(5):
+                num, _cat = remap_v1_to_v2(x25[b, t].numpy(), None, None, None)
+                assert np.allclose(num, x21[b, t].numpy())

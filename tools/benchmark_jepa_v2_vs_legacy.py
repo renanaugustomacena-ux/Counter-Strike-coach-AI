@@ -151,6 +151,26 @@ def _load_legacy_encoder(
         return None
 
 
+# v1 slot order (vectorizer.FEATURE_NAMES): the 21 v2 numerics are v1 slots
+# [0..15, 20..24]; the four retired slots 16..19 (kast_estimate, map_id,
+# round_phase, weapon_class) sit in the MIDDLE (schema_v2.py, remap_v1_to_v2).
+_V1_RETIRED_START: int = 16
+_V1_RETIRED_COUNT: int = 4
+
+
+def _bridge_v2_to_v1(x21: torch.Tensor) -> torch.Tensor:
+    """(..., 21) v2 numerics -> (..., 25) v1 layout with zeros at slots 16..19 (D-39).
+
+    Inverse of ``vectorizer.remap_v1_to_v2`` on the numeric part.  Padding
+    at the END (the pre-D-39 bridge) fed time_in_round / bomb_planted /
+    teammates_alive / enemies_alive into the legacy encoder's retired slots
+    and team_economy into slot 20 — contender A was misaligned, not merely
+    approximate.
+    """
+    zeros = torch.zeros(*x21.shape[:-1], _V1_RETIRED_COUNT, dtype=x21.dtype, device=x21.device)
+    return torch.cat([x21[..., :_V1_RETIRED_START], zeros, x21[..., _V1_RETIRED_START:]], dim=-1)
+
+
 def _encode_legacy(
     encoder: torch.nn.Module,
     ws: WindowSet,
@@ -159,14 +179,14 @@ def _encode_legacy(
     """Contender A: legacy 256-d mean over ticks (approximate, informational).
 
     Legacy JEPAEncoder expects 25-d input. The v2 schema has 21 numeric
-    features. This bridge is approximate: the four missing v1 slots
-    (kast_estimate, map_id, round_phase, weapon_class) are filled with
-    zeros. D-18 verdict does NOT depend on contender A (Parte III §5.3).
+    features. The four retired v1 slots 16..19 (kast_estimate, map_id,
+    round_phase, weapon_class) are zero-filled IN PLACE by
+    ``_bridge_v2_to_v1`` (D-39). Still approximate: the legacy encoder saw
+    a hashed map_id and an ordinal weapon_class there. D-18 verdict does
+    NOT depend on contender A (Parte III §5.3).
     """
     encoder.eval()
-    x = ws.x_num
-    pad = torch.zeros(x.shape[0], x.shape[1], 4, dtype=x.dtype)
-    x25 = torch.cat([x, pad], dim=2)
+    x25 = _bridge_v2_to_v1(ws.x_num)
     all_mean: List[NDArray] = []
     n = x25.shape[0]
     with torch.no_grad():
@@ -539,12 +559,14 @@ def generate_report(
     lines.append("## Known Issues")
     lines.append("")
     lines.append(
-        "- Contender A uses an approximate 21→25-d bridge (four missing "
-        "v1 slots filled with zeros). Results are informational only."
+        "- Contender A uses an approximate 21→25-d bridge: the four retired "
+        "v1 slots 16..19 are zero-filled in place (D-39). Results are "
+        "informational only."
     )
     lines.append(
-        "- `enemy_visible_within_2s` label is not in `probe_batch`'s "
-        "D-17 set; only `contact_new_within_2s` is evaluated."
+        "- `enemy_visible_any_within_2s` is derived by `probe_batch` but not "
+        "benchmarked (near-leaky per Parte II §12.5); `contact_new_within_2s` "
+        "is the evaluated contact label."
     )
     lines.append("")
     return "\n".join(lines)
@@ -673,13 +695,14 @@ def run_benchmark(
 
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(report)
+    # D-38: the report carries "Δpos R²"; Windows' default codec is cp1252.
+    out.write_text(report, encoding="utf-8")
     log.info("Report written to %s", out)
 
     if json_path:
         json_out = _build_json_output(all_metrics, seeds, passed, reasons, rankme_b)
         Path(json_path).parent.mkdir(parents=True, exist_ok=True)
-        Path(json_path).write_text(json.dumps(json_out, indent=2) + "\n")
+        Path(json_path).write_text(json.dumps(json_out, indent=2) + "\n", encoding="utf-8")
         log.info("JSON written to %s", json_path)
 
     return passed, report
