@@ -189,7 +189,7 @@
     "backend/nn/jepa_v2/cli.py": "10e094fabea369f012d551d7ce4171f4a760640dd7576b79ffe4541d7710dfb1",
     "backend/nn/jepa_v2/config.py": "e4a5eb9d91078474705e6edfac0ad4b0162226c426c67df11fc6145bf6b33186",
     "backend/nn/jepa_v2/encoder.py": "78573c659d8b336d9e3bcfa26dad2a7ed41d02b811f256c940d689b914054c03",
-    "backend/nn/jepa_v2/losses.py": "d2f73d27fdd7a85f5389b7cd5362f559f84901f82559554c2bf620aa1a3231af",
+    "backend/nn/jepa_v2/losses.py": "06e32166759d7a6cde4c377c54a1b552b8608018c5cb3760ec19bd1a7bd960dc",
     "backend/nn/jepa_v2/predictor.py": "17d8d50c876c6a4feb41500d55dafd61d99c51f106f9df416b662db71920184a",
     "backend/nn/jepa_v2/probes.py": "c29a9e6a8726eea2d669606b88fcdef565793b6a9906a4dac3929b8d68a07073",
     "backend/nn/jepa_v2/projector.py": "ad985d72c11795c8ffdb111c1914568dc2cb3a2adce34e29684c5319ce62ada6",
