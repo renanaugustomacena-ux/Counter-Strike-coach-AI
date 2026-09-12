@@ -689,7 +689,7 @@ def _write_manifest(
 
     split_dir = out_dir / split
     split_dir.mkdir(parents=True, exist_ok=True)
-    with open(split_dir / "manifest.json", "w") as f:
+    with open(split_dir / "manifest.json", "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
 

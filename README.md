@@ -3,7 +3,7 @@
 [![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-headless%20validator%20%7C%20182%20test%20files-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-headless%20validator%20%7C%20193%20test%20files-brightgreen.svg)]()
 
 **AI-Powered Tactical Coach for Counter-Strike 2**
 
@@ -80,6 +80,7 @@ live in `docs/audit/`.
 
 - **RAP Coach** — 7-layer architecture combining perception, memory (LTC-Hopfield), strategy (Mixture-of-Experts with superposition), pedagogy (value function), position prediction, causal attribution, and output aggregation
 - **JEPA Encoder** — Joint-Embedding Predictive Architecture for self-supervised pre-training with InfoNCE contrastive loss and EMA target encoder
+- **JEPA v2 Encoder** — Transformer-based rewrite with causal self-attention, RMSNorm, SwiGLU, FiLM conditioning, multi-horizon prediction (1/4/16 tokens), and SIGReg regularization
 - **VL-JEPA** — Vision-Language extension with 16 tactical concept alignment (positioning, utility, economy, engagement, decision, psychology)
 - **AdvancedCoachNN** — LSTM + Mixture-of-Experts architecture for coaching weight prediction
 - **Neural Role Head** — 5-role MLP classifier (lurker, entry, support, AWPer, IGL) with KL-divergence and consensus gating
@@ -313,6 +314,16 @@ Self-supervised pre-training with:
 - InfoNCE contrastive loss with in-batch negatives
 - Latent dimension: 256
 
+**JEPA v2 (Transformer-Based Rewrite)**
+
+Self-contained reimplementation under `backend/nn/jepa_v2/` (14 modules, independent of legacy `jepa_model.py`):
+- Tokenizer + Transformer encoder (d_model=128, 4 layers, 4 heads)
+- RMSNorm, SwiGLU FFN, FiLM conditioning, RoPE positional encoding
+- Projector + Predictor for multi-horizon prediction (horizons 1, 4, 16 tokens)
+- SIGReg regularization (temporal + batch) replacing InfoNCE collapse-prevention
+- Built-in linear probes and telemetry (RankMe, std-min abort guards)
+- bf16 autocast by default; cosine LR schedule with warmup
+
 **VL-JEPA (Vision-Language Extension)**
 
 Extends JEPA with 16 tactical concept alignment:
@@ -462,6 +473,20 @@ Counter-Strike-coach-AI/
 |   |   |   +-- jepa_model.py           JEPA encoder + VL-JEPA + ConceptLabeler
 |   |   |   +-- jepa_trainer.py         JEPA training loop with drift monitoring
 |   |   |   +-- training_orchestrator.py Multi-model training orchestration
+|   |   |   +-- jepa_v2/                JEPA v2 (Transformer-based, self-contained)
+|   |   |   |   +-- tokenizer.py        Tick-to-token conversion (patch_ticks=8)
+|   |   |   |   +-- encoder.py          Transformer encoder (d_model=128, 4 layers)
+|   |   |   |   +-- predictor.py        Multi-horizon target predictor
+|   |   |   |   +-- projector.py        Embedding projection head
+|   |   |   |   +-- blocks.py           CausalSelfAttention, RMSNorm, SwiGLU, FiLM
+|   |   |   |   +-- losses.py           JEPA v2 loss (next + multi-horizon + SIGReg)
+|   |   |   |   +-- sigreg.py           SIGReg regularization (temporal + batch)
+|   |   |   |   +-- trainer.py          Training loop with cosine LR + warmup
+|   |   |   |   +-- probes.py           Linear probes for representation quality
+|   |   |   |   +-- sampler.py          Window sampler for episode data
+|   |   |   |   +-- telemetry.py        RankMe, std-min monitoring
+|   |   |   |   +-- config.py           JepaV2Config (frozen dataclass)
+|   |   |   |   +-- cli.py              CLI entry point for standalone training
 |   |   |   +-- experimental/rap_coach/ RAP Coach model (canonical; nn/rap_coach holds deprecated shims)
 |   |   |   |   +-- model.py            7-layer architecture
 |   |   |   |   +-- trainer.py          RAP-specific training loop
@@ -472,6 +497,7 @@ Counter-Strike-coach-AI/
 |   |   +-- processing/                Feature engineering and data processing
 |   |   |   +-- feature_engineering/
 |   |   |   |   +-- vectorizer.py       Canonical 25-dim feature extraction (METADATA_DIM=25)
+|   |   |   |   +-- schema_v2.py        JEPA v2 feature schema (numeric/categorical split)
 |   |   |   +-- tensor_factory.py      View/map tensor construction for RAP Coach
 |   |   |   +-- heatmap_engine.py      Spatial heatmap generation
 |   |   |   +-- validation/            Drift detection, data quality checks
@@ -487,6 +513,7 @@ Counter-Strike-coach-AI/
 |   |   +-- storage/                   Database layer
 |   |   |   +-- database.py            SQLite WAL-mode connection management
 |   |   |   +-- db_models.py           SQLAlchemy/SQLModel ORM definitions
+|   |   |   +-- naming.py              Player-name normalisation for cross-table joins (D-08)
 |   |   |   +-- backup_manager.py      Automated database backup
 |   |   |   +-- match_data_manager.py  Per-match SQLite database management
 |   |   |
@@ -521,7 +548,7 @@ Counter-Strike-coach-AI/
 |   +-- assets/                        Static resources (themes, i18n, wallpapers)
 |   +-- models/                        Neural network checkpoint storage
 |   +-- tools/                         Package-level tools (integrity manifest sync, diagnostics)
-|   +-- tests/                         Test suite (182 test files)
+|   +-- tests/                         Test suite (193 test files)
 |   +-- data/                          Static data (seed knowledge base, map_config.json, external datasets)
 |
 +-- docs/                              Documentation
@@ -540,6 +567,13 @@ Counter-Strike-coach-AI/
 |   +-- db_health_diagnostic.py       Database health diagnostics
 |   +-- Sanitize_Project.py           Distribution preparation
 |   +-- build_pipeline.py             Build pipeline orchestration
+|   +-- export_episodes.py            Export training episodes for JEPA v2
+|   +-- benchmark_jepa_v2_vs_legacy.py JEPA v2 vs legacy benchmark comparison
+|   +-- measure_episode_lengths.py    Episode length distribution analysis
+|   +-- measure_event_horizons.py     Event horizon coverage statistics
+|   +-- measure_name_join_coverage.py  Player name join coverage audit
+|   +-- measure_sigreg_sample_size.py  SIGReg sample size requirements
+|   +-- verify_math_claims.py         Mathematical claim verification
 |
 +-- tests/                            Integration and verification tests
 +-- scripts/                          Setup and deployment scripts
@@ -667,7 +701,7 @@ The project maintains a multi-level validation hierarchy:
 | Tool | Scope | Command | Checks |
 |------|-------|---------|--------|
 | Headless Validator | Primary regression gate | `python tools/headless_validator.py` | Multi-phase contract checks |
-| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 182 test files |
+| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 193 test files |
 | Feature Audit | Feature engineering integrity | `python tools/Feature_Audit.py` | Vector dimensions, ranges |
 | Portability Test | Cross-platform compatibility | `python tools/portability_test.py` | Import checks, paths |
 | Dev Health | Development environment | `python tools/dev_health.py` | Dependencies, config |
@@ -747,6 +781,7 @@ Not all subsystems are equally mature. The default coaching mode (COPER) is prod
 | COPER Coaching | OPERATIONAL | 8/10 | Experience bank + RAG + pro references. Works immediately. |
 | Analytical Engine | OPERATIONAL | 6/10 | HLTV 2.0 rating, round breakdown, economy timeline. |
 | Base JEPA (InfoNCE) | OPERATIONAL | 7/10 | Self-supervised pre-training, EMA target encoder. |
+| JEPA v2 (SIGReg) | EXPERIMENTAL | 4/10 | Transformer rewrite with multi-horizon prediction, SIGReg. Research track. |
 | Neural Role Head | OPERATIONAL | 7/10 | 5-role MLP with KL-divergence, consensus gating. |
 | RAP Coach (7 layers) | LIMITED | 3/10 | Full architecture (LTC+Hopfield), needs 200+ demos. |
 | VL-JEPA (16 concepts) | LIMITED | 2/10 | Concept alignment implemented, label quality improving. |
@@ -978,6 +1013,7 @@ Four tri-lingual vision books + one canonical analogy companion book. Each coach
 - [Neural Network Subsystem](Programma_CS2_RENAN/backend/nn/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/README_PT.md)
 - [RAP Coach — 7-Layer Recurrent Architecture](Programma_CS2_RENAN/backend/nn/rap_coach/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/rap_coach/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/rap_coach/README_PT.md)
 - [Advanced — Experimental Module Stub](Programma_CS2_RENAN/backend/nn/advanced/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/advanced/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/advanced/README_PT.md)
+- [JEPA v2 — Transformer-Based Self-Supervised Encoder](Programma_CS2_RENAN/backend/nn/jepa_v2/) (14 modules, no standalone README yet)
 - [Experimental Neural Network Sandbox](Programma_CS2_RENAN/backend/nn/experimental/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/experimental/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/experimental/README_PT.md)
 - [RAP Coach — Canonical Experimental Implementation](Programma_CS2_RENAN/backend/nn/experimental/rap_coach/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/experimental/rap_coach/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/experimental/rap_coach/README_PT.md)
 - [Inference-Only Neural Utilities](Programma_CS2_RENAN/backend/nn/inference/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/inference/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/inference/README_PT.md)

@@ -6,6 +6,13 @@ All prediction terms are MSE in projector space.  No EMA, no stop-gradient,
 no negatives, no queue.  The projector is shared between prediction and target
 (CORREZIONE_NUCLEO_NEURALE Parte III section 4.6, C-8).
 
+D-34: the prediction terms and the batch SIGReg attach to the ENCODER OUTPUT
+``taps[-1]`` (last block, un-normed), never to the served tap.  The served
+representation ``z = taps[served_tap]`` is a read-out for probes/coach
+(LeNEPA intermediate-layer probing, Parte III section 4.5); attaching the
+loss to it left every block after it with zero prediction gradient
+(measured 2026-09-12: blocks 3-4 of the default config).
+
 S_straight (temporal straightness proxy) is returned as a diagnostic but does
 not enter the loss (Parte II section 6.3).
 """
@@ -47,8 +54,10 @@ def jepa_v2_loss(
     """Compute the full JEPA v2 loss.
 
     Args:
-        z: (B, T, d_model) — encoder output.
-        taps: list of intermediate representations ``[h0, h1, ..., h_{n_layers}]``.
+        z: (B, T, d_model) — SERVED representation ``taps[served_tap]``; used
+            only for the S_straight diagnostic (D-34).
+        taps: list of intermediate representations ``[h0, h1, ..., h_{n_layers}]``;
+            ``taps[-1]`` is the prediction source/target.
         pred_fn: PredictorV2 module.
         proj: ProjectorV2 module (shared for prediction and target).
         cfg: JepaV2Config.
@@ -60,18 +69,19 @@ def jepa_v2_loss(
         S_straight.
     """
     g = torch.Generator(device=z.device).manual_seed(cfg.seed * 1_000_003 + step)
-    u = proj(z)  # (B, T, proj_out)
+    h_out = taps[-1]  # encoder OUTPUT (D-34): prediction source and target
+    u = proj(h_out)  # (B, T, proj_out)
 
     # L_next: next-token prediction (Parte III section 4.6)
-    zhat1 = pred_fn(z, horizon_idx=0)
+    zhat1 = pred_fn(h_out, horizon_idx=0)
     l_next = F.mse_loss(proj(zhat1[:, :-1]), u[:, 1:])
 
     # L_multi: multi-horizon prediction over horizons[1:]
     l_multi = torch.tensor(0.0, device=z.device, dtype=z.dtype)
     n_multi = max(1, len(cfg.horizons) - 1)
-    for hi, h in enumerate(cfg.horizons[1:], start=1):
-        zh = pred_fn(z, horizon_idx=hi)
-        l_multi = l_multi + F.mse_loss(proj(zh[:, :-h]), u[:, h:])
+    for hi, hz in enumerate(cfg.horizons[1:], start=1):
+        zh = pred_fn(h_out, horizon_idx=hi)
+        l_multi = l_multi + F.mse_loss(proj(zh[:, :-hz]), u[:, hz:])
     l_multi = l_multi / n_multi
 
     # SIGReg temporal on projector output of selected taps
@@ -80,7 +90,7 @@ def jepa_v2_loss(
         l_sig_t = l_sig_t + sigreg_temporal(proj(taps[k]), sigreg, g)
     l_sig_t = l_sig_t / len(cfg.sigreg_taps)
 
-    # SIGReg batch on the projected encoder output
+    # SIGReg batch on the projected encoder output (u = proj(taps[-1]), LeWM)
     l_sig_b = sigreg_batch(u, sigreg, g)
 
     loss = (

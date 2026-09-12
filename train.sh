@@ -14,13 +14,17 @@
 # TensorBoard events land in Programma_CS2_RENAN/runs/ (see RUNS_DIR in config).
 #
 # Env overrides:
-#   EPOCHS=30 ./train.sh --model-type jepa_v2   # cap at 30 epochs
+#   EPOCHS=30 ./train.sh --model-type jepa      # cap at 30 epochs (legacy types only)
 #   MODEL_TYPE=jepa_v2 ./train.sh               # via env (fallback to 'all' if unset)
+#
+# jepa_v2 budgets in STEPS, not epochs (D-36): --epochs/EPOCHS are ignored for it.
+#   ./train.sh --model-type jepa_v2 --steps 20000 --probe-every 500
+#   ./train.sh --model-type jepa_v2 --data-dir "$DATA/cs2_v2" --no-resume
 #
 # Usage:
 #   ./train.sh --model-type jepa_v2              # v2 pre-training
-#   ./train.sh -d --model-type jepa_v2           # 1-epoch smoke test
-#   ./train.sh -e 30 --model-type jepa_v2        # cap epochs (overrides env)
+#   ./train.sh -d --model-type jepa_v2           # 60-step smoke test, writes NO checkpoint (D-35)
+#   ./train.sh -e 30 --model-type jepa           # cap epochs (legacy types; overrides env)
 #   ./train.sh -m jepa --model-type jepa         # legacy JEPA (gated)
 #   ./train.sh -t PATH --model-type jepa_v2      # TensorBoard log directory
 #   ./train.sh -T --model-type jepa_v2           # disable TensorBoard

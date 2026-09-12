@@ -10,6 +10,33 @@ Single source for actionable work items. Bind to AUDIT.md findings via `(AUDIT �
 
 ---
 
+## Sessione 2026-09-12 — verification round 3 (neural core v2 letto su Windows)
+
+Dopo il merge di PR #102 (repo a UN branch), lettura integrale della trilogia
+CORREZIONE + `backend/nn/jepa_v2/` + tool + test prima di ogni fix; evidenze in
+`docs/doctrine/notes/21-verification-round3.md`, registro DOCTRINE D-34..D-46.
+
+- DONE · D-34 · `jepa_v2/losses.py` — la loss di predizione si aggancia a `taps[-1]`
+  (uscita encoder), non al tap servito: prima i blocchi 3-4 ricevevano gradiente solo dal
+  SIGReg temporale. **Unica modifica che cambia ciò che allena l'esame da 20k passi.**
+- DONE · D-35 · `jepa_v2/trainer.py`, `cli.py` — `--dry-run` non scrive più
+  `jepa_v2_encoder`/`jepa_v2_full` e non riprende da un checkpoint (contratto B4).
+- DONE · D-36 · `run_full_training_cycle.py`, `train.sh` — flag `--steps`,
+  `--probe-every`, `--data-dir`, `--no-resume` dichiarati; `--epochs` è solo legacy.
+- DONE · D-37 · `tests/test_tray.py` — le due `MainWindow` vengono distrutte prima della
+  fine del modulo (flush DeferredDelete); crash CI Windows dal 29-08 (PR #95), verifica
+  solo tramite CI (non riproducibile in locale su Python 3.12).
+- DONE · D-38 · tool neurali scrivono UTF-8 (classe D-28); sweep AST
+  `test_neural_core_text_encoding.py`.
+- DONE · D-39 · benchmark: bridge 21→25 del contendente A allineato agli slot v1 16..19.
+- DONE · D-40 · `test_wallpaper_slideshow.py` senza lettera di unità → portability 10/10.
+- TODO · D-41..D-46 · registrati, decisione operatore: DB aperto/scritto dal path
+  `jepa_v2`; `tick_rate="64"` nell'export; registro hash a path assoluti; ampiezza del
+  freeze; JSON di evidenza ignorati da git + ID decisionali non risolvibili; drift piano/codice.
+- NEXT · Parte III passo 4 su Linux: `run_full_training_cycle.py --model-type jepa_v2
+  --steps 20000` (dry-run prima: `--dry-run`, ora innocuo) poi
+  `tools/benchmark_jepa_v2_vs_legacy.py` → `docs/benchmarks/`; criterio §5.3.
+
 ## Roadmap di completamento — consolidata 2026-07-16 (sessione Windows `C:\PROIECT`)
 
 > Fusione verificata di: questo backlog + AUDIT §12 (2026-07-02) + git log fino a `b688571` + i 74

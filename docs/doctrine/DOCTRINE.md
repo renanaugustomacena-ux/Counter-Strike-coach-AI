@@ -342,6 +342,60 @@ Entries from aesthetic round 1 (evidence in note 20; asterisks = fixed):
   TRAINING CYCLE, not per demo (MATURE=200 effectively unreachable). The wiring
   campaign to pair with Linux training.
 
+> **Status ledger (2026-09-12, verification round 3 — see
+> [notes/21-verification-round3.md](notes/21-verification-round3.md)):** the
+> neural core v2 milestone (PR #101, CORREZIONE Parte III steps 0–4) was read
+> in full on Windows before any fix. FIXED: D-34 (v2 loss never reached the
+> blocks after the served tap), D-35 (v2 dry-run wrote/resumed checkpoints),
+> D-36 (full-cycle entry point had no v2 budget flags), D-37 (Windows CI
+> access violation — tray tests left MainWindows alive; CI-verified only),
+> D-38 (cp1252 writes, D-28 class), D-39 (benchmark legacy bridge misaligned),
+> D-40 (portability false positive that kept Integration CI red).
+> REGISTERED: D-41..D-46 (operator decisions / plan drift). The step-4 GPU
+> exam has still not run; `docs/benchmarks/` does not exist.
+
+Entries from verification round 3 (evidence in note 21; asterisks = fixed):
+
+- ***D-34** `jepa_v2/losses.py` attached L_next/L_multi/batch-SIGReg to the SERVED
+  tap (`taps[served_tap]`, default n_layers//2) instead of the encoder output: blocks
+  after the tap got gradient only from temporal SIGReg (measured `[0.05, 0.04, 0.0, 0.0]`
+  per block). Loss now reads `taps[-1]`; serving unchanged; lockstep gradient tests.
+  The only change of the round that alters what the 20k-step exam trains.
+- ***D-35** v2 dry-run violated B4: `JepaV2Trainer.run` saved `jepa_v2_encoder`/`_full`
+  unconditionally and the next run resumed from the 60-step smoke. `dry_run` flag: no
+  writes, no resume.
+- ***D-36** `run_full_training_cycle.py` never declared `--steps/--probe-every/
+  --data-dir/--no-resume`; `--epochs`/`EPOCHS=` were silently ignored for `jepa_v2`.
+  Declared; `train.sh` help corrected.
+- ***D-37** Windows CI `Tests (windows-latest)` red since de1af57 (PR #95):
+  `test_tray.py` left two `MainWindow`s with queued DeferredDelete; the splash test's
+  `showMessage` pump faulted natively. Windows flush their delete queue; postcondition
+  test pins it. Native fault clearance verified only by CI (no local repro on 3.12).
+- ***D-38** cp1252 text writes in the neural-core tools (benchmark report carried "Δ");
+  seven writes now name UTF-8; AST sweep `test_neural_core_text_encoding.py`.
+- ***D-39** Benchmark contender A bridge padded zeros at the END of the 21-d vector;
+  the retired v1 slots are 16..19. In-place zero-fill; round-trip test via
+  `remap_v1_to_v2`.
+- ***D-40** `test_wallpaper_slideshow.py` drive-letter literal tripped
+  `portability_test.py` (Integration CI red since PR #94). Fixture-relative path.
+- **D-41** v2 entry-point hygiene: full-cycle script opens the monolith, runs
+  `assign_dataset_splits()` (DB write) and the LEGACY eval baseline for `jepa_v2`;
+  `train.sh` default `all` exits 1; `rap-lite` frozen but unroutable; double
+  `SummaryWriter`; `JEPA_V2_DATA_DIR` has no registered default.
+- **D-42** Exporter stamps `tick_rate="64"` literally and `patch_ticks=8` is fixed
+  (Law III; Parte I §7.3 wants `P = round(rate/8)`). Re-export is the operator's call.
+- **D-43** `checkpoint_hashes.json` keyed by absolute path → CTF-1 inert off the
+  training box; file both tracked and gitignored.
+- **D-44** The step-0 freeze guards only `TrainingOrchestrator`; `jepa_train.py
+  __main__`, `train.py`, Phase 2/3 `latest.pt`, `role_head`, `win_probability_trainer`
+  still train.
+- **D-45** Provenance: Parte II's evidence JSONs are gitignored; the decision IDs the v2
+  code cites (A-12.., C-1.., D-04..D-20) resolve nowhere in the repo. Ask the operator
+  where that register lives.
+- **D-46** Plan/code drift: Parte III line refs ~12 lines stale; named freeze test
+  misplaced; `jepa.md` has no trilogy pointer; nn/rap READMEs ignore the freeze;
+  `train_docker.sh` help stale; §6.3 lists live legacy helpers as dead.
+
 ## 4. The AI roadmap (paper-grounded, invariant-filtered)
 
 Ordered by leverage; each item names its paper evidence (note 16) and its guards.

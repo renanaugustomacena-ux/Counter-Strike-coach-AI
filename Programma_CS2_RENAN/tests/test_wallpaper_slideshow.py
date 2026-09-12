@@ -12,6 +12,7 @@ Pins the three contracts the feature added:
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pytest
 
@@ -107,7 +108,11 @@ class TestBackgroundWidgetRotation:
         w = _BackgroundWidget()
         w.set_slideshow([])
         assert w._slideshow_timer is None and w._pixmap is None
-        w.set_slideshow(["Z:/nowhere/ghost.png"])
+        # D-40: a nonexistent sibling of a real fixture file — never a bare
+        # drive-letter literal, which tripped tools/portability_test.py
+        # (Integration CI red since PR #94).
+        ghost = str(Path(two_pngs[0]).with_name("ghost.png"))
+        w.set_slideshow([ghost])
         assert w._slideshow_timer is None and w._pixmap is None
         w.set_slideshow(two_pngs[:1])  # single image: shown, but no rotation
         assert w._slideshow_timer is None and w._pixmap is not None

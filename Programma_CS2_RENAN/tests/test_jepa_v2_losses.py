@@ -136,3 +136,82 @@ class TestNoEMA:
         conv_weight = enc.tokenizer.conv.weight
         assert conv_weight.grad is not None
         assert conv_weight.grad.abs().sum() > 0
+
+
+def _build(cfg):
+    torch.manual_seed(0)
+    enc = EncoderV2(cfg)
+    proj = ProjectorV2(cfg)
+    pred = PredictorV2(cfg)
+    reg = SIGReg(knots=cfg.sigreg_knots, num_proj=cfg.sigreg_num_proj, t_max=cfg.sigreg_t_max)
+    b = cfg.batch_size
+    l = cfg.tokens_per_window * cfg.patch_ticks
+    x_num = torch.randn(b, l, cfg.numeric_dim)
+    x_cat = torch.zeros(b, l, len(cfg.cat_vocab_sizes), dtype=torch.long)
+    return enc, proj, pred, reg, x_num, x_cat
+
+
+class TestPredictionReachesEveryBlock:
+    """D-34: the prediction objective must train the WHOLE encoder.
+
+    Parte III section 4.6 attaches L_next / L_multi / batch-SIGReg to the
+    encoder OUTPUT (the last block, un-normed); the served representation
+    (``taps[served_tap]``, LeNEPA intermediate-layer probing) is a read-out,
+    not the prediction target.  With the loss attached to the served tap, the
+    blocks after it receive gradient ONLY through the temporal SIGReg tap at
+    ``taps[-1]`` — regularised noise, never prediction.  Measured on the
+    default config 2026-09-12: blocks 3-4 grad-norm 0.0 with temporal SIGReg
+    switched off.
+    """
+
+    @pytest.fixture
+    def mid_tap_cfg(self, setup):
+        import dataclasses
+
+        cfg = setup[0]
+        # served tap in the MIDDLE of a 2-block encoder (mirrors the default
+        # served_tap = n_layers // 2 of the production config)
+        return dataclasses.replace(cfg, served_tap=1)
+
+    @staticmethod
+    def _per_block_grad_norm(enc):
+        norms = []
+        for blk in enc.blocks:
+            total = 0.0
+            for p in blk.parameters():
+                if p.grad is not None:
+                    total += float(p.grad.norm() ** 2)
+            norms.append(total**0.5)
+        return norms
+
+    def test_prediction_terms_alone_reach_every_block(self, mid_tap_cfg):
+        import dataclasses
+
+        cfg = dataclasses.replace(mid_tap_cfg, lambda_sigreg_temporal=0.0, lambda_sigreg_batch=0.0)
+        enc, proj, pred, reg, x_num, x_cat = _build(cfg)
+        z, taps = enc(x_num, x_cat, return_taps=True)
+        assert torch.equal(z, taps[1])  # served tap is the middle block
+        loss, _ = jepa_v2_loss(z, taps, pred, proj, cfg, reg, step=0)
+        loss.backward()
+        norms = self._per_block_grad_norm(enc)
+        assert len(norms) == cfg.n_layers
+        for i, n in enumerate(norms, start=1):
+            assert n > 0.0, f"block {i} receives no prediction gradient (per-block norms={norms})"
+
+    def test_loss_depends_on_encoder_output_not_only_served_tap(self, mid_tap_cfg):
+        """Serving stays at taps[served_tap]; the loss must read taps[-1]."""
+        import dataclasses
+
+        # keep temporal SIGReg away from the last tap so only the prediction
+        # path can make the loss sensitive to taps[-1]
+        cfg = dataclasses.replace(mid_tap_cfg, sigreg_taps=(0,))
+        enc, proj, pred, reg, x_num, x_cat = _build(cfg)
+        enc.eval()
+        pred.eval()
+        z, taps = enc(x_num, x_cat, return_taps=True)
+        assert torch.equal(z, taps[cfg.served_tap])
+        loss_a, _ = jepa_v2_loss(z, taps, pred, proj, cfg, reg, step=0)
+        taps_b = list(taps)
+        taps_b[-1] = taps_b[-1] + 1.0
+        loss_b, _ = jepa_v2_loss(z, taps_b, pred, proj, cfg, reg, step=0)
+        assert loss_a.item() != pytest.approx(loss_b.item())
