@@ -258,3 +258,38 @@ class TestFactoryIntegration:
 
         model = ModelFactory.get_model("jepa_v2")
         assert isinstance(model, EncoderV2)
+
+
+@pytest.mark.slow
+class TestDryRunContract:
+    """D-35: dry-run is non-destructive by contract (B4).
+
+    The legacy orchestrator never writes checkpoints in dry-run
+    (training_orchestrator.py:436-458).  The v2 trainer wrote
+    ``jepa_v2_encoder`` / ``jepa_v2_full`` unconditionally, so a
+    ``--dry-run`` smoke run overwrote production weights AND the next real
+    run resumed from the 60-step smoke checkpoint.
+    """
+
+    def test_dry_run_writes_no_checkpoint(self, shard_dir: Path, patched_persistence: Path) -> None:
+        cfg = dataclasses.replace(_SMOKE_CFG, steps=25, probe_every=10)
+        set_global_seed(cfg.seed)
+        train_index = ShardIndex(shard_dir, "train")
+        val_index = ShardIndex(shard_dir, "val")
+        sampler = WindowSampler(train_index, cfg, "train", seed=cfg.seed)
+        px, pc, pm, pl = probe_batch(val_index, cfg, n_windows=cfg.probe_windows, seed=cfg.seed + 1)
+        telemetry = Telemetry(
+            cfg=cfg,
+            probe_x_num=px,
+            probe_x_cat=pc,
+            probe_labels=pl,
+            probe_demos=[m["demo"] for m in pm],
+            writer=None,
+        )
+        trainer = JepaV2Trainer(
+            cfg=cfg, device=torch.device("cpu"), telemetry=telemetry, dry_run=True
+        )
+        assert trainer.run(sampler)
+        assert trainer.step == cfg.steps
+        written = sorted(p.name for p in (patched_persistence / "global").glob("*"))
+        assert written == [], f"dry-run wrote {written}"

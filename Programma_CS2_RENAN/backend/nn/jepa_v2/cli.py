@@ -90,15 +90,21 @@ def run_jepa_v2(args: Any) -> bool:
         writer=writer,
     )
 
+    dry_run = bool(getattr(args, "dry_run", False))
     trainer = JepaV2Trainer(
         cfg=cfg,
         device=device,
         telemetry=telemetry,
         run_dir=run_dir,
+        dry_run=dry_run,
     )
 
     if getattr(args, "no_resume", False):
         log.info("no_resume: starting from fresh weights")
+    elif dry_run:
+        # D-35: a smoke run must not continue a production run's schedule
+        # (a resumed step counter >= steps would make the smoke a no-op).
+        log.info("dry_run: not resuming from an existing jepa_v2_full")
     else:
         resumed = trainer.load_full_checkpoint()
         if resumed:

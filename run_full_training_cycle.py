@@ -101,7 +101,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Run a single epoch dry run to verify pipeline integrity",
+        help=(
+            "Non-destructive smoke run (B4): legacy = one epoch, jepa_v2 = 60 steps "
+            "with a probe every 20. Never writes a checkpoint (D-35)."
+        ),
     )
     parser.add_argument(
         "--resume",
@@ -112,7 +115,12 @@ def _build_parser() -> argparse.ArgumentParser:
             "stored best-val). Kept for script compatibility."
         ),
     )
-    parser.add_argument("--epochs", type=int, default=100, help="Override default max epochs")
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=100,
+        help="Override default max epochs (legacy jepa/rap only; jepa_v2 budgets with --steps)",
+    )
     parser.add_argument(
         "--model-type",
         choices=["jepa_v2", "coach_v2", "jepa", "rap", "all"],
@@ -176,6 +184,26 @@ def _build_parser() -> argparse.ArgumentParser:
             "Run tools/eval_harness.py before and after training (B6.1). "
             "Default: on for real runs, off for --dry-run."
         ),
+    )
+
+    # --- jepa_v2 budget flags (D-36): read by jepa_v2.cli.run_jepa_v2 via the
+    # namespace; before they were declared here --epochs/EPOCHS= were silently
+    # ignored for v2 and the only budget was JepaV2Config.steps = 20_000.
+    v2 = parser.add_argument_group("jepa_v2 only")
+    v2.add_argument("--steps", type=int, default=None, help="Override JepaV2Config.steps")
+    v2.add_argument(
+        "--probe-every", type=int, default=None, help="Override JepaV2Config.probe_every"
+    )
+    v2.add_argument(
+        "--data-dir",
+        type=str,
+        default=None,
+        help="safetensors export root (default: setting JEPA_V2_DATA_DIR)",
+    )
+    v2.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="Ignore an existing jepa_v2_full checkpoint and start from fresh weights",
     )
 
     return parser

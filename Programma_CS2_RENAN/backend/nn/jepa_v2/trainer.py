@@ -48,6 +48,7 @@ class JepaV2Trainer:
         device: torch device (pass explicitly, do not call get_device).
         telemetry: optional Telemetry instance for collapse monitoring.
         run_dir: optional directory for TensorBoard logs.
+        dry_run: when True no checkpoint is written (D-35, B4 contract).
     """
 
     def __init__(
@@ -56,11 +57,18 @@ class JepaV2Trainer:
         device: torch.device,
         telemetry: Optional[Telemetry] = None,
         run_dir: Optional[str] = None,
+        dry_run: bool = False,
     ) -> None:
         self.cfg = cfg
         self.device = device
         self.telemetry = telemetry
         self.run_dir = run_dir
+        # D-35 / B4: a dry run trains and evaluates identically but NEVER
+        # writes checkpoints (the legacy orchestrator's contract,
+        # training_orchestrator.py:436-458).  Before this flag a --dry-run
+        # smoke wrote jepa_v2_encoder/jepa_v2_full and the next real run
+        # resumed from the smoke weights.
+        self.dry_run = dry_run
 
         cfg.validate()
 
@@ -288,18 +296,22 @@ class JepaV2Trainer:
                 ):
                     self._ever_evaluated = True
                     result = self.telemetry.evaluate(self.step, self.encoder, self.device)
-                    if result.is_best:
+                    if result.is_best and not self.dry_run:
                         self.save_encoder_checkpoint(schema_meta=schema_meta)
 
-                    self.save_full_checkpoint(schema_meta=schema_meta)
+                    if not self.dry_run:
+                        self.save_full_checkpoint(schema_meta=schema_meta)
 
         except AbortSignal as e:
             log.error("Training aborted: %s", e)
             return False
 
-        if not self._ever_evaluated:
-            self.save_encoder_checkpoint(schema_meta=schema_meta)
-        self.save_full_checkpoint(schema_meta=schema_meta)
+        if self.dry_run:
+            log.info("dry_run: no checkpoint written (D-35 / B4 contract)")
+        else:
+            if not self._ever_evaluated:
+                self.save_encoder_checkpoint(schema_meta=schema_meta)
+            self.save_full_checkpoint(schema_meta=schema_meta)
 
         if self._writer is not None:
             self._writer.flush()
