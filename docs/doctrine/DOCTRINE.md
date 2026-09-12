@@ -348,7 +348,7 @@ Entries from aesthetic round 1 (evidence in note 20; asterisks = fixed):
 > in full on Windows before any fix. FIXED: D-34 (v2 loss never reached the
 > blocks after the served tap), D-35 (v2 dry-run wrote/resumed checkpoints),
 > D-36 (full-cycle entry point had no v2 budget flags), D-37 (Windows CI
-> access violation — tray tests left MainWindows alive; CI-verified only),
+> access violation — tray tests left MainWindows alive; PR #103 Windows leg green),
 > D-38 (cp1252 writes, D-28 class), D-39 (benchmark legacy bridge misaligned),
 > D-40 (portability false positive that kept Integration CI red).
 > REGISTERED: D-41..D-46 (operator decisions / plan drift). The step-4 GPU
@@ -370,7 +370,7 @@ Entries from verification round 3 (evidence in note 21; asterisks = fixed):
 - ***D-37** Windows CI `Tests (windows-latest)` red since de1af57 (PR #95):
   `test_tray.py` left two `MainWindow`s with queued DeferredDelete; the splash test's
   `showMessage` pump faulted natively. Windows flush their delete queue; postcondition
-  test pins it. Native fault clearance verified only by CI (no local repro on 3.12).
+  test pins it. PR #103's Windows leg: 2872 passed / 0 failed (no local repro on 3.12).
 - ***D-38** cp1252 text writes in the neural-core tools (benchmark report carried "Δ");
   seven writes now name UTF-8; AST sweep `test_neural_core_text_encoding.py`.
 - ***D-39** Benchmark contender A bridge padded zeros at the END of the 21-d vector;
