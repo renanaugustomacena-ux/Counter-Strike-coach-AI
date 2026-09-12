@@ -157,7 +157,17 @@ on. Fix: a nonexistent sibling of a real fixture file. Certification 10/10.
   every number in Parte II §12 and the benchmark's "historical row" is
   local-only; the decision IDs the v2 code cites in comments (D-04..D-20,
   A-12..A-39, C-1..C-18, B12) resolve NOWHERE in the repo — they are not this
-  register's D-xx. Where that register lives is a question for the operator.
+  register's D-xx. LOCATED the same day through a read-only WSL mount of the
+  Linux root partition: `~/.claude/projects/-media-renan-WORK-RECOVERED1-PROIECT-
+  Counter-Strike-coach-AI/memory/neural-core-v2/` (`v2_contract.md` D-01..D-20,
+  `v2_workmap.md` C-1..C-18 and A-1..A-39, `v2_decisions.md` A1..A23 and open
+  questions B1..B30, `v2_inventory.md`, `verify_corpus.report.txt`). Now versioned
+  under `docs/doctrine/notes/neural-core-v2/`, as the Linux session note itself
+  asked. Cross-checks: its A8 and D-15 put the losses on the projector of the
+  ENCODER OUTPUT and serve `taps[2]` as a read-out — D-34 is consistent with the
+  register; its A1 chose `P = round(tick_rate/8)` — D-42 is a real gap between
+  register and code, harmless today because T1 measured every demo at 64 Hz.
+  The evidence JSONs stay local (gitignored).
 - **D-46** Plan/code drift: Parte III line references are ~12 lines stale in
   §1.1/§6.2/§7.3; the named freeze test lives in `test_legacy_frozen.py`, not
   `test_training_orchestrator_logic.py`; `jepa.md` carries no pointer to the
