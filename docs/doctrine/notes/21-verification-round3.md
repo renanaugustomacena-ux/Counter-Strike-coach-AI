@@ -22,7 +22,7 @@ strength of a hypothesis alone.
 | L1 headless_validator | PASS 318/319 | PASS 318/319 |
 | portability_test | **9/10, 1 CRITICAL** | 10/10, 0 critical |
 | integrity manifest | 2/2 | 2/2 after regen |
-| CI `Tests (windows-latest)` | red since de1af57 (2026-08-29) | answered only by the PR's CI run |
+| CI `Tests (windows-latest)` | red since de1af57 (2026-08-29) | **green**: 2872 passed / 0 failed / 74 skipped (run 34692797730) |
 
 ## What the read established (evidence, not opinion)
 
@@ -77,7 +77,7 @@ opposite. Fix: the four flags declared in the parser (group "jepa_v2 only"),
 `--epochs` help marked legacy-only, `train.sh` header corrected; five parser
 tests.
 
-## D-37 — Windows CI access violation at the splash test (FIXED, CI-verified only)
+## D-37 — Windows CI access violation at the splash test (FIXED, CI-verified)
 
 Forensics over seven runs (all logs, stacks normalised): the first red
 `Tests (windows-latest)` is **de1af57** (system tray, PR #95), not the slideshow
@@ -94,9 +94,10 @@ next main-thread pump is `QSplashScreen.showMessage` in
 here. Fix: `_release()` in `test_tray.py` closes, queues the delete, then
 `QApplication.sendPostedEvents(None, DeferredDelete)` + `processEvents()`, and
 a new postcondition test asserts no `MainWindow` survives the module — it
-FAILED before the flush (2 survivors) and passes after. Whether this also
-clears the native fault is answered by this PR's Windows CI run, not by this
-note.
+FAILED before the flush (2 survivors) and passes after. PR #103's Windows
+CI leg ran the splash test to completion (2872 passed / 0 failed, run
+34692797730) — the first green `Tests (windows-latest)` since 2026-08-29; the
+Integration Windows job went green in the same run (D-40).
 
 ## D-38 — cp1252 text writes in the neural-core tools (FIXED; D-28 class)
 
@@ -177,6 +178,6 @@ on. Fix: a nonexistent sibling of a real fixture file. Certification 10/10.
 
 ## Shipped
 
-Branch `fix/verification-round3` → one PR (Problem/Solution/Verification/Risk).
+Branch `fix/verification-round3` → PR #103 (Problem/Solution/Verification/Risk), merged 2026-09-12 with all 19 checks green, branch deleted.
 Register updated: D-34..D-40 fixed, D-41..D-46 registered. README trio
 committed with the `naming.py` description corrected in three languages.
