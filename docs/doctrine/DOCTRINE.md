@@ -390,8 +390,9 @@ Entries from verification round 3 (evidence in note 21; asterisks = fixed):
   __main__`, `train.py`, Phase 2/3 `latest.pt`, `role_head`, `win_probability_trainer`
   still train.
 - **D-45** Provenance: Parte II's evidence JSONs are gitignored; the decision IDs the v2
-  code cites (A-12.., C-1.., D-04..D-20) resolve nowhere in the repo. Ask the operator
-  where that register lives.
+  code cites (A-12.., C-1.., D-04..D-20) resolved nowhere in the repo. LOCATED 2026-09-12
+  on the Linux root partition and versioned under `docs/doctrine/notes/neural-core-v2/`
+  (D-34 consistent with its A8/D-15; D-42 confirmed against its A1). JSONs still local.
 - **D-46** Plan/code drift: Parte III line refs ~12 lines stale; named freeze test
   misplaced; `jepa.md` has no trilogy pointer; nn/rap READMEs ignore the freeze;
   `train_docker.sh` help stale; §6.3 lists live legacy helpers as dead.

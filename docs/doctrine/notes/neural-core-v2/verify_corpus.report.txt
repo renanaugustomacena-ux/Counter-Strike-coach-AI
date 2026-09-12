@@ -1,0 +1,191 @@
+====================================================================================================
+CS2 corpus verification  2026-09-11T03:09:30+0200  db=/media/renan/New Volume7/AI/database.db  shards=/data/PROIECT/DEMO_PRO_PLAYERS/match_data
+demos=226 pms_rows=2262 roundstats_rows=48770 pts_rows=428,572,679 shard_files=226 tasks={'completed': 227} inflight=0 elapsed=4964.2s
+====================================================================================================
+[HARD] PASS       schema_tables              checked=1      failed=0     inflight=0    monolith has playermatchstats/playertickstate/roundstats/ingestiontask (db_models.py)
+[HARD] PASS       schema_columns             checked=230    failed=0     inflight=0    columns this verifier reads exist (db_models.py:54-219,353-367,779-840; match_data_manager.py:165-354)
+[SOFT] PASS       schema_indexes             checked=1      failed=0     inflight=0    playertickstate has ix_playertickstate_demo_name/ix_tick_demo_tick/ix_pts_player_demo (db_models.py:163-168)
+[SOFT] PASS       pms_unique_index           checked=1      failed=0     inflight=0    unique index on playermatchstats(demo_name, player_name) (db_models.py:56)
+[HARD] PASS       pts_demo_name_key          checked=1      failed=0     inflight=0    playertickstate.demo_name never NULL/'' (db_models.py:185; run_ingestion.py:1467)
+[HARD] PASS       pms_dup_demo_player        checked=1      failed=0     inflight=0    no duplicate (demo_name, player_name) (db_models.py:56; database.py:263-276)
+[HARD] PASS       pms_demo_name_stem         checked=1      failed=0     inflight=0    demo_name is a bare stem without '.dem' (run_ingestion.py:572; db_models.py:12-17)
+[HARD] PASS       pms_player_name            checked=1      failed=0     inflight=0    player_name non-empty (demo_parser.py:107-111,125)
+[HARD] PASS       pms_numeric_null           checked=1      failed=0     inflight=0    no NULL/NaN in float stat columns (run_ingestion.py:548-554)
+[HARD] PASS       pms_rating_range           checked=1      failed=0     inflight=0    0 <= rating <= 5 (db_models.py:59; run_ingestion.py:558-560)
+[HARD] PASS       pms_nonneg                 checked=1      failed=0     inflight=0    avg_kills/avg_adr/avg_deaths/kd_ratio/accuracy >= 0 (db_models.py:57-58; run_ingestion.py:566-569)
+[HARD] PASS       pms_unit_ratios            checked=1      failed=0     inflight=0    avg_kast/avg_hs/impact_rounds/opening_duel_win_pct in [0,1] (demo_parser.py:167-171,390,466-474; round_stats_builder.py:859)
+[SOFT] PASS       pms_soft_ratios            checked=1      failed=0     inflight=0    accuracy <= 1.5; enrichment ratios in [0,1]; per-round utility >= 0 (round_stats_builder.py:827-852)
+[HARD] PASS       pms_is_pro                 checked=1      failed=0     inflight=0    is_pro in {0,1} (run_ingestion.py:591)
+[HARD] PASS       pms_dataset_split          checked=1      failed=0     inflight=0    dataset_split in {TRAIN,VAL,TEST,UNASSIGNED} case-insensitive (db_models.py:32-38; enum NAME on disk, jepa_train.py:195-202)
+[HARD] PASS       pms_data_quality           checked=1      failed=0     inflight=0    data_quality non-empty (demo_parser.py:412,428,518,532)
+[SOFT] PASS       pms_data_quality_label     checked=1      failed=0     inflight=0    data_quality in {none,partial,complete} (other labels: tools/aggregate_match_stats_sql.py)
+[HARD] PASS       pms_dates_present          checked=1      failed=0     inflight=0    match_date and processed_at NOT NULL (db_models.py:66-76)
+[HARD] PASS       pms_date_source            checked=1      failed=0     inflight=0    match_date_source in resolver vocabulary (match_date_resolver.py:34-41; backfill_match_dates.py:43)
+[SOFT] PASS       pms_date_source_weak       checked=1      failed=0     inflight=0    match_date_source NULL or 'ingested_at' carries no real chronology (db_models.py:70-72)
+[SOFT] PASS       pms_defaults               checked=1      failed=0     inflight=0    sample_weight == 1.0 and anomaly_score == 0.0 (db_models.py:147-148; never written by ingestion)
+[HARD] PASS       pms_demo_constancy         checked=226    failed=0     inflight=0    is_pro/match_date/match_date_source identical for every player of a demo (run_ingestion.py:501-511)
+[SOFT] WARN       pms_players_per_demo       checked=226    failed=2     inflight=0    10 playermatchstats rows per demo
+           - betboom-vs-vitality-m1-overpass: 11 rows
+           - pgl-astana-2026__spirit-vs-falcons-m2-mirage: 11 rows
+[SOFT] PASS       pms_quality_complete       checked=226    failed=0     inflight=0    all players of a demo have data_quality='complete' (demo_parser.py:517-518)
+[HARD] PASS       rs_dup                     checked=1      failed=0     inflight=0    no duplicate (demo_name, round_number, player_name) (db_models.py:796-798)
+[HARD] PASS       rs_round_number            checked=1      failed=0     inflight=0    round_number >= 1 (ordinal; round_stats_builder.py:95)
+[HARD] PASS       rs_side                    checked=1      failed=0     inflight=0    side in {CT,T} (round_stats_builder.py:163-186,313)
+[HARD] PASS       rs_bools                   checked=1      failed=0     inflight=0    kast/round_won/mvp/was_traded/opening_* in {0,1} (round_stats_builder.py:319-356,711)
+[HARD] PASS       rs_nonneg                  checked=1      failed=0     inflight=0    count/damage columns >= 0 (round_stats_builder.py:394-457)
+[HARD] PASS       rs_rating_present          checked=1      failed=0     inflight=0    round_rating and created_at NOT NULL (round_stats_builder.py:714; db_models.py:801)
+[SOFT] WARN       rs_game_bounds             checked=1      failed=1     inflight=0    deaths <= 1, kills <= 5, headshot_kills <= kills, damage_dealt <= 500 (game rules, unenforced)
+           - -: 575 rows, e.g. [('cs-asia-championships-2026__mouz-vs-mibr-m2-ancient', 3, 'xelex'), ('natus-vincere-vs-vitality-m2-anubis', 7, 'zywoo'), ('natus-vincere-vs-vitality-m3-inferno', 1, 'w0nderful'), ('natus-vincere-vs-vitality-m3-inferno', 8, 'zywoo'), ('natus-vincere-vs-vitality-m3-inferno', 11, 'w0nderful')]
+[SOFT] PASS       rs_player_name_norm        checked=1      failed=0     inflight=0    player_name == lower(strip(player_name)) (round_stats_builder.py:278-282,389)
+[HARD] PASS       rs_demo_in_pms             checked=1      failed=0     inflight=0    every roundstats demo has playermatchstats rows (written earlier: run_ingestion.py:503-521)
+[SOFT] PASS       rs_present                 checked=226    failed=0     inflight=0    every playermatchstats demo has roundstats rows (round_stats_builder.py:976-981 may write none)
+[SOFT] WARN       rs_rounds_complete         checked=226    failed=13    inflight=0    roundstats rounds >= 13 = whole map (coach_manager.py:40-47); -p1/-p2 fragments expected below
+           - 9z-vs-furia-m2-mirage-p1: 8 rounds (part demo)
+           - dendele-vs-furia-m1-anubis-p2: 5 rounds (part demo)
+           - falcons-vs-vitality-m1-anubis-p1: 7 rounds (part demo)
+           - furia-vs-mouz-m1-nuke-p1: 5 rounds (part demo)
+           - iem-atlanta-2026-pain-vs-gamerlegion-bo3-K8MjtffABvO_Wh0g9ivqcp__pain-vs-gamerlegion-m1-overpass-p1: 6 rounds (part demo)
+           - iem-cologne-major-2026-falcons-vs-vitality-bo3-Q3edu52gPDbzXK7dImpXFr__falcons-vs-vitality-m1-anubis-p1: 7 rounds (part demo)
+           - iem-cologne-major-2026-furia-vs-mouz-bo3-dC2xyK-KPviXDfpnjaMits__furia-vs-mouz-m1-nuke-p1: 5 rounds (part demo)
+           - iem-cologne-major-2026-natus-vincere-vs-falcons-bo3-Qms8NbopLcruQjaT6BcL0b__natus-vincere-vs-falcons-m3-anubis-p2: 9 rounds (part demo)
+           - iem-cologne-major-2026-natus-vincere-vs-g2-bo3-9IFVqZXTd3ccJIAcVgHcFy__natus-vincere-vs-g2-m3-mirage-p2: 2 rounds (part demo)
+           - natus-vincere-vs-falcons-m3-anubis-p2: 9 rounds (part demo)
+[SOFT] PASS       rs_players_per_round       checked=226    failed=0     inflight=0    10 players per round (roster team_num 2/3: round_stats_builder.py:284-287,307-313)
+[SOFT] PASS       rs_both_sides              checked=213    failed=0     inflight=0    each player of a whole map has both sides (round_stats_builder.py:174-177)
+[SOFT] PASS       rs_names_match_pms         checked=226    failed=0     inflight=0    lower(trim(pms.player_name)) covers every roundstats player (enrichment join round_stats_builder.py:1009-1013; D8)
+[INFO] noted=0    rs_equipment_value         checked=1      failed=0     inflight=0    roundstats.equipment_value stays 0 unless tools/populate_round_stats.py ran (round_stats_builder.py:957-959)
+[HARD] PASS       task_status                checked=1      failed=0     inflight=0    ingestiontask.status in {queued,processing,completed,failed} (run_ingestion.py:366,423,445)
+[HARD] PASS       task_fields                checked=1      failed=0     inflight=0    demo_path non-empty and is_pro in {0,1} (db_models.py:356-357)
+[SOFT] PASS       task_failed                checked=1      failed=0     inflight=0    no task in status 'failed' (run_ingestion.py:445)
+[SOFT] PASS       task_inflight              checked=1      failed=0     inflight=0    no task 'queued'/'processing' (orphans when no ingester runs; ingest_pro_demos.py:176-222)
+[SOFT] PASS       task_completed_msg         checked=1      failed=0     inflight=0    completed tasks carry Success / No new ticks / Duplicate - already ingested (run_ingestion.py:424,537,539)
+[HARD] PASS       task_success_has_stats     checked=226    failed=0     inflight=0    completed 'Success' task -> playermatchstats rows for its stem (run_ingestion.py:488-511)
+[HARD] PASS       task_no_new_ticks          checked=1      failed=0     inflight=0    no completed task with 'No new ticks' = stats without ticks (F-0013, parse_guard.py:28-35)
+[SOFT] PASS       task_duplicate_resolves    checked=1      failed=0     inflight=0    'Duplicate - already ingested' stem has stats or a shard elsewhere (run_ingestion.py:37-105)
+[HARD] PASS       task_is_pro_matches_pms    checked=227    failed=0     inflight=0    task.is_pro == playermatchstats.is_pro of the stem (run_ingestion.py:436,591)
+[SOFT] PASS       task_last_tick             checked=226    failed=0     inflight=0    last_tick_processed == MAX(tick) for 'Success' tasks (run_ingestion.py:527-533,1665,1732)
+[SOFT] WARN       task_stem_dup              checked=226    failed=1     inflight=0    one task per stem (a second path is flagged Duplicate by run_ingestion.py:76-85)
+           - -: legacy-vs-falcons-m1-mirage: [(111, 'completed', 'Success'), (219, 'completed', 'Duplicate - already ingested')]
+[SOFT] PASS       pms_demo_has_task          checked=226    failed=0     inflight=0    every playermatchstats demo has an ingestiontask (other writers exist: tools/rebuild_monolith.py)
+[HARD] PASS       pts_rows_present           checked=226    failed=0     inflight=0    playertickstate rows exist for every playermatchstats demo (dual write run_ingestion.py:1700-1705)
+[HARD] PASS       pts_orphan_demo            checked=226    failed=0     inflight=0    no playertickstate demo without playermatchstats rows (scrub contract ingest_pro_demos.py:203-215)
+[HARD] PASS       pts_pms_players            checked=226    failed=0     inflight=0    every playermatchstats player has tick rows (same parse stream demo_parser.py:116,641)
+[SOFT] PASS       pts_extra_players          checked=226    failed=0     inflight=0    no tick player absent from playermatchstats (NaN names become 'nan': run_ingestion.py:1309)
+[HARD] PASS       pts_dup_ticks              checked=2262   failed=0     inflight=0    duplicate (player,tick) rows < 1% per player (double-append signature; 1:1 contract demo_parser.py:549-555)
+[SOFT] PASS       pts_dup_ticks_any          checked=2262   failed=0     inflight=0    zero duplicate (player,tick) rows
+[HARD] PASS       pts_nulls_types            checked=2262   failed=0     inflight=0    no NULL; integer/real/text storage classes; flags in {0,1} (run_ingestion.py:1251-1313,1465-1544)
+[HARD] PASS       pts_ranges                 checked=226    failed=0     inflight=0    health,armor in [0,100]; tick>=0; round_number>=1; time_in_round>=0; alive/visible>=0; yaw in [0,360]; pitch in [-180,180] (round_context.py:221,234; tick_enrichment.py:198,215,333; run_ingestion.py:728-730)
+[SOFT] WARN       pts_ranges_soft            checked=226    failed=20    inflight=0    teammates_alive<=4, enemies_alive<=5, enemies_visible<=5, 0<=equipment_value<=16000, team_economy>=0 (game rules; >10 connected players break them)
+           - 9z-vs-furia-m2-mirage-p1: KSCERATO:enemies_max=9
+           - astralis-vs-mouz-m1-ancient: HooXi:enemies_max=7; phzy:enemies_max=9; ryu:enemies_max=8
+           - b8-vs-spirit-m1-dust2: zont1x:enemies_max=9
+           - betboom-vs-vitality-m1-overpass: @reLazffs:enemies_max=10
+           - blast-open-rotterdam-2026__vitality-vs-natus-vincere-m1-inferno: ZywOo:enemies_max=9
+           - dendele-vs-furia-m1-anubis-p1: molodoy:enemies_max=9
+           - dendele-vs-furia-m1-anubis-p2: KSCERATO:enemies_max=6; YEKINDAR:enemies_max=8; molodoy:enemies_max=9; yuurih:enemies_max=7
+           - dendele-vs-furia-m3-cache: KSCERATO:enemies_max=9
+           - falcons-vs-g2-m1-inferno: karrigan:enemies_max=9
+           - furia-vs-mouz-m1-nuke-p1: molodoy:enemies_max=9
+[HARD] PASS       pts_weapon                 checked=2262   failed=0     inflight=0    active_weapon NOT NULL (run_ingestion.py:1305-1307)
+[SOFT] WARN       pts_weapon_soft            checked=2262   failed=17    inflight=0    no '' active_weapon and 'unknown' share <= 50%
+           - 9z-vs-furia-m2-mirage-p1: KSCERATO: empty=0 unknown=52.2%
+           - betboom-vs-vitality-m1-overpass: @reLazffs: empty=0 unknown=100.0%
+           - dendele-vs-furia-m1-anubis-p2: YEKINDAR: empty=0 unknown=54.7%
+           - dendele-vs-furia-m1-anubis-p2: doc: empty=0 unknown=50.9%
+           - dendele-vs-furia-m1-anubis-p2: maxxkor: empty=0 unknown=50.1%
+           - dendele-vs-furia-m1-anubis-p2: molodoy: empty=0 unknown=61.4%
+           - dendele-vs-furia-m1-anubis-p2: yuurih: empty=0 unknown=53.6%
+           - iem-cologne-major-2026-natus-vincere-vs-g2-bo3-9IFVqZXTd3ccJIAcVgHcFy__natus-vincere-vs-g2-m3-mirage-p2: Aleksib: empty=0 unknown=81.5%
+           - iem-cologne-major-2026-natus-vincere-vs-g2-bo3-9IFVqZXTd3ccJIAcVgHcFy__natus-vincere-vs-g2-m3-mirage-p2: MATYS: empty=0 unknown=65.0%
+           - iem-cologne-major-2026-natus-vincere-vs-g2-bo3-9IFVqZXTd3ccJIAcVgHcFy__natus-vincere-vs-g2-m3-mirage-p2: NertZ: empty=0 unknown=62.7%
+[HARD] PASS       pts_map                    checked=226    failed=0     inflight=0    one map_name per demo (run_ingestion.py:1310-1313)
+[SOFT] PASS       pts_map_known              checked=226    failed=0     inflight=0    map_name in KNOWN_MAP_IDS and equal to the filename token (core/known_maps.py:20-37; de_unknown = header fallback run_ingestion.py:1159-1179)
+[HARD] PASS       pts_created_at             checked=2262   failed=0     inflight=0    created_at NOT NULL (run_ingestion.py:1542)
+[SOFT] PASS       pts_zero_pos               checked=226    failed=0     inflight=0    (0,0,0) position share <= 10% (R4-14-01 run_ingestion.py:674-690)
+[INFO] noted=0    pts_backfill_cols          checked=226    failed=0     inflight=0    steamid/match_id/round_outcome NULL from ingestion (absent from run_ingestion.py:1465-1544); non-NULL = external backfill
+[HARD] PASS       flag_liveness              checked=226    failed=0     inflight=0    is_crouching/has_helmet/has_defuser/is_blinded not all-False on a whole-map demo (run_ingestion.py:1343-1371,1481-1520)
+[SOFT] WARN       flag_liveness_soft         checked=226    failed=3     inflight=0    is_scoped/bomb_planted not all-False; all six flags on fragments (<13 rounds)
+           - dendele-vs-furia-m1-anubis-p2: all-False: ['scoped', 'defuser'] (rounds=5)
+           - parivision-vs-legacy-m1-inferno-p1: all-False: ['scoped', 'defuser'] (rounds=3)
+           - parivision-vs-legacy-m2-dust2-p1: all-False: ['scoped', 'bomb', 'defuser'] (rounds=3)
+[SOFT] PASS       pts_rounds_vs_rs           checked=226    failed=0     inflight=0    MAX(round_number) of ticks == roundstats round count (both from round_end: round_context.py:79-83; round_stats_builder.py:89-95)
+[HARD] PASS       shard_present              checked=226    failed=0     inflight=0    match_<sha256(stem) mod 2**63-1>.db exists (run_ingestion.py:1661; match_data_manager.py:130,442)
+[HARD] PASS       shard_tables               checked=226    failed=0     inflight=0    shard has matchtickstate/match_event_state/match_metadata (match_data_manager.py:185,279,327,522-527)
+[SOFT] PASS       shard_unexpected_tables    checked=226    failed=0     inflight=0    no tables beyond the three + tolerated legacy names (match_data_manager.py:540-555)
+[HARD] PASS       shard_meta                 checked=226    failed=0     inflight=0    exactly one match_metadata row; match_id == file id; demo_name == stem (run_ingestion.py:1579-1589)
+[HARD] PASS       shard_complete             checked=226    failed=0     inflight=0    match_metadata.match_complete == 1 (run_ingestion.py:1595-1602; P4-A gate coach_manager.py:1016-1052)
+[HARD] PASS       shard_tick_rate            checked=226    failed=0     inflight=0    tick_rate in [32,256] (run_ingestion.py:1181-1201; core/tick_rate.py:28-29)
+[INFO] noted=226  shard_tick_rate_default    checked=226    failed=226   inflight=0    tick_rate == 64.0: real 64-tick OR silent GAP-01/26-NORM-01 header fallback (indistinguishable on disk)
+           - 100-thieves-vs-falcons-m1-nuke: tick_rate=64.0
+           - 100-thieves-vs-falcons-m2-dust2: tick_rate=64.0
+           - 100-thieves-vs-falcons-m3-anubis: tick_rate=64.0
+[SOFT] PASS       shard_schema_version       checked=226    failed=0     inflight=0    schema_version == 3 (match_data_manager.py:136,348)
+[HARD] PASS       shard_map_matches_pts      checked=226    failed=0     inflight=0    match_metadata.map_name == playertickstate.map_name (same _meta_map_name: run_ingestion.py:1645,1676-1678,1725)
+[SOFT] PASS       shard_meta_counts          checked=226    failed=0     inflight=0    tick_count == MAX(tick) and player_count == COUNT(DISTINCT player_name) (run_ingestion.py:1583-1584,1665-1668)
+[HARD] PASS       shard_match_date_rule      checked=226    failed=0     inflight=0    match_date NULL iff pms.match_date_source == 'ingested_at' (run_ingestion.py:1575-1587)
+[SOFT] PASS       shard_match_date_equal     checked=226    failed=0     inflight=0    match_date == pms.match_date to the second (same resolver; differs after backfill_match_dates --apply)
+[INFO] noted=226  shard_meta_defaults        checked=226    failed=226   inflight=0    round_count=0, team1/2 'Team 1'/'Team 2', scores 0, is_pro_match=0, parser_version 'v1' never populated (run_ingestion.py:1579-1588)
+           - 100-thieves-vs-falcons-m1-nuke: round_count=0 is_pro_match=0 team1='Team 1'
+           - 100-thieves-vs-falcons-m2-dust2: round_count=0 is_pro_match=0 team1='Team 1'
+           - 100-thieves-vs-falcons-m3-anubis: round_count=0 is_pro_match=0 team1='Team 1'
+[HARD] PASS       shard_player_set           checked=226    failed=0     inflight=0    pro demo: shard player set == monolith player set (same DataFrame: run_ingestion.py:1329,1469)
+[HARD] PASS       parity_int                 checked=2262   failed=0     inflight=0    per-player integer aggregates equal shard vs monolith (dual write run_ingestion.py:1677-1705)
+[HARD] PASS       parity_float               checked=2262   failed=0     inflight=0    per-player float aggregates equal within 1e-06 relative (pos, yaw/view_x, pitch/view_y, time_in_round)
+[HARD] PASS       parity_text                checked=2262   failed=0     inflight=0    per-player map_name equal shard vs monolith
+[SOFT] PASS       parity_blinded             checked=2262   failed=0     inflight=0    SUM(is_blinded) equal: shard ORs the legacy is_blinded prop (run_ingestion.py:1361-1371 vs 1515-1520)
+[HARD] PASS       shard_steamid              checked=2262   failed=0     inflight=0    matchtickstate.steamid NOT NULL (run_ingestion.py:1330-1332)
+[SOFT] PASS       shard_steamid_soft         checked=2262   failed=0     inflight=0    steamid != 0 and exactly one steamid per player name
+[SOFT] PASS       shard_team_vocab           checked=226    failed=0     inflight=0    team in {CT,TERRORIST} (demoparser2 team_name; core/team_codes.py:18-19; NaN -> 'CT' run_ingestion.py:1304)
+[HARD] PASS       shard_nulls_bools          checked=2262   failed=0     inflight=0    no NULL in core columns; is_alive in {0,1} (run_ingestion.py:1301-1302,1340-1342)
+[SOFT] WARN       shard_soft_ranges          checked=2262   failed=108   inflight=0    money in [0,16000], ping >= 0, counters >= 0, health/is_alive coherent
+           - 9z-vs-furia-m2-mirage-p1: KSCERATO: ['dead_with_hp=2114']
+           - astralis-vs-mouz-m1-ancient: HooXi: ['dead_with_hp=78']
+           - astralis-vs-mouz-m1-ancient: phzy: ['dead_with_hp=85']
+           - astralis-vs-mouz-m1-ancient: ryu: ['dead_with_hp=1995']
+           - b8-vs-spirit-m1-dust2: zont1x: ['dead_with_hp=11314']
+           - betboom-vs-vitality-m1-overpass: @reLazffs: ['dead_with_hp=146398']
+           - blast-open-rotterdam-2026__vitality-vs-natus-vincere-m1-inferno: ZywOo: ['dead_with_hp=18353']
+           - dendele-vs-furia-m1-anubis-p1: molodoy: ['dead_with_hp=48366']
+           - dendele-vs-furia-m1-anubis-p2: FalleN: ['dead_with_hp=104']
+           - dendele-vs-furia-m1-anubis-p2: KSCERATO: ['dead_with_hp=129']
+[INFO] noted=0    shard_backfill_cols        checked=2262   failed=0     inflight=0    round_outcome/created_at NULL from ingestion (match_data_manager.py:156-158,262-266)
+[HARD] PASS       events_present             checked=226    failed=0     inflight=0    match_event_state non-empty (run_ingestion.py:1117-1142,1592-1593)
+[HARD] PASS       events_types               checked=226    failed=0     inflight=0    event_type within the 12 producer types (run_ingestion.py:876-1101)
+[SOFT] PASS       events_core                checked=226    failed=0     inflight=0    weapon_fire, player_hurt, player_death each present
+[SOFT] PASS       events_tick_range          checked=226    failed=0     inflight=0    event ticks within [0, MAX(tick)] of the shard
+[INFO] noted=226  events_round_number        checked=226    failed=226   inflight=0    event round_number constant 1: total_rounds_played not requested by _safe_parse (run_ingestion.py:850-851,861-874; demo_parser.py:249-253)
+           - 100-thieves-vs-falcons-m1-nuke: distinct round_number=1 range=[1,1]
+           - 100-thieves-vs-falcons-m2-dust2: distinct round_number=1 range=[1,1]
+           - 100-thieves-vs-falcons-m3-anubis: distinct round_number=1 range=[1,1]
+[SOFT] PASS       events_soft                checked=226    failed=0     inflight=0    player_name '' share <= 20%; bomb_planted events imply bomb_planted ticks (tick_enrichment.py:97-161)
+[SOFT] PASS       shard_quick_check          checked=226    failed=0     inflight=0    PRAGMA quick_check == ok (opt-in --quick-check)
+[HARD] PASS       shard_orphan_files         checked=1      failed=0     inflight=0    no match_*.db whose id maps to no known stem (an orphan shard blocks re-ingestion: run_ingestion.py:87-101)
+[SOFT] PASS       shard_files_unknown        checked=1      failed=0     inflight=0    no shard files for stems known only from failed/in-flight tasks
+----------------------------------------------------------------------------------------------------
+ANOMALY / CONTEXT SUMMARY (expected-by-code patterns; not corruption unless a HARD check fired):
+  playertickstate_indexes: ["ix_playertickstate_demo_name", "ix_playertickstate_match_id", "ix_playertickstate_player_name", "ix_playertickstate_tick", "ix_pts_has_defuser", "ix_pts_has_helmet", "ix_pts_player_demo", "ix_tick_demo_tick"]
+  journal_mode: "wal"
+  per_demo_query_plan: "SEARCH playertickstate USING INDEX ix_tick_demo_tick (demo_name=?) | USE TEMP B-TREE FOR GROUP BY"
+  pms_match_date_source_hist: {"file_mtime": 2262}
+  pms_dataset_split_hist: {"UNASSIGNED": 2262}
+  pms_data_quality_hist: {"complete": 2262}
+  pms_is_pro_hist: {"1": 2262}
+  pms_rows: 2262
+  pms_steamid_null: 2262
+  pms_pro_player_id_null: 2262
+  roundstats_rows: 48770
+  task_status_hist: {"completed": 227}
+  pts_rows_total_from_per_demo: 428572679
+  shard_files: 226
+  demos_checked: 226
+  part_demos: ["9z-vs-furia-m2-mirage-p1", "9z-vs-furia-m2-mirage-p2", "dendele-vs-furia-m1-anubis-p1", "dendele-vs-furia-m1-anubis-p2", "falcons-vs-vitality-m1-anubis-p1", "falcons-vs-vitality-m1-anubis-p2", "furia-vs-mouz-m1-nuke-p1", "furia-vs-mouz-m1-nuke-p2", "g2-vs-spirit-m3-mirage-p1", "g2-vs-spirit-m3-mirage-p2", "iem-atlanta-2026-pain-vs-gamerlegion-bo3-K8MjtffABvO_Wh0g9ivqcp__pain-vs-gamerlegion-m1-overpass-p1", "iem-atlanta-2026-pain-vs-gamerlegion-bo3-K8MjtffABvO_Wh0g9ivqcp__pain-vs-gamerlegion-m1-overpass-p2", "iem-cologne-major-2026-falcons-vs-vitality-bo3-Q3edu52gPDbzXK7dImpXFr__falcons-vs-vi
+  fragments_below_13_rounds: ["9z-vs-furia-m2-mirage-p1", "dendele-vs-furia-m1-anubis-p2", "falcons-vs-vitality-m1-anubis-p1", "furia-vs-mouz-m1-nuke-p1", "iem-atlanta-2026-pain-vs-gamerlegion-bo3-K8MjtffABvO_Wh0g9ivqcp__pain-vs-gamerlegion-m1-overpass-p1", "iem-cologne-major-2026-falcons-vs-vitality-bo3-Q3edu52gPDbzXK7dImpXFr__falcons-vs-vitality-m1-anubis-p1", "iem-cologne-major-2026-furia-vs-mouz-bo3-dC2xyK-KPviXDfpnjaMits__furia-vs-mouz-m1-nuke-p1", "iem-cologne-major-2026-natus-vincere-vs-falcons-bo3-Qms8NbopLcruQjaT6BcL0b__natus-vincere-vs-falcons-m3-anubis-p2", "iem-cologne-major-2026-natus-vincere-vs-g2-bo3-9IFVqZ
+  tick_rate_hist: {"64.0": 226}
+  map_hist: {"de_ancient": 23, "de_anubis": 25, "de_cache": 7, "de_dust2": 55, "de_inferno": 29, "de_mirage": 45, "de_nuke": 28, "de_overpass": 14}
+  maps_unknown: []
+  inflight_demos: []
+  events_round_number_constant: 226
+  zero_pos_share_max: 0.0868
+  elapsed_seconds: 4964.2
+----------------------------------------------------------------------------------------------------
+RESULT: ALL HARD CHECKS PASSED (0 hard checks failed, 8 soft warnings)
