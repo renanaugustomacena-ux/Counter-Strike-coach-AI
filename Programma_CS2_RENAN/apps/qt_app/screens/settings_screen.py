@@ -29,6 +29,10 @@ from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import navigate_to
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.training_vm import (
+    TRAINING_CAPTION,
+    TrainingViewModel,
+)
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.mono_footer import MonoFooter
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.toggle_switch import ToggleSwitch
@@ -257,6 +261,9 @@ class _WallpaperNoneCard(QFrame):
         super().mousePressEvent(event)
 
 
+_DEFAULT_TRAIN_STEPS = 2000  # WP4b: the Dashboard's standard preset
+
+
 class SettingsScreen(QWidget):
     """User-facing settings organized into 3 tabs."""
 
@@ -330,6 +337,8 @@ class SettingsScreen(QWidget):
         self._font_size_label.setText(i18n.get_text("font_size") + ":")
         self._interface_font_label.setText(i18n.get_text("interface_font", "Interface font") + ":")
         self._ingest_mode_label.setText(i18n.get_text("ingestion_mode") + ":")
+        self._train_btn.setText(i18n.get_text("home.train_button", "Train coach"))
+        self._train_btn.setToolTip(i18n.get_text("home.training_caption", TRAINING_CAPTION))
         # Theme card taglines
         for key, card in self._theme_cards.items():
             _, tagline_key, tagline_fallback = _THEME_CARD_META[key]
@@ -810,6 +819,16 @@ class SettingsScreen(QWidget):
         self._start_btn.setToolTip("Scan demo folders and ingest new demos")
         self._start_btn.clicked.connect(self._on_start_ingestion)
         action_row.addWidget(self._start_btn)
+        # WP4b: the same Train action as the Dashboard card (standard preset).
+        self._training_vm = TrainingViewModel(self)
+        self._training_vm.message.connect(self._on_training_message)
+        self._train_btn = QPushButton(i18n.get_text("home.train_button", "Train coach"))
+        self._train_btn.setCursor(Qt.PointingHandCursor)
+        self._train_btn.setToolTip(i18n.get_text("home.training_caption", TRAINING_CAPTION))
+        self._train_btn.clicked.connect(
+            lambda: self._training_vm.request_training(_DEFAULT_TRAIN_STEPS)
+        )
+        action_row.addWidget(self._train_btn)
         self._ingest_status_label = QLabel("")
         self._ingest_status_label.setStyleSheet(f"color: {tokens.text_secondary}; font-size: 13px;")
         action_row.addWidget(self._ingest_status_label)
@@ -1082,6 +1101,16 @@ class SettingsScreen(QWidget):
         worker.signals.error.connect(self._on_ingestion_error)
         self._ingestion_worker = worker
         QThreadPool.globalInstance().start(worker)
+
+    def _on_training_message(self, severity: str, text: str) -> None:
+        tokens = get_tokens()
+        color = {
+            "success": tokens.success,
+            "warning": tokens.warning,
+            "error": tokens.error,
+        }.get(severity, tokens.text_secondary)
+        self._ingest_status_label.setText(text)
+        self._ingest_status_label.setStyleSheet(f"color: {color}; font-size: 13px;")
 
     def _on_ingestion_done(self, results):
         self._ingestion_worker = None

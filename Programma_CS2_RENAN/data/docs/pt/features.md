@@ -2,7 +2,7 @@
 
 ## Painel
 
-A faixa de status mostra **Coach** (ocioso ou analisando), **Serviço** (o Session Engine em segundo plano: *Online* enquanto o heartbeat está recente, *Offline* caso contrário) e **Partidas** (as suas demos analisadas). Abaixo: a sua última partida com a sparkline de rating, o card de foco, a faixa de partidas recentes, os cards **Análise de demos** e **Ingestão de demos pro** com seus seletores de pasta e botões Analisar, os atalhos de Conectividade (Perfil, Steam Config, FaceIt Config), os atalhos de Análise tática e um card **Status do treinamento** que aparece enquanto um treinamento reporta progresso.
+A faixa de status mostra **Coach** (ocioso ou analisando), **Serviço** (o Session Engine em segundo plano: *Online* enquanto o heartbeat está recente, *Offline* caso contrário) e **Partidas** (as suas demos analisadas). Abaixo: a sua última partida com a sparkline de rating, o card de foco, a faixa de partidas recentes, os cards **Análise de demos** e **Ingestão de demos pro** com seus seletores de pasta e botões Analisar, os atalhos de Conectividade (Perfil, Steam Config, FaceIt Config), os atalhos de Análise tática e o card **Status do treinamento**: a ação **Treinar o coach** com seus presets de passos, um botão **Parar** enquanto uma execução está em andamento, o modelo ativo treinado nesta máquina (ou "Nenhum modelo treinado nesta máquina ainda") e o progresso ao vivo dos passos, as losses e a estimativa de tempo da execução atual.
 
 ## AI Coach
 

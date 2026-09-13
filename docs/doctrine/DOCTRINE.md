@@ -383,7 +383,9 @@ Entries from verification round 3 (evidence in note 21; asterisks = fixed):
 - **D-41** v2 entry-point hygiene: full-cycle script opens the monolith, runs
   `assign_dataset_splits()` (DB write) and the LEGACY eval baseline for `jepa_v2`;
   `train.sh` default `all` exits 1; `rap-lite` frozen but unroutable; double
-  `SummaryWriter`; `JEPA_V2_DATA_DIR` has no registered default.
+  `SummaryWriter`; `JEPA_V2_DATA_DIR` has no registered default. PARTIAL 2026-09-13
+  (WP4b, D-53): `JEPA_V2_DATA_DIR` is registered — empty means `DATA_DIR/cs2_v2`
+  (`config.jepa_v2_data_dir()`); the other items stay operator calls.
 - **D-42** Exporter stamps `tick_rate="64"` literally and `patch_ticks=8` is fixed
   (Law III; Parte I §7.3 wants `P = round(rate/8)`). Re-export is the operator's call.
 - ***D-43** `checkpoint_hashes.json` keyed by absolute path → CTF-1 inert off the
@@ -491,6 +493,28 @@ Entries from the frontend-honesty & install round (2026-09-12; asterisks = fixed
   offers the pro demo folder (`PRO_DEMO_PATH`). The dev checkout is unchanged
   (`test_config_frozen_paths.py`: the frozen import runs in a subprocess inside a fake
   install dir that must stay byte-identical). D-43 fixed in the same round.
+- ***D-53** Train in the app (WP4b): nothing in the UI could start a training run; the only
+  in-process trigger (`MLController` → legacy `run_full_cycle`) and the Teacher's automatic
+  retrain both hit the D-01 freeze (`ALLOW_LEGACY_NEURAL_TRAINING=False`) and raised every
+  cycle; the live jepa_v2 path needed a shard export that lived outside the package
+  (`tools/export_episodes.py` — no installed copy could run it) and defaulted its data dir
+  to the literal `/data/PROIECT/cs2_v2` (D-41). Now: `backend/nn/training_pipeline.py`
+  `run_v2_training_cycle` is the developer's flow as one function (assign splits →
+  `backend/storage/episode_export.py`, incremental and frozen-safe → `run_jepa_v2` →
+  `TrainedModel` registry row, `is_active` = latest success); `CoachState.training_requested
+  / _request_model / _request_steps / _stop_requested` is the GUI→Teacher channel
+  (`StateManager.request_training`, polled every 5 s; the automatic retrain keeps its 300 s
+  cadence and routes to the same pipeline, legacy only behind the flag); `MLController`
+  routes the same way (console `ml start`, `/api/training/start`); `JepaV2Trainer` /
+  `run_jepa_v2` accept `progress_cb` / `stop_cb` / `config_overrides` / `result_sink` — no-ops
+  by default, nothing changes in what the 20k-step exam trains; `JEPA_V2_DATA_DIR` has a
+  registered default (empty = `DATA_DIR/cs2_v2`, D-41 partial); the Home "Training Status"
+  card always offers Train coach (200 / 2 000 / 20 000 steps), Stop, the active model read
+  from the registry, and the honest caption that the coach's advice text does not consume
+  the encoder until steps 6-8 (D-33); Settings carries the same button. Training always
+  runs in the daemon process, never in the GUI. Tests: pipeline smoke on a file-backed
+  monolith with tiny dims (train, dry run, stop, skip), incremental export, trainer hooks,
+  registry + migration, request channel, MLController routing, view-model, Home/Settings.
 
 ## 4. The AI roadmap (paper-grounded, invariant-filtered)
 

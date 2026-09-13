@@ -19,7 +19,10 @@ def run_jepa_v2(args: Any) -> bool:
 
     Args:
         args: namespace with at least ``seed`` (optional int), ``no_tensorboard``
-              (bool), and ``tb_logdir`` (optional str).
+              (bool), and ``tb_logdir`` (optional str).  Optional (WP4b):
+              ``config_overrides`` (dict of JepaV2Config fields), ``progress_cb``,
+              ``stop_cb`` (see JepaV2Trainer) and ``result_sink`` (a dict that
+              receives steps/device/stopped/best_auroc/run_dir after the run).
     """
     import dataclasses
 
@@ -32,7 +35,7 @@ def run_jepa_v2(args: Any) -> bool:
     )
     from Programma_CS2_RENAN.backend.nn.jepa_v2.telemetry import Telemetry
     from Programma_CS2_RENAN.backend.nn.jepa_v2.trainer import JepaV2Trainer
-    from Programma_CS2_RENAN.core.config import get_setting
+    from Programma_CS2_RENAN.core.config import jepa_v2_data_dir
 
     cfg = JepaV2Config()
     if getattr(args, "dry_run", False):
@@ -44,6 +47,10 @@ def run_jepa_v2(args: Any) -> bool:
     probe_every_override = getattr(args, "probe_every", None)
     if probe_every_override:
         cfg = dataclasses.replace(cfg, probe_every=int(probe_every_override))
+    # WP4b: explicit field overrides (the in-app smoke tests train tiny models).
+    overrides = getattr(args, "config_overrides", None)
+    if overrides:
+        cfg = dataclasses.replace(cfg, **dict(overrides))
     cfg.validate()
 
     seed = getattr(args, "seed", None) or cfg.seed
@@ -51,9 +58,7 @@ def run_jepa_v2(args: Any) -> bool:
 
     device = get_device()
 
-    data_dir = getattr(args, "data_dir", None) or get_setting(
-        "JEPA_V2_DATA_DIR", "/data/PROIECT/cs2_v2"
-    )
+    data_dir = getattr(args, "data_dir", None) or jepa_v2_data_dir()
     log.info("JEPA v2 data dir: %s", data_dir)
 
     train_index = ShardIndex(data_dir, "train")
@@ -97,6 +102,8 @@ def run_jepa_v2(args: Any) -> bool:
         telemetry=telemetry,
         run_dir=run_dir,
         dry_run=dry_run,
+        progress_cb=getattr(args, "progress_cb", None),
+        stop_cb=getattr(args, "stop_cb", None),
     )
 
     if getattr(args, "no_resume", False):
@@ -111,6 +118,20 @@ def run_jepa_v2(args: Any) -> bool:
             log.info("Resumed from step %d", trainer.step)
 
     success = trainer.run(train_sampler)
+
+    # WP4b: report the run to an in-process caller (the training pipeline).
+    sink = getattr(args, "result_sink", None)
+    if isinstance(sink, dict):
+        sink.update(
+            {
+                "steps": trainer.step,
+                "device": str(device),
+                "stopped": bool(trainer.stopped),
+                "d_model": cfg.d_model,
+                "best_auroc": getattr(telemetry, "best_auroc", None),
+                "run_dir": run_dir,
+            }
+        )
 
     if writer is not None:
         writer.flush()

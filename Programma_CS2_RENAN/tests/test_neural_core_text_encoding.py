@@ -18,6 +18,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _SCAN = (
     _REPO_ROOT / "tools" / "benchmark_jepa_v2_vs_legacy.py",
     _REPO_ROOT / "tools" / "export_episodes.py",
+    _REPO_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "episode_export.py",
     _REPO_ROOT / "tools" / "measure_episode_lengths.py",
     _REPO_ROOT / "tools" / "measure_event_horizons.py",
     _REPO_ROOT / "tools" / "measure_name_join_coverage.py",

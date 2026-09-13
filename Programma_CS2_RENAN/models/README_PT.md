@@ -217,7 +217,23 @@ explicitamente os checkpoints.
 - O caminho `MODELS_DIR` e resolvido de `core/config.py` e o padrao e este diretorio
 - Quando `BRAIN_DATA_ROOT` (ou, como fallback, `CUSTOM_STORAGE_PATH`) esta definido e existe,
   os modelos sao escritos em `{BRAIN_DATA_ROOT}/models/`
-- `checkpoint_hashes.json` e indexado por caminho absoluto do checkpoint; as entradas foram
-  registradas durante execucoes de treinamento em varios volumes de armazenamento locais
+- `checkpoint_hashes.json` e indexado pelo caminho do checkpoint relativo a raiz dos modelos
+  (`global/jepa_v2_encoder.pt`, D-43), assim uma pasta de modelos que se move com seu registro
+  continua verificando; chaves absolutas escritas por builds antigos continuam validas
 - Sempre usar `save_nn()` / `load_nn()` de `persistence.py` -- nunca chamar `torch.save()` diretamente
 - Apos mudancas na arquitetura do modelo, deletar checkpoints obsoletos e re-treinar do zero
+
+## Registro de Modelos Treinados (treinamento no app)
+
+A acao **Treinar o coach** do app (card "Status do treinamento" do Painel, Configuracoes) pede
+uma execucao ao servico em segundo plano: `CoachState.training_requested` → daemon Teacher →
+`backend/nn/training_pipeline.run_v2_training_cycle` (atribui as divisoes → exporta os shards
+de episodios em `DATA_DIR/cs2_v2` → `jepa_v2.cli.run_jepa_v2` → linha de registro). Toda
+execucao vai para a tabela `trainedmodel` (`backend/storage/db_models.TrainedModel`): tipo de
+modelo, caminho do checkpoint relativo a `MODELS_DIR`, sha256, passos, contagem de demos
+treino/val, fingerprints de export e schema, device, versao do app, timestamps, status
+(`success` / `stopped` / `failed`) e `metrics_json`. `is_active` marca a ultima execucao bem
+sucedida por tipo de modelo; o Painel a le por `training_registry.active_model_summary`. A
+escada de fallback de `load_nn` nao muda: o registro e o registro, nao o loader. O treinamento
+roda apenas no processo daemon; o texto dos conselhos do coach nao usa o encoder ate os
+proximos passos do plano do nucleo neural (D-33).

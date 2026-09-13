@@ -670,12 +670,38 @@ def inject(name: str, screen: Any) -> bool:
     return True
 
 
+# WP4b: the active locally trained model (TrainedModel registry summary).
+TRAINED_MODEL: dict[str, Any] = {
+    "version_name": "jepa_v2_encoder",
+    "steps": 2000,
+    "demos_train": 12,
+    "demos_val": 2,
+    "finished_at": "2026-09-13T10:05:00+00:00",
+}
+
+
 def inject_home(screen: Any) -> None:
     screen._on_service_active(True)
     screen._on_coach_status("Idle")
     screen._on_matches_changed(list(SAMPLE_MATCHES))
     screen._on_insight_changed(dict(FOCUS_INSIGHT))
+    screen._on_trained_model(dict(TRAINED_MODEL))
+    screen._on_ml_status("Learning")
     screen._on_training(dict(TRAINING_STATUS))
+
+
+def inject_home_training(screen: Any) -> None:
+    """WP4b: the Training Status card (Train coach, Stop, active model, progress)
+    lives below the fold — same data as inject_home, scrolled to the bottom."""
+    from PySide6.QtWidgets import QApplication, QScrollArea
+
+    inject_home(screen)
+    area = screen.findChild(QScrollArea)
+    if area is not None:
+        for _ in range(3):
+            QApplication.processEvents()
+        bar = area.verticalScrollBar()
+        bar.setValue(bar.maximum())
 
 
 def inject_coach(screen: Any) -> None:

@@ -77,8 +77,26 @@ percorsi → WP4b training in-app → WP4c packaging); registro DOCTRINE D-47.. 
   `test_persistence_relative_hash_keys.py`, `test_wizard_relaunch.py`,
   `test_db_seed_from_bundle.py`, `test_install_paths_consumers.py`; render harness
   `wizard`, `wizard_demo`.
-- NEXT · WP4b training in-app (jepa_v2, stesso flusso del run di sviluppo), WP4c
-  packaging (spec datas .pt/book/alembic.ini, iss, build script, selftest in CI).
+- DONE · D-53 (+ D-41 parziale) · `backend/nn/training_pipeline.py` (nuovo),
+  `backend/storage/episode_export.py` (spostato da `tools/`, incrementale; il tool resta
+  wrapper), `backend/nn/training_registry.py` (nuovo), `db_models.py` (`TrainedModel`,
+  colonne richiesta su `CoachState`) + migrazione `b8c9d0e1f2a3`, `state_manager.py`
+  (`request_training` / `pop_training_request` / stop), `core/session_engine.py` (Teacher:
+  poll 5 s della richiesta, auto-retrain ogni 300 s, entrambi sul pipeline v2; legacy solo
+  con `ALLOW_LEGACY_NEURAL_TRAINING`), `backend/control/ml_controller.py` (stessa rotta),
+  `jepa_v2/{trainer,cli}.py` (hook `progress_cb` / `stop_cb`, `config_overrides`,
+  `result_sink`: no-op di default), `core/config.py` (`JEPA_V2_DATA_DIR` registrato →
+  `DATA_DIR/cs2_v2`), `viewmodels/training_vm.py` (nuovo), `screens/{home,settings}_screen.py`
+  (scheda Training Status sempre offerta: preset passi, Addestra il coach, Ferma, modello
+  attivo dal registro, didascalia onesta su D-33), i18n ×3 — nessun pulsante avviava un
+  addestramento e i trigger esistenti finivano sul freeze legacy. L'addestramento gira
+  SEMPRE nel demone, mai nella GUI. Test: `test_training_pipeline_smoke.py` (monolite su
+  file, dimensioni minime: successo, dry run, stop, skip), `test_episode_export_incremental.py`,
+  `test_jepa_v2_hooks.py`, `test_trained_model_registry.py`, `test_teacher_request_channel.py`,
+  `test_ml_controller_routes_v2.py`, `test_training_vm.py`, `test_home_train_button.py`;
+  render harness `home`, `home_training`.
+- NEXT · WP4c packaging (spec datas .pt/book/alembic.ini, iss, build script, selftest in
+  CI), poi passata finale sulla documentazione (nota 22, README, guide).
 
 ## Sessione 2026-09-12 — verification round 3 (neural core v2 letto su Windows)
 

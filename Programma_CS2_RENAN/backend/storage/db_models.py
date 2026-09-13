@@ -436,6 +436,12 @@ class CoachState(SQLModel, table=True):
     pro_ingest_interval: float = Field(default=1.0)  # Hours between pro parses
     parsing_progress: float = Field(default=0.0)  # 0.0 to 100.0
 
+    # WP4b: GUI -> Teacher training request channel (StateManager.request_training).
+    training_requested: bool = Field(default=False)
+    training_request_model: str = Field(default="")
+    training_request_steps: int = Field(default=0)
+    training_stop_requested: bool = Field(default=False)
+
     # Maturity Gating for Professional Corrections
     total_matches_processed: int = Field(default=0)
 
@@ -909,3 +915,35 @@ class DataQualityMetric(SQLModel, table=True):
     metric_value: float = Field(default=0.0)
     sample_count: int = Field(default=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class TrainedModel(SQLModel, table=True):
+    """WP4b: one row per model trained on this machine.
+
+    ``is_active`` marks the latest *successful* run per ``model_type``;
+    ``stopped`` / ``failed`` runs stay as history.  ``persistence.load_nn``'s
+    filename ladder is unchanged — this table is the record and the UI surface.
+    """
+
+    __table_args__ = (
+        Index("ix_trainedmodel_type_active", "model_type", "is_active"),
+        {"extend_existing": True},
+    )
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    model_type: str = Field(index=True)  # "jepa_v2"
+    version_name: str = Field(default="")  # checkpoint stem, e.g. "jepa_v2_encoder"
+    relative_path: str = Field(default="")  # relative to MODELS_DIR (D-43 key form)
+    sha256: str = Field(default="")
+    steps: int = Field(default=0)
+    demos_train: int = Field(default=0)
+    demos_val: int = Field(default=0)
+    export_fingerprint: str = Field(default="")  # digest of the train shard hashes
+    schema_fingerprint: str = Field(default="")  # CS2_V2.fingerprint() at training time
+    device: str = Field(default="")
+    app_version: str = Field(default="")
+    status: str = Field(default="running", index=True)  # success | stopped | failed
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    finished_at: Optional[datetime] = Field(default=None)
+    metrics_json: str = Field(default="{}")
+    is_active: bool = Field(default=False)

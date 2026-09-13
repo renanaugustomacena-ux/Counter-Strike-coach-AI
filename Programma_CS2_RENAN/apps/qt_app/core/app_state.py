@@ -65,6 +65,14 @@ def count_personal_and_pro_demos(session, player: str) -> tuple[int, int]:
     return personal, int(_scalar(pro_row) or 0)
 
 
+def _teacher_status(state) -> str:
+    """Teacher status for the GUI: a pending request reads as "Queued"."""
+    status = str(getattr(state, "ml_status", "") or "Idle").strip() or "Idle"
+    if getattr(state, "training_requested", False) and status.lower() != "learning":
+        return "Queued"
+    return status
+
+
 class AppState(QObject):
     """Polls CoachState DB row (id=1) and emits change signals."""
 
@@ -78,6 +86,10 @@ class AppState(QObject):
     # Distinct pro demos in the library (is_pro=True) — reference material.
     pro_matches_changed = Signal(int)
     training_changed = Signal(dict)
+    # WP4b: Teacher status ("Idle" / "Learning" / "Queued" / "Error") and the
+    # active locally trained model from the TrainedModel registry ({} = none).
+    ml_status_changed = Signal(str)
+    trained_model_changed = Signal(dict)
     notification_received = Signal(str, str)  # (severity, message)
 
     # ── P3 opt-in flagship toggles (default OFF; persisted via user settings) ──
@@ -203,6 +215,16 @@ class AppState(QObject):
                     logger.debug("AppState: demo_count query failed: %s", exc)
                     personal_count, pro_count = 0, 0
 
+                try:
+                    from Programma_CS2_RENAN.backend.nn.training_registry import (
+                        active_model_summary,
+                    )
+
+                    trained_model = active_model_summary(session, "jepa_v2") or {}
+                except Exception as exc:
+                    logger.debug("AppState: trained model query failed: %s", exc)
+                    trained_model = {}
+
                 return {
                     "service_active": delta < 300,
                     "coach_status": state.ingest_status or "Idle",
@@ -215,6 +237,8 @@ class AppState(QObject):
                     "train_loss": float(state.train_loss),
                     "val_loss": float(state.val_loss),
                     "eta_seconds": float(state.eta_seconds),
+                    "ml_status": _teacher_status(state),
+                    "trained_model": trained_model,
                     "notifications": notifs,
                 }
         except Exception as exc:
@@ -244,6 +268,12 @@ class AppState(QObject):
 
         if data.get("pro_matches") != prev.get("pro_matches"):
             self.pro_matches_changed.emit(int(data.get("pro_matches") or 0))
+
+        if data.get("ml_status") != prev.get("ml_status"):
+            self.ml_status_changed.emit(str(data.get("ml_status") or "Idle"))
+
+        if data.get("trained_model") != prev.get("trained_model"):
+            self.trained_model_changed.emit(dict(data.get("trained_model") or {}))
 
         # Training bundle — emit if any training field changed
         t_keys = ("current_epoch", "total_epochs", "train_loss", "val_loss", "eta_seconds")

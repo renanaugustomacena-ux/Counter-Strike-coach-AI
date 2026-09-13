@@ -2,7 +2,7 @@
 
 ## Dashboard
 
-The status strip shows **Coach** (idle or analyzing), **Service** (the background Session Engine — *Online* while its heartbeat is fresh, *Offline* otherwise) and **Matches** (your analyzed demos). Below it: your last match with a rating sparkline, the focus card, the recent-matches strip, the **Demo Analysis** and **Pro Demo Ingestion** cards with their folder pickers and Analyze buttons, Connectivity shortcuts (Profile, Steam Config, FaceIt Config), the Tactical Analysis shortcuts and a **Training Status** card that appears while a training run reports progress.
+The status strip shows **Coach** (idle or analyzing), **Service** (the background Session Engine — *Online* while its heartbeat is fresh, *Offline* otherwise) and **Matches** (your analyzed demos). Below it: your last match with a rating sparkline, the focus card, the recent-matches strip, the **Demo Analysis** and **Pro Demo Ingestion** cards with their folder pickers and Analyze buttons, Connectivity shortcuts (Profile, Steam Config, FaceIt Config), the Tactical Analysis shortcuts and the **Training Status** card: the **Train coach** action with its step presets, a **Stop** button while a run is in progress, the active model trained on this machine (or "No model trained on this machine yet"), and the live step progress, losses and ETA of the current run.
 
 ## AI Coach
 

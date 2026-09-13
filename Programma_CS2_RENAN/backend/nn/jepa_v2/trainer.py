@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Callable, Dict, Optional
 
 import torch
 import torch.nn as nn
@@ -58,11 +58,20 @@ class JepaV2Trainer:
         telemetry: Optional[Telemetry] = None,
         run_dir: Optional[str] = None,
         dry_run: bool = False,
+        progress_cb: Optional[Callable[[int, int, Dict[str, float]], None]] = None,
+        stop_cb: Optional[Callable[[], bool]] = None,
     ) -> None:
         self.cfg = cfg
         self.device = device
         self.telemetry = telemetry
         self.run_dir = run_dir
+        # WP4b: optional hooks for the in-app run — no-ops by default, so the
+        # training semantics are unchanged. progress_cb(step, total, info)
+        # fires after every step; stop_cb() is polled after every step and a
+        # True answer parks a resumable full checkpoint and ends the run.
+        self.progress_cb = progress_cb
+        self.stop_cb = stop_cb
+        self.stopped: bool = False
         # D-35 / B4: a dry run trains and evaluates identically but NEVER
         # writes checkpoints (the legacy orchestrator's contract,
         # training_orchestrator.py:436-458).  Before this flag a --dry-run
@@ -278,6 +287,8 @@ class JepaV2Trainer:
             while self.step < self.cfg.steps:
                 x_num, x_cat, _meta = next(data_iter)
                 info = self.train_step(x_num, x_cat)
+                if self.progress_cb is not None:
+                    self.progress_cb(self.step, self.cfg.steps, info)
 
                 if self.step % 100 == 0 or self.step == 1:
                     log.info(
@@ -301,6 +312,15 @@ class JepaV2Trainer:
 
                     if not self.dry_run:
                         self.save_full_checkpoint(schema_meta=schema_meta)
+
+                if self.stop_cb is not None and self.stop_cb():
+                    self.stopped = True
+                    log.info(
+                        "Stop requested at step %d — parking a resumable checkpoint", self.step
+                    )
+                    if not self.dry_run:
+                        self.save_full_checkpoint(schema_meta=schema_meta)
+                    return False
 
         except AbortSignal as e:
             log.error("Training aborted: %s", e)

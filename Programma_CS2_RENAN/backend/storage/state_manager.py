@@ -1,6 +1,7 @@
 import threading
 from datetime import datetime, timezone
 from enum import Enum
+from typing import Optional
 
 from sqlmodel import select
 
@@ -32,8 +33,10 @@ class StateManager:
     # SM-02: Track consecutive telemetry failures to escalate logging.
     _TELEMETRY_ESCALATION_THRESHOLD = 5
 
-    def __init__(self):
-        self.db = get_db_manager()
+    def __init__(self, db=None):
+        # ``db``: a DatabaseManager-like with ``get_session`` (tests pass an
+        # isolated one); the application uses the monolith manager.
+        self.db = db if db is not None else get_db_manager()
         self._lock = threading.Lock()
         self._telemetry_fail_count = 0
 
@@ -159,6 +162,64 @@ class StateManager:
             else:
                 logger.warning("Telemetry update failed: %s", e)
 
+    # ── WP4b: GUI -> Teacher training request channel ──
+
+    def request_training(self, model_type: str, steps: int = 0) -> bool:
+        """Ask the Teacher daemon for one training run.  Returns False when a
+        request is already pending (it is not overwritten)."""
+        with self._lock, self.db.get_session() as session:
+            state = session.exec(select(CoachState)).first()
+            if state is None:
+                state = CoachState()
+            if state.training_requested:
+                return False
+            state.training_requested = True
+            state.training_request_model = model_type
+            state.training_request_steps = int(steps or 0)
+            state.last_updated = datetime.now(timezone.utc)
+            session.add(state)
+            session.commit()
+            return True
+
+    def pop_training_request(self) -> Optional[dict]:
+        """Take the pending request (``{"model_type", "steps"}``) and clear it."""
+        with self._lock, self.db.get_session() as session:
+            state = session.exec(select(CoachState)).first()
+            if state is None or not state.training_requested:
+                return None
+            request = {
+                "model_type": state.training_request_model or "jepa_v2",
+                "steps": int(state.training_request_steps or 0),
+            }
+            state.training_requested = False
+            state.training_request_model = ""
+            state.training_request_steps = 0
+            state.last_updated = datetime.now(timezone.utc)
+            session.add(state)
+            session.commit()
+            return request
+
+    def request_training_stop(self) -> None:
+        self._set_stop_flag(True)
+
+    def clear_stop_request(self) -> None:
+        self._set_stop_flag(False)
+
+    def stop_requested(self) -> bool:
+        with self._lock, self.db.get_session() as session:
+            state = session.exec(select(CoachState)).first()
+            return bool(state is not None and state.training_stop_requested)
+
+    def _set_stop_flag(self, value: bool) -> None:
+        with self._lock, self.db.get_session() as session:
+            state = session.exec(select(CoachState)).first()
+            if state is None:
+                state = CoachState()
+            state.training_stop_requested = bool(value)
+            state.last_updated = datetime.now(timezone.utc)
+            session.add(state)
+            session.commit()
+
     def heartbeat(self):
         """Updates the last_heartbeat timestamp to indicate liveness."""
         try:
@@ -259,7 +320,6 @@ class StateManager:
 # P0-04: Lazy singleton with double-checked locking (AR-5).
 # Replaces module-level `state_manager = StateManager()` which called
 # get_db_manager() at import time, before init_database() was guaranteed.
-from typing import Optional
 
 _state_manager: Optional[StateManager] = None
 _state_manager_lock = threading.Lock()

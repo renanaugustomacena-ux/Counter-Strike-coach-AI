@@ -24,10 +24,14 @@ On the Dashboard press **Analyze Demos** (your folder) or **Analyze Pro Demos** 
 
 ## 5. Training the coach
 
-The neural coach learns from the analyzed matches in the database — yours and the pro library. Training currently starts from the command line in the project folder:
+The neural coach learns from the analyzed matches in the database — yours and the pro library. On the Dashboard, the **Training Status** card offers **Train coach**: pick a step preset (200 for a quick check, 2 000 standard, 20 000 for the full run, which takes hours on a CPU) and press the button. The same button sits in Settings next to Start Ingestion.
+
+Training never runs inside the window: the request goes to the background service (the **Service** chip must be *Online*), which assigns the train/validation split, exports the episode shards under your data folder, trains the JEPA v2 encoder and records the run. The card shows the step progress, the losses and an ETA; **Stop** ends the run at a resumable checkpoint. When it finishes, the card names the active model with its step count, date and number of demos. With too few analyzed demos the run is skipped and the card says why.
+
+What training does not do yet: the coach's advice text does not use the trained encoder until the next steps of the neural-core plan land, so the wording of the insights does not change after a run.
+
+From a source checkout the command line still works:
 
 ```bash
 python run_full_training_cycle.py --model-type jepa_v2
 ```
-
-A training button inside the app is planned; this page will change when it ships.
