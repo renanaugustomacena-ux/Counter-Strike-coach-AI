@@ -12,40 +12,75 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 logger = get_logger("cs2analyzer.analytics")
 
 
+def _scalar(row):
+    """``session.exec(select(func.count(...))).one()`` yields a Row on some
+    SQLModel/SQLAlchemy combinations and a bare int on others."""
+    if row is None:
+        return 0
+    if hasattr(row, "__getitem__") and not isinstance(row, (int, float)):
+        return row[0]
+    return row
+
+
 class AnalyticsEngine:
     """
     Centralized math engine for Dashboard Analytics.
     Decouples data aggregation from UI rendering.
 
-    When the user has no personal matches (is_pro=False), queries fall back
-    to ALL matches (including pro) so the Performance screen shows data
-    rather than an empty state.
+    Personal queries (``get_*(player_name)``) see ONLY the user's own rows
+    (player name AND ``is_pro=False``) and return empty when there are none —
+    the screens then show an honest empty state (D-49). Pro data is reachable
+    only through the explicit ``get_pro_cohort_*`` methods, which the UI
+    labels as third-person reference material.
     """
 
     def __init__(self):
         self.db = get_db_manager()
 
     def _player_filter(self, player_name: str):
-        """Build WHERE clause: user matches first, fallback to all matches."""
-        from sqlmodel import select as _sel
+        """Strict WHERE clause: the user's own rows, nothing else.
 
-        with self.db.get_session() as session:
-            user_count = session.exec(
-                _sel(func.count(PlayerMatchStats.id)).where(
-                    PlayerMatchStats.player_name == player_name,
-                    PlayerMatchStats.is_pro == False,  # noqa: E712
-                )
-            ).one()
+        The previous version dropped the clause entirely (``(True,)``) when
+        the user had zero personal matches, so every Performance number
+        became an average over all players of all pro matches — and was then
+        captioned "personal demos analyzed".
+        """
+        return (
+            PlayerMatchStats.player_name == player_name,
+            PlayerMatchStats.is_pro == False,  # noqa: E712
+        )
 
-        if user_count and user_count > 0:
-            # User has personal matches — filter to those
-            return (
-                PlayerMatchStats.player_name == player_name,
-                PlayerMatchStats.is_pro == False,  # noqa: E712
-            )
-        else:
-            # No personal matches — show all data (pro overview mode)
-            return (True,)  # No filter — all rows
+    @staticmethod
+    def _pro_filter():
+        return (PlayerMatchStats.is_pro == True,)  # noqa: E712
+
+    # ── Pro cohort (explicit, third-person reference) ──
+
+    def get_pro_cohort_history(self, limit: int = 50) -> list:
+        """Rating history over the pro library — other players, never the user."""
+        return self._rating_history(self._pro_filter(), limit)
+
+    def get_pro_cohort_map_stats(self) -> dict:
+        return self._per_map_stats(self._pro_filter())
+
+    def get_pro_cohort_summary(self) -> dict:
+        """{"matches": distinct pro demos, "players": distinct pro players}."""
+        try:
+            with self.db.get_session() as session:
+                matches = session.exec(
+                    select(func.count(func.distinct(PlayerMatchStats.demo_name))).where(
+                        *self._pro_filter()
+                    )
+                ).one()
+                players = session.exec(
+                    select(func.count(func.distinct(PlayerMatchStats.player_name))).where(
+                        *self._pro_filter()
+                    )
+                ).one()
+            return {"matches": int(_scalar(matches) or 0), "players": int(_scalar(players) or 0)}
+        except Exception as e:
+            logger.error("analytics.get_pro_cohort_summary failed: %s", e)
+            return {"matches": 0, "players": 0}
 
     def get_player_trends(self, player_name: str, limit: int = 20) -> pd.DataFrame:
         """
@@ -146,15 +181,17 @@ class AnalyticsEngine:
 
     def get_rating_history(self, player_name: str, limit: int = 50) -> list:
         """Returns list of {rating, match_date, demo_name, kd_ratio, avg_adr,
-        avg_kast} ordered chronologically.
+        avg_kast} ordered chronologically — the user's own rows only.
 
         R4 HIGH (2026-07-16): performance_vm builds its pro-percentile
         context from kd_ratio/avg_adr/avg_kast of these rows; the history
         used to carry only the rating, so those percentiles were computed
         from empty lists and always ranked the user at ~0th.
         """
+        return self._rating_history(self._player_filter(player_name), limit)
+
+    def _rating_history(self, filters, limit: int) -> list:
         try:
-            filters = self._player_filter(player_name)
             with self.db.get_session() as session:
                 stmt = (
                     select(
@@ -188,7 +225,12 @@ class AnalyticsEngine:
             return []
 
     def get_per_map_stats(self, player_name: str) -> dict:
-        """Aggregates per-map performance: {map_name: {rating, adr, kd, matches}}."""
+        """Aggregates per-map performance: {map_name: {rating, adr, kd, matches}}
+        over the user's own rows only. ``rating``/``kd`` are ``None`` (never a
+        fabricated neutral 1.0) when no row carries a value."""
+        return self._per_map_stats(self._player_filter(player_name))
+
+    def _per_map_stats(self, filters) -> dict:
         # Match standard CS2 map names (de_mirage, cs_office) and also
         # map names embedded in demo filenames like "furia-vs-navi-m1-mirage.dem"
         _KNOWN_MAPS = {
@@ -206,7 +248,6 @@ class AnalyticsEngine:
         }
         _MAP_PATTERN = re.compile(r"(de_\w+|cs_\w+|ar_\w+)")
         try:
-            filters = self._player_filter(player_name)
             with self.db.get_session() as session:
                 stmt = select(PlayerMatchStats).where(*filters)
                 results = session.exec(stmt).all()
@@ -234,9 +275,10 @@ class AnalyticsEngine:
                     adrs = [m.avg_adr for m in matches if m.avg_adr]
                     kds = [m.kd_ratio for m in matches if m.kd_ratio]
                     per_map[map_name] = {
-                        "rating": float(np.mean(ratings)) if ratings else 1.0,
+                        # Absent beats fabricated: no value -> None, never 1.0.
+                        "rating": float(np.mean(ratings)) if ratings else None,
                         "adr": float(np.mean(adrs)) if adrs else 0.0,
-                        "kd": float(np.mean(kds)) if kds else 1.0,
+                        "kd": float(np.mean(kds)) if kds else None,
                         "matches": len(matches),
                     }
                 return per_map

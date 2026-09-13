@@ -128,6 +128,7 @@ class MatchDetailScreen(QWidget):
         self._vm.error_changed.connect(self._on_error)
         self._demo_name: str = ""
         self._payload: tuple | None = None
+        self._pro_player: str | None = None
         self._tab_index: dict[str, int] = {}
         self._moments: list[dict] = []
         self._build_ui()
@@ -142,6 +143,7 @@ class MatchDetailScreen(QWidget):
             self.set_active_tab("overview")
         self._demo_name = demo_name
         self._payload = None
+        self._pro_player = None
         self._moments = []  # stale moments must never leak across matches
         self._title_label.setText(self._compose_title(demo_name))
         self._tabs.setVisible(False)
@@ -163,7 +165,9 @@ class MatchDetailScreen(QWidget):
 
     def retranslate(self) -> None:
         self._back_btn.setText(i18n.get_text("md_back", "← Back"))
-        self._title_label.setText(self._compose_title(self._demo_name))
+        self._title_label.setText(
+            self._compose_title(self._demo_name, getattr(self, "_pro_player", None))
+        )
         if self._payload is not None:
             self._on_data(*self._payload)
 
@@ -179,11 +183,17 @@ class MatchDetailScreen(QWidget):
 
     # ── UI Construction ──
 
-    def _compose_title(self, demo_name: str) -> str:
+    def _compose_title(self, demo_name: str, pro_player: str | None = None) -> str:
         base = i18n.get_text("md_title", "Match Detail")
         map_name = extract_map_name(demo_name) if demo_name else ""
         if map_name and map_name != "Unknown Map":
-            return f"{base} — {map_name}"
+            base = f"{base} — {map_name}"
+        if pro_player:
+            # D-49: a demo the user did not play in is shown as that pro's
+            # match and says so in the title — never as the user's own.
+            base = f"{base} · " + i18n.get_text(
+                "md_pro_demo", "Pro demo · {player} — not you"
+            ).format(player=pro_player)
         return base
 
     def _build_ui(self) -> None:
@@ -271,7 +281,8 @@ class MatchDetailScreen(QWidget):
         # Header
         demo_name = stats.get("demo_name") or self._demo_name
         self._demo_name = demo_name
-        self._title_label.setText(self._compose_title(demo_name))
+        self._pro_player = stats.get("player_name") if stats.get("is_pro_view") else None
+        self._title_label.setText(self._compose_title(demo_name, self._pro_player))
 
         # Tabs — drop old pages explicitly (QTabWidget.clear() only detaches).
         # Capture the current tab NAME (reverse lookup) before the rebuild:

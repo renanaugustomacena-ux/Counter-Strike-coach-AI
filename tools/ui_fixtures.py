@@ -688,6 +688,16 @@ def inject_coach(screen: Any) -> None:
     screen._render_messages([dict(m) for m in COACH_CHAT])
 
 
+def inject_coach_empty(screen: Any) -> None:
+    """``--variant empty`` (D-49): no personal demos, no insights — the Coach
+    screen must say so instead of serving other players' insights."""
+    screen._on_belief(0.0)
+    screen._on_total_matches(0)
+    screen._on_insights([])
+    screen._on_chat_availability(False)
+    screen._set_chat_open(False)
+
+
 def inject_match_history(screen: Any) -> None:
     screen._on_matches_loaded(list(SAMPLE_MATCHES))
 
@@ -743,6 +753,56 @@ def inject_performance(screen: Any) -> None:
         {kind: list(rows) for kind, rows in PERFORMANCE_SW.items()},
         {side: dict(vals) for side, vals in PERFORMANCE_UTILITY.items()},
         False,  # is_pro_overview — 47 personal demos analyzed
+        {"personal_demos": 47, "pro_matches": 213, "pro_players": 96},
+    )
+
+
+# ── Performance — pro overview (D-49): zero personal demos, pro library only ──
+# One (demo, player) row per pro per match, exactly as PlayerMatchStats stores
+# them; the reference block averages over these OTHER players' rows.
+_PRO_OVERVIEW_ROWS: list[tuple[str, str, float, float, float, float]] = [
+    ("navi-vs-vitality-mirage.dem", "s1mple", 1.35, 1.30, 88.0, 0.76),
+    ("navi-vs-vitality-mirage.dem", "ZywOo", 1.41, 1.40, 91.0, 0.78),
+    ("faze-vs-g2-inferno.dem", "ropz", 1.18, 1.15, 79.0, 0.74),
+    ("faze-vs-g2-inferno.dem", "NiKo", 1.27, 1.22, 84.0, 0.75),
+    ("spirit-vs-mouz-nuke.dem", "donk", 1.52, 1.61, 97.0, 0.80),
+    ("spirit-vs-mouz-nuke.dem", "torzsi", 1.09, 1.02, 71.0, 0.70),
+]
+
+
+def _pro_overview_history() -> list[dict[str, Any]]:
+    first = _dt(2026, 3, 1, 20, 0)
+    return [
+        {
+            "rating": rating,
+            "match_date": first + timedelta(days=i),
+            "demo_name": demo,
+            "kd_ratio": kd,
+            "avg_adr": adr,
+            "avg_kast": kast,
+        }
+        for i, (demo, _player, rating, kd, adr, kast) in enumerate(_PRO_OVERVIEW_ROWS)
+    ]
+
+
+PRO_OVERVIEW_MAP_STATS: dict[str, dict[str, Any]] = {
+    "de_mirage": {"rating": 1.38, "adr": 89.5, "kd": 1.35, "matches": 2},
+    "de_inferno": {"rating": 1.225, "adr": 81.5, "kd": 1.185, "matches": 2},
+    # Absent beats fabricated: a map with no rating recorded paints "—".
+    "de_nuke": {"rating": None, "adr": 84.0, "kd": None, "matches": 2},
+}
+
+
+def inject_performance_pro_overview(screen: Any) -> None:
+    """``--variant pro_overview``: the honest empty state + third-person reference."""
+    screen._on_context({})
+    screen._on_data(
+        _pro_overview_history(),
+        {name: dict(stats) for name, stats in PRO_OVERVIEW_MAP_STATS.items()},
+        {},
+        {},
+        True,
+        {"personal_demos": 0, "pro_matches": 3, "pro_players": 6},
     )
 
 

@@ -37,8 +37,21 @@ percorsi → WP4b training in-app → WP4c packaging); registro DOCTRINE D-47.. 
   10/10; avvio reale su Windows (python e pythonw): UNICA finestra visibile nel process
   tree, demone vivo per 60 s e terminato con la GUI. Doc: `apps/README*.md` sequenza di
   avvio ×3 lingue.
-- NEXT · WP1 (analytics fallback `(True,)`, coach_vm fallback, contatori personali/pro,
-  match detail pro-view, purge righe test dal DB + tripwire), WP2 guide, WP4a/b/c.
+- DONE · D-49 · `backend/reporting/analytics.py`, `viewmodels/{coach,performance,
+  match_detail}_vm.py`, `core/app_state.py`, `screens/{performance,match_detail,coach,
+  home}_screen.py`, `widgets/components/map_tile.py` — righe pro presentate come dati
+  dell'utente: filtro `(True,)` senza WHERE a zero demo personali, fallback del coach a
+  qualsiasi insight, conteggio demo non filtrato etichettato "personal", `.first()`
+  arbitrario sul match detail, rating 1.0 inventato per mappa. Ora query personali
+  strette (nickname AND is_pro=False), stato vuoto onesto + blocco "Pro reference" in
+  terza persona, contatori personali/pro separati, "Pro demo · <player> — not you",
+  "—" al posto dei valori assenti. i18n en/it/pt.
+- DONE · D-50 · `tests/test_services.py` scriveva 48 insight nel DB reale: isolato su
+  `tests/_memory_db.py`; tripwire in `conftest.py` (`tests/_db_tripwire.py`) fallisce la
+  sessione se una tabella del DB reale cambia; `tools/purge_test_pollution.py` (dry-run,
+  `--apply` dopo backup verificato) eseguito sul DB di sviluppo.
+- NEXT · WP2 guide (renderer markdown + contenuti veri ×3 lingue), WP4a percorsi, WP4b
+  training in-app, WP4c packaging.
 
 ## Sessione 2026-09-12 — verification round 3 (neural core v2 letto su Windows)
 

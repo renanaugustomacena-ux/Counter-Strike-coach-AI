@@ -42,6 +42,7 @@ class MatchDetailViewModel(QObject):
     def _bg_load(self, demo_name: str):
         player = get_setting("CS2_PLAYER_NAME", "")
 
+        from sqlalchemy import func as sa_func
         from sqlmodel import select
 
         from Programma_CS2_RENAN.backend.storage.database import get_db_manager
@@ -52,24 +53,25 @@ class MatchDetailViewModel(QObject):
         )
 
         with get_db_manager().get_session() as session:
-            # Try user's name first, then any player in that demo
-            match_stats = None
-            if player:
-                match_stats = session.exec(
-                    select(PlayerMatchStats).where(
-                        PlayerMatchStats.demo_name == demo_name,
-                        PlayerMatchStats.player_name == player,
-                    )
-                ).first()
-            if match_stats is None:
-                match_stats = session.exec(
-                    select(PlayerMatchStats).where(
-                        PlayerMatchStats.demo_name == demo_name,
-                    )
-                ).first()
+            # Every row of this demo, deterministically ordered. The user's
+            # own row (nickname AND is_pro=False) wins; otherwise this is a
+            # PRO VIEW of the first player by name — labelled as such, never
+            # an arbitrary .first() presented as the user (D-49).
+            rows = session.exec(
+                select(PlayerMatchStats)
+                .where(PlayerMatchStats.demo_name == demo_name)
+                .order_by(sa_func.lower(PlayerMatchStats.player_name))
+            ).all()
+            if not rows:
+                return ({}, [], [], {})
 
-            # Use the actual player name from the match for round/insight queries
-            effective_player = match_stats.player_name if match_stats else player
+            own = next(
+                (r for r in rows if player and r.player_name == player and not r.is_pro),
+                None,
+            )
+            match_stats = own if own is not None else rows[0]
+            is_pro_view = own is None
+            effective_player = match_stats.player_name
 
             rounds = session.exec(
                 select(RoundStats)
@@ -82,7 +84,10 @@ class MatchDetailViewModel(QObject):
 
             insights = session.exec(
                 select(CoachingInsight)
-                .where(CoachingInsight.demo_name == demo_name)
+                .where(
+                    CoachingInsight.demo_name == demo_name,
+                    CoachingInsight.player_name == effective_player,
+                )
                 .order_by(CoachingInsight.created_at.desc())
             ).all()
 
@@ -93,6 +98,9 @@ class MatchDetailViewModel(QObject):
                 # kill-enrichment pct fields are model columns too, though
                 # older ingests may have left them at their 0.0 default.
                 stats_dict = {
+                    "player_name": effective_player,
+                    "is_pro_view": is_pro_view,
+                    "players": [r.player_name for r in rows],
                     "demo_name": match_stats.demo_name,
                     "match_date": match_stats.match_date,
                     "rating": match_stats.rating,
@@ -156,16 +164,16 @@ class MatchDetailViewModel(QObject):
             ]
 
         breakdown = {}
-        try:
-            from Programma_CS2_RENAN.backend.reporting.analytics import analytics
+        if not is_pro_view:
+            try:
+                from Programma_CS2_RENAN.backend.reporting.analytics import analytics
 
-            # R4 MED: use the match's effective player — on a demo where the
-            # configured user did not play (e.g. a pro demo) the stats and
-            # rounds show the demo's actual player, but this card showed the
-            # configured user's aggregate: mislabeled data.
-            breakdown = analytics.get_hltv2_breakdown(effective_player) or {}
-        except Exception as e:
-            logger.warning("hltv_breakdown.bg_fetch_failed: %s", e)
+                # The user's own cross-match aggregate. A pro view gets none:
+                # the old call re-entered the all-rows filter and produced a
+                # whole-table average under a pro's name (D-49).
+                breakdown = analytics.get_hltv2_breakdown(effective_player) or {}
+            except Exception as e:
+                logger.warning("hltv_breakdown.bg_fetch_failed: %s", e)
 
         return (stats_dict, rounds_data, insights_data, breakdown)
 

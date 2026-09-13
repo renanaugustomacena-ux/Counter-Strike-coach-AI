@@ -639,7 +639,7 @@ class CoachScreen(QWidget):
             self._insights_empty.set_description(
                 i18n.get_text(
                     "coach.no_insights_desc",
-                    "Once you analyze a few demos, coaching insights will land here automatically.",
+                    "Only your own analyzed demos produce insights.",
                 )
             )
             self._insights_empty.setVisible(True)

@@ -428,6 +428,29 @@ Entries from the frontend-honesty & install round (2026-09-12; asterisks = fixed
   receivers from inside the first worker's result callback produced a native access
   violation in `app.exec()` two seconds after boot on every real windowless launch
   (caught with faulthandler; regression test `test_backend_boot_chain_completes_on_the_event_loop`).
+- ***D-49** Pro rows presented as the user's own (Law I, "absent beats fabricated").
+  `analytics._player_filter` returned `(True,)` — no WHERE clause — whenever the user
+  had zero personal rows, so every Performance number became an average over all
+  players of all pro matches, captioned "N personal demos analyzed" (N = pro rows) and
+  painted with green/red judgement; `coach_vm` fell back to the last ten
+  `CoachingInsight` rows of anyone (second-person template text) and guessed provenance
+  with `player_name != player`; `app_state` counted every distinct demo and the Coach /
+  Home screens called it personal; `match_detail_vm` took an arbitrary `.first()` row
+  of a pro demo and re-entered the same filter for a whole-table "HLTV 2.0" aggregate;
+  `get_per_map_stats` invented `rating=1.0` for maps without a value. Now: personal
+  queries are strict (nickname AND `is_pro=False`) and empty means empty; pro data is
+  reachable only through `get_pro_cohort_*` and rendered as a labelled third-person
+  "Pro reference" block under an honest empty state; `AppState` emits personal and pro
+  counts separately; a pro demo opens as "Pro demo · <player> — not you" with that
+  player's own rows and no aggregate; missing map ratings paint "—".
+- ***D-50** Tests wrote into the production database: `tests/test_services.py` ran the
+  real `CoachingService` against `database.db` and left 48 second-person insight rows
+  for `__test_nonexistent_player__` (the rows the Coach screen served via D-49's
+  fallback). Fixed: the test routes its DB handle to an in-memory database
+  (`tests/_memory_db.py`); `conftest.py` snapshots the production DB's row counts at
+  session start and fails the run if any watched table changed (`tests/_db_tripwire.py`;
+  integration runs opt out via `CS2_INTEGRATION_TESTS=1`); `tools/purge_test_pollution.py`
+  deletes `__test*` rows after a verified backup (dry run by default).
 
 ## 4. The AI roadmap (paper-grounded, invariant-filtered)
 

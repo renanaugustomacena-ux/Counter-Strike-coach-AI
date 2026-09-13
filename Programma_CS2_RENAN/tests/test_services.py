@@ -1,22 +1,40 @@
 """
 Service-layer tests for Macena CS2 Analyzer.
 
-Tests service instantiation and API contracts using real data from the database.
-Skips gracefully when no real data is available.
+Tests service instantiation and API contracts. Anything that WRITES goes
+through an in-memory database: the coaching test below used to run against
+the real ``database.db`` and left 48 ``__test_nonexistent_player__`` insight
+rows behind (D-50; ``conftest.py`` now trips on any such write).
 """
+
+import pytest
+
+
+@pytest.fixture
+def isolated_coaching_db(monkeypatch):
+    """Route CoachingService's DB handle to a throwaway in-memory database."""
+    import Programma_CS2_RENAN.backend.services.coaching_service as coaching_service
+    from Programma_CS2_RENAN.tests._memory_db import MemoryDB
+
+    db = MemoryDB()
+    monkeypatch.setattr(coaching_service, "get_db_manager", lambda: db)
+    return db
 
 
 class TestCoachingService:
-    def test_instantiation(self):
+    def test_instantiation(self, isolated_coaching_db):
         """CoachingService can be instantiated."""
         from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         cs = CoachingService()
         assert callable(getattr(cs, "generate_new_insights", None))
 
-    def test_generate_new_insights_graceful_empty(self):
+    def test_generate_new_insights_graceful_empty(self, isolated_coaching_db):
         """CoachingService.generate_new_insights handles empty input gracefully."""
+        from sqlmodel import select
+
         from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
+        from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight
 
         cs = CoachingService()
         result = cs.generate_new_insights(
@@ -27,6 +45,10 @@ class TestCoachingService:
         )
         # With empty deviations, should return None or an empty list
         assert result is None or isinstance(result, list)
+        # Whatever it wrote landed in the throwaway DB, not in database.db.
+        with isolated_coaching_db.get_session() as session:
+            written = session.exec(select(CoachingInsight)).all()
+        assert all(r.player_name == "__test_nonexistent_player__" for r in written)
 
 
 class TestAnalysisService:

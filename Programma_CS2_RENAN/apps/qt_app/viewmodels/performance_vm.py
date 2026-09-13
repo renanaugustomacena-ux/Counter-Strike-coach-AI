@@ -12,9 +12,9 @@ logger = get_logger("cs2analyzer.qt_performance_vm")
 class PerformanceViewModel(QObject):
     """Loads performance analytics in background."""
 
-    data_changed = Signal(
-        list, dict, dict, dict, bool
-    )  # history, map_stats, sw, utility, is_pro_overview
+    # history, map_stats, sw, utility, is_pro_overview, meta — ``meta`` carries
+    # the honest counts {personal_demos, pro_matches, pro_players} (D-49).
+    data_changed = Signal(list, dict, dict, dict, bool, dict)
     # Cluster F — context layer: percentile rank of the user's averages
     # vs the pro cohort. Dict keys: rating, kd, adr, kast — each a float
     # in [0.0, 1.0] (0.0 = below all pros, 1.0 = above all pros). Empty
@@ -57,21 +57,33 @@ class PerformanceViewModel(QObject):
             logger.warning("Analytics module unavailable: %s", exc)
             return ([], {}, {}, {}, False, {})
 
-        # Check if user has personal matches — determines provenance labeling
-        from sqlalchemy import func as sa_func
-        from sqlmodel import select
-
+        # Personal vs pro demo counts decide the mode (D-49): with zero
+        # personal demos the screen shows an honest empty state plus an
+        # explicitly labelled pro reference; it never renders pro averages
+        # as the user's numbers.
+        from Programma_CS2_RENAN.apps.qt_app.core.app_state import count_personal_and_pro_demos
         from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-        from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 
         with get_db_manager().get_session() as session:
-            user_count = session.exec(
-                select(sa_func.count(PlayerMatchStats.id)).where(
-                    PlayerMatchStats.player_name == player,
-                    PlayerMatchStats.is_pro == False,  # noqa: E712
-                )
-            ).one()
-        is_pro_overview = not (user_count and user_count > 0)
+            personal_demos, _pro_demos = count_personal_and_pro_demos(session, player)
+        is_pro_overview = personal_demos == 0
+        summary = analytics.get_pro_cohort_summary()
+        meta = {
+            "personal_demos": int(personal_demos),
+            "pro_matches": int(summary.get("matches", 0)),
+            "pro_players": int(summary.get("players", 0)),
+        }
+
+        if is_pro_overview:
+            return (
+                analytics.get_pro_cohort_history(limit=50) or [],
+                analytics.get_pro_cohort_map_stats() or {},
+                {},
+                {},
+                True,
+                {},
+                meta,
+            )
 
         history = analytics.get_rating_history(player, limit=50)
         map_stats = analytics.get_per_map_stats(player)
@@ -82,7 +94,7 @@ class PerformanceViewModel(QObject):
         # via SQL — averages over the pro cohort's complete/full_sql rows
         # then ranks the user's average within the pro distribution.
         context = {}
-        if not is_pro_overview and history:
+        if history:
             try:
                 context = self._compute_pro_percentiles(history)
             except Exception as exc:  # noqa: BLE001 — surface as empty context
@@ -94,8 +106,9 @@ class PerformanceViewModel(QObject):
             map_stats or {},
             sw or {},
             utility or {},
-            is_pro_overview,
+            False,
             context,
+            meta,
         )
 
     @staticmethod
@@ -172,13 +185,13 @@ class PerformanceViewModel(QObject):
         self._is_loading = False
         self.is_loading_changed.emit(False)
         if result:
-            history, map_stats, sw, utility, is_pro_overview, context = result
+            history, map_stats, sw, utility, is_pro_overview, context, meta = result
             # R4 MED: context BEFORE data — the data_changed slot rebuilds the
             # UI synchronously (direct same-thread connection) and reads the
             # screen's cached context; emitting data first rendered the
             # PREVIOUS load's percentile strip on every visit.
             self.context_changed.emit(context or {})
-            self.data_changed.emit(history, map_stats, sw, utility, is_pro_overview)
+            self.data_changed.emit(history, map_stats, sw, utility, is_pro_overview, meta or {})
 
     def _on_error(self, msg):
         logger.error("performance_vm.load_failed: %s", msg)

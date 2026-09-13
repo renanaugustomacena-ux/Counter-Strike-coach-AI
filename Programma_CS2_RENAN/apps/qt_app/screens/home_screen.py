@@ -71,6 +71,9 @@ class HomeScreen(QWidget):
         # Tracks whether _on_matches_changed has populated the matches chip;
         # gates _on_total_matches from clobbering the row-derived count.
         self._matches_chip_populated = False
+        # Exact distinct pro-demo count from AppState (whole library); the
+        # loaded-rows proxy in _update_matches_chip covers only <=50 rows.
+        self._pro_demos_exact: int | None = None
         # Last-known dynamic state, kept so retranslate() can recompose
         # every composed label without waiting for the next signal.
         self._coach_status_raw = ""
@@ -99,6 +102,7 @@ class HomeScreen(QWidget):
             state.parsing_progress_changed.connect(self._on_parsing_progress)
             state.training_changed.connect(self._on_training)
             state.total_matches_changed.connect(self._on_total_matches)
+            state.pro_matches_changed.connect(self._on_pro_matches)
             self._connected = True
 
         prev = get_app_state().cached_state
@@ -106,6 +110,8 @@ class HomeScreen(QWidget):
             self._on_service_active(prev["service_active"])
         if prev.get("total_matches", 0) > 0:
             self._on_total_matches(prev["total_matches"])
+        if "pro_matches" in prev:
+            self._on_pro_matches(int(prev["pro_matches"] or 0))
 
         # Kick off async loads — both VMs marshal results back via signals.
         self._match_history_vm.load_matches()
@@ -601,13 +607,22 @@ class HomeScreen(QWidget):
         return f"{ready} — {self._matches_count} {analyzed} · — {pending}"
 
     def _pro_status_text(self) -> str:
-        if self._pro_demos_count is None:
+        count = (
+            self._pro_demos_exact if self._pro_demos_exact is not None else self._pro_demos_count
+        )
+        if count is None:
             return ""
         indexed = i18n.get_text("home.indexed", "indexed")
         last_sync = i18n.get_text("home.last_sync", "last sync")
         # FIELD-GAP: no last-sync timestamp signal for the pro corpus —
         # render "—" until the ingestion service exposes one.
-        return f"{self._pro_demos_count} {indexed} · {last_sync} —"
+        return f"{count} {indexed} · {last_sync} —"
+
+    def _on_pro_matches(self, count: int) -> None:
+        """AppState's exact distinct pro-demo count (D-49) drives the pro caption."""
+        self._pro_demos_exact = int(count)
+        if self._ingestion_worker is None:
+            self._pro_analyze_status.setText(self._pro_status_text())
 
     def _training_footer_text(self) -> str:
         static = i18n.get_text("home.training_footer", "teacher daemon · jepa_train.py")
