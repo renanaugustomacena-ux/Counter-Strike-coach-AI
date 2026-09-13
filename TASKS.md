@@ -50,8 +50,16 @@ percorsi → WP4b training in-app → WP4c packaging); registro DOCTRINE D-47.. 
   `tests/_memory_db.py`; tripwire in `conftest.py` (`tests/_db_tripwire.py`) fallisce la
   sessione se una tabella del DB reale cambia; `tools/purge_test_pollution.py` (dry-run,
   `--apply` dopo backup verificato) eseguito sul DB di sviluppo.
-- NEXT · WP2 guide (renderer markdown + contenuti veri ×3 lingue), WP4a percorsi, WP4b
-  training in-app, WP4c packaging.
+- DONE · D-51 · `widgets/components/markdown_article.py` (nuovo), `screens/help_screen.py`,
+  `backend/knowledge_base/help_system.py`, `data/docs/{,it/,pt/}*.md` — due guide su tre
+  erano markdown grezzo in una QLabel e i contenuti descrivevano funzioni inesistenti
+  (Steam/FACEIT ID obbligatori, main.py Kivy, "Fix Dependencies"). Ora renderer markdown
+  in-house stilato dai token, guide riscritte sul programma reale in en/it/pt con
+  fallback all'inglese, percorso demo per piattaforma. Test: `test_markdown_article.py`,
+  `test_help_screen_topics.py`, `test_help_system_language.py`, `test_help_docs_truthful.py`;
+  render harness `help`, `help_features`, `help_troubleshooting`.
+- NEXT · WP4a percorsi (config frozen, get_resource_path vs spec, rasp, D-43), WP4b
+  training in-app (jepa_v2), WP4c packaging (spec/iss/build/selftest).
 
 ## Sessione 2026-09-12 — verification round 3 (neural core v2 letto su Windows)
 

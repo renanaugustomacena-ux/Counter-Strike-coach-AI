@@ -1,5 +1,5 @@
 {
-  "file_count": 331,
+  "file_count": 332,
   "generator": "sync_integrity_manifest.py",
   "hashes": {
     "__init__.py": "d3074031129007f4a6dd65765a0faaad39df9ba8ee41ebe0c94c7f18598c12d0",
@@ -29,7 +29,7 @@
     "apps/qt_app/screens/__init__.py": "2dae9eebf61a5718034075c98de5849a8bef4967984bb78a1329e995fd4e89fb",
     "apps/qt_app/screens/coach_screen.py": "2483e5665070ba9410fe604b65d58b6aa36daa1a2342df50412efcf370e774a2",
     "apps/qt_app/screens/faceit_config_screen.py": "1d3354163f8c75731c7befaa934bf7374e407752f67e7fab344efee66cc68d11",
-    "apps/qt_app/screens/help_screen.py": "8e14ea950cb9acf7bf062e58ccee4aa3502408a9fde1babc86d2daf2b440f29e",
+    "apps/qt_app/screens/help_screen.py": "d89511fccf124bed301a7add6367f1630cf5724e36fef5a04896a815cf01a7ac",
     "apps/qt_app/screens/home_screen.py": "38f32c04cdca00611b8f102d2c88c3d699bb976f2401f3d35e893e708c17d393",
     "apps/qt_app/screens/match_detail_screen.py": "5b32b474496f9e4b16c26f34d21f458f1b3b1058d743291b0e572ac222d88e1a",
     "apps/qt_app/screens/match_history_screen.py": "2a5b1898f297cc6d1031e07fc8c3ac3cc897443583cd0fca60c8fdee893f96f6",
@@ -76,6 +76,7 @@
     "apps/qt_app/widgets/components/icon_widget.py": "84c9b1dfc19f682fdb767b27aa518e1733dfd98613c5be67fc629ad6fa3ac607",
     "apps/qt_app/widgets/components/last_match_hero.py": "96d15c32081cd79164eb3cb55cd93682f332bd204d9eea568a02f770784b21a7",
     "apps/qt_app/widgets/components/map_tile.py": "22371abf9af7c4a0c85349654ba7ae0a55dcc8228ff7f4f360eeebc1c69b375e",
+    "apps/qt_app/widgets/components/markdown_article.py": "f4ace2b5bfd2f365680d94713d9b0efb5e81126293362673b51bc44d43302960",
     "apps/qt_app/widgets/components/match_mini_card.py": "b35fb6c5b0ef6ff9c7e0d4f797d04518cca6fde3a2c11ae9c14f93494d6dbbf7",
     "apps/qt_app/widgets/components/match_row_card.py": "08d34555b7a24d0471a25f41caa3ac42831e02516051c7cafa687331bf0f887a",
     "apps/qt_app/widgets/components/metric_bar_row.py": "e0a873f0e6987528b0fdb858054b064a149680041733bb9c5480855ef386d83e",
@@ -155,7 +156,7 @@
     "backend/knowledge/round_utils.py": "1ad684721747a206ee38c5e5de4ec1f43494097a6606f2e1c9d604bfe236b156",
     "backend/knowledge/vector_index.py": "48efa03a373565ee4c4df09111917d581812af5ac1dd13faf21696d718a7258f",
     "backend/knowledge_base/__init__.py": "70e2429f0d6e1dc7115789d0ec7f28b5d75c35feea22c6a5c74273c9526e6a53",
-    "backend/knowledge_base/help_system.py": "62ab4f6b0729102d6d1c875b3a7fc5621e7716608c923c4e6079e8b0ee1896ec",
+    "backend/knowledge_base/help_system.py": "9593bf23ebbf17b4b72f483c44f5ac1bc423cd26418874e2d7f77fb7f7911710",
     "backend/nn/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/advanced/__init__.py": "3971d5e4c0ae524c1e60d8936ca3103a1689b0c89b4591b6ece3283d793254c7",
     "backend/nn/coach_manager.py": "eef73ecdd0b672b9be24bcfb2ccf71d7ffc6faf9bb629c6674495210034884ab",

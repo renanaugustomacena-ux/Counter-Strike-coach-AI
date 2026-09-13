@@ -451,6 +451,19 @@ Entries from the frontend-honesty & install round (2026-09-12; asterisks = fixed
   session start and fails the run if any watched table changed (`tests/_db_tripwire.py`;
   integration runs opt out via `CS2_INTEGRATION_TESTS=1`); `tools/purge_test_pollution.py`
   deletes `__test*` rows after a verified backup (dry run by default).
+- ***D-51** In-app guides: `help_screen` rendered two of the three `data/docs/*.md` guides
+  as raw markdown in a plain `QLabel` (`#`, `**`, fences visible; dossier D-B45 P3) while
+  Getting Started used hand-built widgets and discarded its markdown; nothing in the app
+  rendered markdown, `docs/ux-audit/UX_VISUAL_AUDIT.md:100` claimed otherwise. The content
+  was false too: "you MUST link your Steam ID and FACEIT ID" for identity (nothing uses
+  them for that — identity is the nickname), a Kivy `main.py`, a Playwright "Fix
+  Dependencies" button. Now: `widgets/components/markdown_article.py` (in-house converter
+  for the guides' subset + `QTextBrowser` styled from the tokens, re-styled on theme
+  change, grows to its content), every topic renders through it (Getting Started keeps
+  its steps above the body), `help_system` resolves `data/docs/<lang>/<topic>.md` with
+  English fallback, the three guides are rewritten to the program that exists and
+  shipped in en/it/pt, the callout path follows the platform, and
+  `test_help_docs_truthful.py` forbids the phantom features from returning.
 
 ## 4. The AI roadmap (paper-grounded, invariant-filtered)
 
