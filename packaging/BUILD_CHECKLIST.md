@@ -19,16 +19,32 @@
 Before every release build, verify version consistency:
 
 - [ ] `pyproject.toml` → `[project].version`
-- [ ] `packaging/windows_installer.iss` → `AppVersion`
-- Both must match. Current: **0.9.0**
+- [ ] `packaging/version.iss` → `#define AppVersion` (generated: `python tools/gen_version_iss.py`;
+      `windows_installer.iss` includes it, never edit the version by hand)
+- Both must match. Current: **1.0.0**
+
+## Factory Models
+
+- [ ] Place the checkpoints to ship in `Programma_CS2_RENAN/models/global/` — each `.pt` WITH its
+      `.pt.meta.json` sidecar (`jepa_v2_encoder.pt` for the current neural core; see the README.txt there)
+- [ ] Everything matching `*.pt*` in that folder is bundled; the build script warns when it is empty
 
 ## Build Command
+
+```bat
+scripts\build_production.bat
+```
+
+The script activates `venv_win` (or `.venv`), checks the Qt/storage/torch/PyInstaller imports,
+migrates the schema, regenerates the integrity manifest and `version.iss`, runs PyInstaller on
+`packaging/cs2_analyzer_win.spec`, audits the binaries, runs the packaged selftest and compiles
+the installer when Inno Setup is present. Manual equivalent of the build step:
 
 ```bash
 python -m PyInstaller --noconfirm packaging/cs2_analyzer_win.spec --log-level WARN
 ```
 
-Output: `dist/Macena_CS2_Analyzer/`
+Output: `dist/Macena_CS2_Analyzer/` (onedir: the exe plus `_internal/`)
 
 ## PyTorch CPU-Only Variant (Smaller Build)
 
@@ -50,10 +66,13 @@ The code auto-detects CPU via `backend/nn/config.py:get_device()` — no code ch
 ## Post-Build Verification
 
 - [ ] `dist/Macena_CS2_Analyzer/Macena_CS2_Analyzer.exe` exists
-- [ ] Launch exe — verify no crash on startup
-- [ ] Verify layout.kv loads (UI renders correctly)
+- [ ] Packaged selftest: `Macena_CS2_Analyzer.exe --selftest` with `LOCALAPPDATA` pointing at a
+      scratch folder and the dist folder write-denied (the build script does both); read
+      `<LOCALAPPDATA>\MacenaCS2Analyzer\selftest_report.json` — `"ok": true`, the factory models
+      listed, `alembic_ini_ok`, no file created beside the exe
+- [ ] Launch exe — verify no crash on startup; the setup wizard opens on a fresh profile
 - [ ] Verify map_config.json accessible (map images load)
-- [ ] Verify alembic/ directory present in bundle
+- [ ] Verify `_internal/alembic/` and `_internal/alembic.ini` present in the bundle
 - [ ] Verify PHOTO_GUI/ assets present (fonts, themes, backgrounds)
 - [ ] Verify matplotlib charts render (Performance screen → skill radar)
 - [ ] Run `python tools/audit_binaries.py` on the dist folder

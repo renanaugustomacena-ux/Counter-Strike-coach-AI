@@ -308,7 +308,7 @@
     "core/map_manager.py": "e5195c248e01bfafecfde31c2a3fe8d4d56ec5e0a90fa5b336d9c2ac0126e979",
     "core/playback_engine.py": "c5836945d24935293004cddc78b2c82b2e2af8b876f5cbbd2dc7dc1f1760bcf1",
     "core/registry.py": "968408b4603e645289009437e167828092a3b848e9f12aeac656c3e524618326",
-    "core/selftest.py": "26164756e5b13851c0322c2cc6a58c14bb82a19ac8879f5fd54a75d60f91bce0",
+    "core/selftest.py": "e9308af1e1394e1975600654581cebbb64254db7d8312873dfe9427e68d991e6",
     "core/session_engine.py": "f87f6d754154e5c2d915d8f52ff01d2010db34b3283fe83a0c889e845df5d8eb",
     "core/spatial_data.py": "42f0661f1685daa7dce4917ac23332ee4e66cc0f3f220ac711ebf0853a9623f9",
     "core/spatial_engine.py": "9ac0e5beadee17e8ed1bd9b4e4487b694c91bdaddb3ee8eaed93a503669ba9b5",

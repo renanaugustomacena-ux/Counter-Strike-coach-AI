@@ -95,8 +95,29 @@ percorsi → WP4b training in-app → WP4c packaging); registro DOCTRINE D-47.. 
   `test_jepa_v2_hooks.py`, `test_trained_model_registry.py`, `test_teacher_request_channel.py`,
   `test_ml_controller_routes_v2.py`, `test_training_vm.py`, `test_home_train_button.py`;
   render harness `home`, `home_training`.
-- NEXT · WP4c packaging (spec datas .pt/book/alembic.ini, iss, build script, selftest in
-  CI), poi passata finale sulla documentazione (nota 22, README, guide).
+- DONE · D-32 chiuso (WP4c) · `packaging/cs2_analyzer_win.spec` (datas: `models/global/*.pt*`
+  in glob, `hltv_metadata.db`, `backend/knowledge/book/`, `alembic.ini` alla radice; test
+  esclusi), `packaging/windows_installer.iss` (versione da `version.iss` generato con
+  `tools/gen_version_iss.py`, solo 64 bit, privilegi a scelta, `UninstallDisplayIcon`,
+  disinstallazione che chiede prima di rimuovere `%LOCALAPPDATA%\MacenaCS2Analyzer`, redist
+  opzionale, nessuna associazione `.dem`), `scripts/build_production.bat` (via il check
+  Kivy; PyInstaller diretto; `version.iss`; selftest impacchettato con `LOCALAPPDATA`
+  temporaneo e dist senza scrittura), `tools/build_pipeline.py` (spec in `packaging/`),
+  `.github/workflows/build.yml` (selftest prima dell'upload), `core/selftest.py`
+  (`alembic_ini_ok`, seed HLTV, modelli di fabbrica, avvisi, `selftest_report.json`),
+  `models/global/README.txt`, `packaging/BUILD_CHECKLIST.md` + README ×3, README radice ×3,
+  `docs/QUICKSTART.md`. Test: `test_bundle_contents.py`, `test_installer_script.py`,
+  `test_build_scripts.py`, `test_selftest_report.py`. Evidenza: build congelato eseguito
+  su questa macchina (PyInstaller 6.17.0 installato in `.venv`; onedir 1,6 GB in 4 min),
+  selftest impacchettato `ok: true` con `LOCALAPPDATA` temporaneo e conteggio file di
+  `dist/` invariato (10 416); quel run ha scoperto lo sprite SVG delle icone non incluso
+  (`design/assets/icons/sprite.svg`, aggiunto allo spec). NON fatto: Inno Setup non è
+  installato qui, quindi l'installer non è stato compilato e nulla è stato installato su
+  un secondo account Windows (wizard → Analyze → Train end-to-end).
+- Chiusura campagna 2026-09-13: D-47..D-53 registrati in DOCTRINE, evidenze in
+  `docs/doctrine/notes/22-frontend-honesty-and-install.md`. Restano fuori (per piano):
+  armare `USE_JEPA_MODEL`/`USE_RAP_MODEL`, coach_v2 e passi 5-9 di Parte III, esame GPU
+  20k, installer CUDA, HLTV/Docker nel build congelato, monolite pro nel bundle.
 
 ## Sessione 2026-09-12 — verification round 3 (neural core v2 letto su Windows)
 

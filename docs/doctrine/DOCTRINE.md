@@ -335,7 +335,22 @@ Entries from aesthetic round 1 (evidence in note 20; asterisks = fixed):
   features silently no-op on fresh installs; database.db is a pro+user monolith with
   an unwired .empty_backup. Decide at packaging time. PARTIAL 2026-09-13 (WP4a, D-52):
   resource-path contract fixed and `hltv_metadata.db` seeded from the bundle on first
-  boot; the .pt / book / alembic.ini bundling itself is WP4c.
+  boot. FIXED 2026-09-13 (WP4c): the spec ships `models/global/*.pt` + sidecars (globbed
+  at build, `models/global/README.txt` says what to place), `hltv_metadata.db`,
+  `backend/knowledge/book/` and root `alembic.ini`, and leaves `Programma_CS2_RENAN.tests`
+  out; `test_bundle_contents.py` pins every destination to the resolver. The installer
+  (`windows_installer.iss`) takes its version from the generated `version.iss`, is 64-bit
+  only, lets the user pick per-machine/per-user, never touches `{app}` at runtime and asks
+  before removing the data folder on uninstall; `build_production.bat` builds the spec
+  directly (the Kivy check is gone), runs the packaged `--selftest` against a write-denied
+  dist with a scratch `LOCALAPPDATA`, and CI runs the same selftest before uploading the
+  artifact (`selftest_report.json`: a windowed exe has no stdout). The monolith stays out
+  of the bundle (option not requested). Evidence: the frozen app built on the dev machine
+  (PyInstaller 6.17.0, 1.6 GB onedir) and its packaged selftest passed under a scratch
+  `LOCALAPPDATA` with the dist file count unchanged; that run exposed the unbundled SVG
+  icon sprite (`design/assets/icons/sprite.svg`, resolved from the project root), added.
+  Not yet done: Inno Setup is not installed here, so the installer exe was not compiled
+  and nothing was installed on a second Windows account (wizard → Analyze → Train).
 - **D-33** Coaching chain unwired end-to-end (extends D-26): run_ml_pipeline /
   CoachingService / ExperienceBank.extract_experiences_from_demo /
   RoleThresholdStore.learn_from_pro_data / CSVMigrator seeding all lack production
@@ -403,6 +418,17 @@ Entries from verification round 3 (evidence in note 21; asterisks = fixed):
 - **D-46** Plan/code drift: Parte III line refs ~12 lines stale; named freeze test
   misplaced; `jepa.md` has no trilogy pointer; nn/rap READMEs ignore the freeze;
   `train_docker.sh` help stale; §6.3 lists live legacy helpers as dead.
+
+> **Status ledger (2026-09-13, frontend honesty + install campaign — see
+> [notes/22-frontend-honesty-and-install.md](notes/22-frontend-honesty-and-install.md)):**
+> the author's review found pro-match numbers presented as the user's own, two
+> unreadable guides, a stray window at launch and an installer that could not run
+> from Program Files. Six work packages, one PR each (#106 boot, #107 honest data,
+> #108 guides, #109 install paths, #110 train in the app, #111 packaging). FIXED:
+> D-47..D-53, D-43, D-32. Still open by plan: D-33 (the coach's advice text does not
+> consume the trained encoder until Parte III steps 6-8), the arming of
+> `USE_JEPA_MODEL`, the 20k-step GPU exam, an installer built and exercised on a
+> second Windows account end to end.
 
 Entries from the frontend-honesty & install round (2026-09-12; asterisks = fixed):
 

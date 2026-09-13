@@ -46,10 +46,29 @@ datas = [
     (str(APP_DIR / "assets" / "fonts"), "Programma_CS2_RENAN/assets/fonts"),
     # Tactical map named-zone overlays (map_widget.load_map_zones)
     (str(APP_DIR / "assets" / "map_zones"), "Programma_CS2_RENAN/assets/map_zones"),
+    # WP4c (D-32): HLTV metadata seed, copied to the user's db folder on first
+    # boot (database.seed_hltv_metadata_if_absent). Absent in CI: filtered below.
+    (str(APP_DIR / "backend" / "storage" / "hltv_metadata.db"), "Programma_CS2_RENAN/backend/storage"),
+    # Coach book (init_knowledge_base reads book/index.json beside its module)
+    (str(APP_DIR / "backend" / "knowledge" / "book"), "Programma_CS2_RENAN/backend/knowledge/book"),
+    # Alembic config at the bundle root, beside alembic/ (db_migrate._alembic_paths)
+    (str(PROJECT_ROOT / "alembic.ini"), "."),
+    # SVG icon sprite: svg_icon_provider resolves design/assets/icons/sprite.svg
+    # from the project root (= _MEIPASS when frozen); the first packaged run
+    # fell back to QPainterPath icons because it was not bundled (WP4c).
+    (str(PROJECT_ROOT / "design" / "assets" / "icons" / "sprite.svg"), "design/assets/icons"),
 ]
 
 # Filter out non-existent paths (graceful handling for CI)
 datas = [(src, dst) for src, dst in datas if os.path.exists(src)]
+
+# Factory models (WP4c, D-32): whatever the operator places in models/global/
+# ships — checkpoints AND their .pt.meta.json sidecars (load_nn refuses a
+# checkpoint without one). See Programma_CS2_RENAN/models/global/README.txt.
+datas += [
+    (str(path), "Programma_CS2_RENAN/models/global")
+    for path in sorted((APP_DIR / "models" / "global").glob("*.pt*"))
+]
 
 # --- Hidden imports ---
 # Modules imported lazily (inside functions) that PyInstaller cannot detect
@@ -96,9 +115,14 @@ hiddenimports = [
     "Programma_CS2_RENAN.observability.logger_setup",
 ]
 
-# Collect all Programma_CS2_RENAN submodules
+# Collect all Programma_CS2_RENAN submodules — except the test suite (WP4c):
+# it would drag pytest and every test fixture into the bundle.
 try:
-    hiddenimports += collect_submodules("Programma_CS2_RENAN")
+    hiddenimports += [
+        name
+        for name in collect_submodules("Programma_CS2_RENAN")
+        if not name.startswith("Programma_CS2_RENAN.tests")
+    ]
 except Exception:
     pass
 
@@ -119,6 +143,7 @@ a = Analysis(
         "pre_commit",
         "black",
         "isort",
+        "Programma_CS2_RENAN.tests",
         # NOTE (P10-02): matplotlib is REQUIRED at runtime by widgets.py, visualizer.py,
         # visualization_service.py, and embedding_projector.py. Do NOT exclude it.
         "IPython",

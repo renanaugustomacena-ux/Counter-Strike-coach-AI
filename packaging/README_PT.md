@@ -39,7 +39,7 @@ dir dist\Macena_CS2_Analyzer
 a = Analysis(['Programma_CS2_RENAN/apps/qt_app/app.py'], ...)
 ```
 
-### Dados Incluídos (12 entradas)
+### Dados Incluídos (15 entradas + modelos de fábrica)
 
 O spec inclui todos os arquivos necessários em tempo de execução (caminhos ausentes são filtrados com tratamento seguro para ambientes CI):
 
@@ -56,6 +56,10 @@ O spec inclui todos os arquivos necessários em tempo de execução (caminhos au
 | Temas Qt | `apps/qt_app/themes/` | Folhas de estilo QSS |
 | Fontes | `assets/fonts/` | Stack tipográfico do design atlas |
 | Zonas de mapa | `assets/map_zones/` | Overlays de zona nomeada para o mapa tático |
+| Seed HLTV | `backend/storage/hltv_metadata.db` | Copiado para a pasta db do usuário no primeiro boot (ausente em CI: filtrado) |
+| Livro do coach | `backend/knowledge/book/` | Conhecimento por mapa lido por `init_knowledge_base` |
+| Config Alembic | `alembic.ini` (raiz do repo → raiz do bundle) | Ao lado de `alembic/` para `db_migrate` |
+| Modelos de fábrica | `models/global/*.pt` + `*.pt.meta.json` (glob no build) | O fallback de `load_nn` antes de um treinamento local — veja `models/global/README.txt` |
 
 ### Hidden Imports (35 explícitos + auto-collection)
 
@@ -74,7 +78,8 @@ excludes = ['pytest', 'coverage', 'pre_commit', 'black', 'isort',
             'IPython', 'notebook', 'jupyterlab',
             'shap', 'playwright',
             'kivy', 'kivymd',      # migrados para Qt
-            'ncps', 'hflayers']    # dependências opcionais RAP, não necessárias em runtime
+            'ncps', 'hflayers',    # dependências opcionais RAP, não necessárias em runtime
+            'Programma_CS2_RENAN.tests']   # nunca no bundle (WP4c)
 ```
 
 ### Tamanhos do Bundle
@@ -86,13 +91,15 @@ excludes = ['pytest', 'coverage', 'pre_commit', 'black', 'isort',
 
 ## `windows_installer.iss` — Inno Setup
 
-Cria um executável de setup para Windows (`dist/Macena_CS2_Installer.exe`) com:
-- **Caminho de instalação:** `Program Files\Macena_CS2_Analyzer`
+Cria um executável de setup para Windows (`dist/Macena_CS2_Installer_<versão>.exe`) com:
+- **Versão:** `AppVersion={#AppVersion}` de `version.iss`, gerado a partir de `pyproject.toml` por `tools/gen_version_iss.py` (nunca editado à mão)
+- **Caminho de instalação:** `Program Files\Macena_CS2_Analyzer` — somente 64 bits (`ArchitecturesInstallIn64BitMode=x64compatible`); por máquina por padrão, por usuário a pedido (`PrivilegesRequiredOverridesAllowed=dialog`)
+- **Dados do usuário:** nunca ao lado do exe — `%LOCALAPPDATA%\MacenaCS2Analyzer` ou a pasta escolhida no wizard (D-52); o desinstalador pergunta antes de removê-los e os mantém por padrão
 - **Idiomas:** Inglês, Italiano, Português Brasileiro
 - **Compressão:** LZMA (compressão sólida)
-- **Atalhos:** Grupo no Menu Iniciar + ícone na Área de Trabalho (opcional)
-- **Runtime MSVC:** instala silenciosamente `vc_redist.x64.exe` se ausente (colocá-lo em `packaging/` antes da compilação)
-- **Pós-instalação:** Inicia opcionalmente a aplicação
+- **Atalhos:** Grupo no Menu Iniciar + ícone na Área de Trabalho (opcional); `UninstallDisplayIcon` definido
+- **Runtime MSVC:** `vc_redist.x64.exe` é opcional (`#ifexist`): quando colocado em `packaging/` é instalado silenciosamente se ausente
+- **Pós-instalação:** Inicia opcionalmente a aplicação; nenhuma associação a arquivos `.dem`
 
 Requer [Inno Setup](https://jrsoftware.org/isinfo.php) para compilação.
 
@@ -101,10 +108,11 @@ Requer [Inno Setup](https://jrsoftware.org/isinfo.php) para compilação.
 Verificação passo a passo antes da distribuição:
 
 1. **Pré-build:** Todos os 14 hooks de pre-commit passam, cobertura de testes >= 50%, o validador encerra com código 0
-2. **Sincronização de versão:** A versão no `pyproject.toml` corresponde ao AppVersion no `windows_installer.iss`
-3. **Build:** PyInstaller com `--noconfirm`
-4. **Pós-build:** O exe inicia, a UI renderiza, os mapas carregam, os gráficos são gerados, `audit_binaries.py` passa
-5. **Opcional:** Compilar o instalador Inno Setup para distribuição
+2. **Sincronização de versão:** A versão no `pyproject.toml` corresponde a `packaging/version.iss` (`python tools/gen_version_iss.py`)
+3. **Modelos de fábrica:** os pares `.pt` + `.pt.meta.json` a distribuir ficam em `Programma_CS2_RENAN/models/global/`
+4. **Build:** `scripts\build_production.bat` (ou PyInstaller com `--noconfirm`)
+5. **Pós-build:** o selftest empacotado passa (`--selftest`, `LOCALAPPDATA` temporário, dist sem permissão de escrita), o exe inicia, os mapas carregam, os gráficos são gerados, `audit_binaries.py` passa
+6. **Opcional:** Compilar o instalador Inno Setup para distribuição
 
 ## Drivers de Build e CI
 
@@ -113,7 +121,7 @@ Três caminhos consomem o spec — todos terminam em `dist/Macena_CS2_Analyzer/`
 | Driver | Invocação | Notas |
 |--------|-----------|-------|
 | Direto | `python -m PyInstaller --noconfirm packaging/cs2_analyzer_win.spec --log-level WARN` | Build Rápido acima |
-| Pipeline batch | `scripts/build_production.bat` → `Programma_CS2_RENAN/tools/build_tools.py build` | Checagens pré-voo, migração alembic, manifesto RASP, PyInstaller, auditoria de binários, Inno Setup opcional (`scripts/build_exe.bat` delega aqui) |
+| Pipeline batch | `scripts/build_production.bat` → `python -m PyInstaller … packaging/cs2_analyzer_win.spec` | Checagens pré-voo (imports Qt/storage/torch/PyInstaller, aviso de modelos de fábrica), migração alembic, manifesto RASP, `version.iss`, PyInstaller, auditoria de binários, selftest empacotado (`LOCALAPPDATA` temporário, dist sem escrita via `icacls`), Inno Setup opcional (`scripts/build_exe.bat` delega aqui) |
 | Fase dist CI | Job `build-distribution` em `.github/workflows/build.yml` | Apenas pushes para `main` |
 
 A fase dist CI (retrabalhada em 14-08-2026) roda em `windows-latest` e:
@@ -123,9 +131,9 @@ A fase dist CI (retrabalhada em 14-08-2026) roda em `windows-latest` e:
 - define `PYTHONUTF8=1` no nível do job (um `setup.py` de uma dependência git-sdist falha com o cp1252 padrão do runner)
 - usa um comando nativo por step, para que uma instalação falhada não possa mais ser mascarada pelo exit code de um comando posterior
 - valida 10 arquivos de dados críticos antes do build, depois executa PyInstaller neste spec
-- verifica o resultado com `tools/audit_binaries.py` e faz upload de `dist/` como artefato `cs2-analyzer-windows` (retenção de 30 dias)
+- verifica o resultado com `tools/audit_binaries.py`, executa o selftest empacotado (`Macena_CS2_Analyzer.exe --selftest` com `LOCALAPPDATA` em `RUNNER_TEMP`; o relatório JSON é impresso a partir de `selftest_report.json` porque um exe com janela não tem stdout) e só então faz upload de `dist/` como artefato `cs2-analyzer-windows` (retenção de 30 dias)
 
-> `tools/build_pipeline.py` (o antigo pipeline "industrial" de 5 estágios) precede a mudança para `packaging/` e ainda procura o spec na raiz do repo; os drivers mantidos são os três acima.
+> `tools/build_pipeline.py` (o antigo pipeline "industrial" de 5 estágios) agora procura o spec primeiro em `packaging/`; os drivers mantidos são os três acima.
 
 ## Notas de Desenvolvimento
 
@@ -135,4 +143,4 @@ A fase dist CI (retrabalhada em 14-08-2026) roda em `windows-latest` e:
 - **matplotlib é OBRIGATÓRIO** em tempo de execução (para visualization_service.py)
 - **sentence_transformers é OBRIGATÓRIO** (para embeddings SBERT no RAG)
 - **ncps/hflayers NÃO são necessários em tempo de execução** (o modelo RAP é experimental)
-- Números de versão: verificar tanto `pyproject.toml` quanto `windows_installer.iss` antes do lançamento
+- Números de versão: `pyproject.toml` é a fonte; `packaging/version.iss` é gerado a partir dele (`python tools/gen_version_iss.py`) e `windows_installer.iss` o inclui

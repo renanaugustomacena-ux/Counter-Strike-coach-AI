@@ -67,6 +67,7 @@ def _list_pt(directory: Path) -> list:
 
 def run_selftest() -> dict:
     """Resolve, probe and report. Never raises; ``report["ok"]`` carries the verdict."""
+    from Programma_CS2_RENAN.backend.storage import db_migrate
     from Programma_CS2_RENAN.core import config
 
     frozen = bool(getattr(sys, "frozen", False))
@@ -77,6 +78,17 @@ def run_selftest() -> dict:
     docs_dir = config.get_resource_path(os.path.join("data", "docs"))
     docs_ok = os.path.isdir(docs_dir) and any(Path(docs_dir).glob("*.md"))
     writable = _can_write(config.USER_DATA_ROOT)
+    # WP4c: the pieces the bundle must carry beside the docs.
+    alembic_ini, alembic_scripts = db_migrate._alembic_paths()
+    alembic_ini_ok = os.path.isfile(alembic_ini) and os.path.isdir(alembic_scripts)
+    hltv_seed = config.get_resource_path(os.path.join("backend", "storage", "hltv_metadata.db"))
+    hltv_seed_present = os.path.isfile(hltv_seed)
+    factory_models = _list_pt(factory_dir)
+    warnings = []
+    if not factory_models:
+        warnings.append("no factory model bundled (models/global is empty)")
+    if not hltv_seed_present:
+        warnings.append("no HLTV metadata seed bundled (an empty one is created on first boot)")
 
     report = {
         "frozen": frozen,
@@ -91,17 +103,32 @@ def run_selftest() -> dict:
         "models_dir": str(models_dir),
         "models": _list_pt(models_dir / "global"),
         "factory_models_dir": str(factory_dir),
-        "factory_models": _list_pt(factory_dir),
+        "factory_models": factory_models,
         "log_dir": config.LOG_DIR,
         "resource_docs_dir": docs_dir,
         "resource_docs_ok": bool(docs_ok),
+        "alembic_ini": alembic_ini,
+        "alembic_ini_ok": bool(alembic_ini_ok),
+        "hltv_seed": hltv_seed,
+        "hltv_seed_present": bool(hltv_seed_present),
+        "warnings": warnings,
     }
-    report["ok"] = bool(writable and db_ok and docs_ok)
+    report["ok"] = bool(writable and db_ok and docs_ok and alembic_ini_ok)
     return report
 
 
 def main(argv=None) -> int:
+    from Programma_CS2_RENAN.core import config
+
     report = run_selftest()
+    # A windowed exe has no stdout: the build script and CI read the file.
+    report_path = Path(config.USER_DATA_ROOT) / "selftest_report.json"
+    report["report_path"] = str(report_path)
+    try:
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    except OSError as exc:
+        report["warnings"].append(f"could not write {report_path}: {exc}")
     print(json.dumps(report, indent=2))
     return 0 if report["ok"] else 1
 

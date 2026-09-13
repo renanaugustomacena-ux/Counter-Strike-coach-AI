@@ -138,6 +138,14 @@ live in `docs/audit/`.
 
 ## Quick Start
 
+### 0. Installed app (Windows installer)
+
+`scripts\build_production.bat` builds `dist\Macena_CS2_Installer_<version>.exe` (see `packaging/`).
+An installed copy keeps all its data outside the program folder — `%LOCALAPPDATA%\MacenaCS2Analyzer`
+or the folder you pick in the setup wizard — and does everything a source checkout does: analyze
+your own demos and a downloaded pro pool (Dashboard cards), and train the coach in the background
+service (Dashboard → Training Status → **Train coach**; the run is recorded in the model registry).
+
 ### 1. Clone
 
 ```bash

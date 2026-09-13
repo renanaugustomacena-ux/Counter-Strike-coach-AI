@@ -498,6 +498,20 @@ jobs:
           CI: 'true'
           VIRTUAL_ENV: 'ci'
 
+      # WP4c: run the packaged exe once. A windowed exe has no stdout, so the
+      # selftest also writes selftest_report.json under its data root;
+      # LOCALAPPDATA points at a scratch folder so the runner profile and the
+      # dist folder stay untouched (D-52: nothing is written beside the exe).
+      - name: Packaged selftest
+        shell: pwsh
+        run: |
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP "macena_selftest"
+          New-Item -ItemType Directory -Force $env:LOCALAPPDATA | Out-Null
+          $proc = Start-Process -FilePath "dist\Macena_CS2_Analyzer\Macena_CS2_Analyzer.exe" -ArgumentList "--selftest" -Wait -PassThru -NoNewWindow
+          $report = Join-Path $env:LOCALAPPDATA "MacenaCS2Analyzer\selftest_report.json"
+          if (Test-Path $report) { Get-Content $report } else { Write-Host "no selftest_report.json written" }
+          if ($proc.ExitCode -ne 0) { throw "packaged selftest failed with exit code $($proc.ExitCode)" }
+
       - name: Upload distribution artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
