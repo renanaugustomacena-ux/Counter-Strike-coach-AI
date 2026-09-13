@@ -37,8 +37,13 @@ scripts\build_production.bat
 
 The script activates `venv_win` (or `.venv`), checks the Qt/storage/torch/PyInstaller imports,
 migrates the schema, regenerates the integrity manifest and `version.iss`, runs PyInstaller on
-`packaging/cs2_analyzer_win.spec`, audits the binaries, runs the packaged selftest and compiles
-the installer when Inno Setup is present. Manual equivalent of the build step:
+`packaging/cs2_analyzer_win.spec` **into `%TEMP%\mcb`** (long-path guard: torch's
+nested license files sit 182 characters below the dist root, and from a long checkout path
+they pass Windows' 260-character limit — ISCC then fails with "The system cannot find the path
+specified"), audits the binaries, runs the packaged selftest and compiles the installer when
+Inno Setup is present (per-user `%LOCALAPPDATA%\Programs\Inno Setup 6` or Program Files),
+passing the short folder as `/DDistDir=`. The installer lands in the repository's `dist\`.
+Manual equivalent of the build step (keep the checkout path short, or add `--distpath`):
 
 ```bash
 python -m PyInstaller --noconfirm packaging/cs2_analyzer_win.spec --log-level WARN

@@ -221,3 +221,6 @@ portability_report.json
 checkpoint_hashes.json
 Build_Health_Report.json
 build_report.json
+
+# Optional MSVC runtime placed beside the installer script (packaging/README: downloaded, never committed)
+packaging/vc_redist.x64.exe

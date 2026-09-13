@@ -60,10 +60,25 @@ launches, register entries last.
   of the dist folder was identical before and after the run (10 416 files —
   nothing written beside the exe). That run also exposed a missing datas entry
   (the SVG icon sprite under `design/assets/icons/`), fixed in the same PR.
-- Not done: Inno Setup is not installed on this machine, so
-  `Macena_CS2_Installer_<version>.exe` was not compiled, and nothing was
-  installed on a second Windows account. The end-to-end wizard → Analyze →
-  Train run on an installed copy is the next manual step (BUILD_CHECKLIST).
+- The installer WAS compiled once the author installed Inno Setup 6.7.3:
+  `Macena_CS2_Installer_1.0.0.exe`, a single 460 MB file, and it survived a
+  full round trip on the development account — silent per-user install
+  (30 s, no elevation), the installed copy's `--selftest` `ok: true` with the
+  install folder unchanged, silent uninstall that removed files, Start Menu
+  group and registry entry and kept the data folder by default. The first
+  compile and the first install taught: `#13#10` at the start of a `[Code]`
+  line is an ISPP directive; a brace comment cannot mention `{app}`; seven
+  torch license files sit 182 characters below the dist root, so the frozen
+  tree is built in `%TEMP%\mcb` and passed to ISCC as `/DDistDir` (the
+  92-character checkout path overflowed 260 even with LongPathsEnabled);
+  `DiskSpanning=yes` shipped a separate 457 MB `.bin`; the VC++
+  redistributable needs elevation, so it is limited to administrative
+  installs and detected in both registry views; and Git Bash rewrites
+  `/VERYSILENT`-style switches into paths, so installer smoke tests are driven
+  from PowerShell.
+- Not done: nothing was installed on a second Windows account. The
+  end-to-end wizard → Analyze → Train run on an installed copy is the next
+  manual step (BUILD_CHECKLIST).
 - Out of scope by plan: arming `USE_JEPA_MODEL` / `USE_RAP_MODEL`, coach_v2 and
   Parte III steps 5-9, the 20k-step GPU exam and `docs/benchmarks/`, a CUDA
   installer, HLTV/Docker sync in frozen builds, shipping a pruned pro monolith.

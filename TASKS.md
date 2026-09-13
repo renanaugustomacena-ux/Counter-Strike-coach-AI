@@ -111,9 +111,22 @@ percorsi → WP4b training in-app → WP4c packaging); registro DOCTRINE D-47.. 
   su questa macchina (PyInstaller 6.17.0 installato in `.venv`; onedir 1,6 GB in 4 min),
   selftest impacchettato `ok: true` con `LOCALAPPDATA` temporaneo e conteggio file di
   `dist/` invariato (10 416); quel run ha scoperto lo sprite SVG delle icone non incluso
-  (`design/assets/icons/sprite.svg`, aggiunto allo spec). NON fatto: Inno Setup non è
-  installato qui, quindi l'installer non è stato compilato e nulla è stato installato su
-  un secondo account Windows (wizard → Analyze → Train end-to-end).
+  (`design/assets/icons/sprite.svg`, aggiunto allo spec).
+- DONE · installer compilato (2026-09-13, Inno Setup 6.7.3 installato dall'autore per
+  utente): `dist\Macena_CS2_Installer_1.0.0.exe`, un solo file da 460 MB. Lezioni della
+  prima compilazione, tutte con test: riga `[Code]` che inizia con `#13#10` = direttiva
+  ISPP; commento tra graffe che cita `{app}`; 7 file di licenza torch a 182 caratteri sotto
+  la radice di dist → build in `%TEMP%\mcb` e `/DDistDir` (il checkout da 92 caratteri
+  supera i 260 anche con LongPathsEnabled); `DiskSpanning=yes` produceva un `.bin` separato
+  da 457 MB; il redistribuibile VC++ richiede elevazione → solo in installazioni
+  amministrative, presenza verificata in entrambe le viste di registro; ISCC cercato anche
+  in `%LOCALAPPDATA%\Programs`; `vc_redist.x64.exe` ignorato da git. Round trip
+  sull'account di sviluppo: installazione silenziosa per utente in 30 s, `--selftest` della
+  copia installata `ok: true` con cartella di installazione invariata (10 419 file),
+  disinstallazione silenziosa che rimuove file, gruppo Start Menu e voce HKCU e conserva la
+  cartella dati per default. Nota: Git Bash riscrive gli switch `/VERYSILENT` in percorsi —
+  i test di installazione vanno lanciati da PowerShell. NON fatto: installazione su un
+  secondo account Windows (wizard → Analyze → Train end-to-end).
 - Chiusura campagna 2026-09-13: D-47..D-53 registrati in DOCTRINE, evidenze in
   `docs/doctrine/notes/22-frontend-honesty-and-install.md`. Restano fuori (per piano):
   armare `USE_JEPA_MODEL`/`USE_RAP_MODEL`, coach_v2 e passi 5-9 di Parte III, esame GPU

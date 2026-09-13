@@ -93,6 +93,7 @@ excludes = ['pytest', 'coverage', 'pre_commit', 'black', 'isort',
 
 Creates a Windows setup executable (`dist/Macena_CS2_Installer_<version>.exe`) with:
 - **Version:** `AppVersion={#AppVersion}` from `version.iss`, generated from `pyproject.toml` by `tools/gen_version_iss.py` (never edited by hand)
+- **Sources:** `{#DistDir}\Macena_CS2_Analyzer\*` — the build script passes `/DDistDir=%TEMP%\mcb\dist` (short path: torch's nested license files sit 182 characters below the dist root and ISCC cannot open paths past 260); the default is the repository's `..\dist`
 - **Install path:** `Program Files\Macena_CS2_Analyzer` — 64-bit only (`ArchitecturesInstallIn64BitMode=x64compatible`); per-machine by default, per-user on request (`PrivilegesRequiredOverridesAllowed=dialog`)
 - **User data:** never beside the exe — `%LOCALAPPDATA%\MacenaCS2Analyzer` or the folder chosen in the setup wizard (D-52); the uninstaller asks before removing it and keeps it by default
 - **Languages:** English, Italian, Brazilian Portuguese

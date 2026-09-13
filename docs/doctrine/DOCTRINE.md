@@ -349,8 +349,19 @@ Entries from aesthetic round 1 (evidence in note 20; asterisks = fixed):
   (PyInstaller 6.17.0, 1.6 GB onedir) and its packaged selftest passed under a scratch
   `LOCALAPPDATA` with the dist file count unchanged; that run exposed the unbundled SVG
   icon sprite (`design/assets/icons/sprite.svg`, resolved from the project root), added.
-  Not yet done: Inno Setup is not installed here, so the installer exe was not compiled
-  and nothing was installed on a second Windows account (wizard → Analyze → Train).
+  Installer compiled 2026-09-13 with Inno Setup 6.7.3 (per-user install under
+  `%LOCALAPPDATA%\Programs`, found by the build script): `Macena_CS2_Installer_1.0.0.exe`,
+  one 460 MB file. The first compile taught five things, all fixed with tests: a `[Code]`
+  continuation line starting with `#13#10` is an ISPP directive; a brace comment cannot
+  mention `{app}`; seven torch license files sit 182 characters below the dist root, so the
+  build runs in `%TEMP%\mcb` and passes `/DDistDir` (a 92-character checkout path overflowed
+  260 even with LongPathsEnabled); `DiskSpanning=yes` produced a separate 457 MB `.bin`;
+  the VC++ redistributable needs elevation, so it runs only in administrative installs and
+  its presence is checked in both registry views. Round trip on the development account:
+  silent per-user install in 30 s, the installed copy's `--selftest` `ok: true` with the
+  install folder unchanged (10 419 files), silent uninstall removed files, Start Menu group
+  and HKCU entry and kept the data folder by default. Not yet done: an install on a second
+  Windows account with the wizard → Analyze → Train run.
 - **D-33** Coaching chain unwired end-to-end (extends D-26): run_ml_pipeline /
   CoachingService / ExperienceBank.extract_experiences_from_demo /
   RoleThresholdStore.learn_from_pro_data / CSVMigrator seeding all lack production

@@ -5,6 +5,15 @@
 ; (scripts/build_production.bat runs it before compiling), so the installer
 ; version can never drift from the package version (P10-02).
 #include "version.iss"
+; DistDir: the PyInstaller output folder holding Macena_CS2_Analyzer\. torch's
+; nested license files sit 182 characters below that folder, so from a long
+; checkout path they pass Windows' 260-character limit and ISCC aborts with
+; "The system cannot find the path specified". scripts\build_production.bat
+; builds into a short folder and passes it as /DDistDir=...; the default is
+; the repository's dist\ for short checkout paths.
+#ifndef DistDir
+#define DistDir "..\dist"
+#endif
 
 [Setup]
 AppId={{D3B3E1A2-5678-4CDE-9012-3456789ABCDE}
@@ -32,8 +41,9 @@ OutputBaseFilename=Macena_CS2_Installer_{#AppVersion}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
-DiskSpanning=yes
-DiskClusterSize=512
+; One self-contained exe (the first compile with DiskSpanning=yes shipped a
+; separate 457 MB "-1.bin" slice a user could forget to copy).
+DiskSpanning=no
 ; Minimum Windows version (Windows 10+)
 MinVersion=10.0
 
@@ -47,23 +57,25 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; Copy all files from the PyInstaller dist folder
-Source: "..\dist\Macena_CS2_Analyzer\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#DistDir}\Macena_CS2_Analyzer\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; MSVC runtime installer: optional. Download vc_redist.x64.exe from Microsoft
 ; and place it in packaging/ before compiling; without it the installer still
-; builds and InitializeSetup tells the user where to get the runtime.
+; builds and InitializeSetup tells the user where to get the runtime. It needs
+; elevation, so it runs only in an administrative install (a per-user install
+; cannot elevate: the first smoke stalled on it for seven minutes).
 #ifexist "vc_redist.x64.exe"
-Source: "vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion dontcopy; Check: not VCRedistInstalled
+Source: "vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion dontcopy; Check: IsAdminInstallMode and not VCRedistInstalled
 #endif
 
 [Icons]
 Name: "{group}\Macena CS2 Analyzer"; Filename: "{app}\Macena_CS2_Analyzer.exe"
 Name: "{group}\{cm:UninstallProgram,Macena CS2 Analyzer}"; Filename: "{uninstallexe}"
-Name: "{userdesktop}\Macena CS2 Analyzer"; Filename: "{app}\Macena_CS2_Analyzer.exe"; Tasks: desktopicon
+Name: "{autodesktop}\Macena CS2 Analyzer"; Filename: "{app}\Macena_CS2_Analyzer.exe"; Tasks: desktopicon
 
 [Run]
 #ifexist "vc_redist.x64.exe"
-; Install MSVC runtime silently if needed
-Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing Visual C++ Runtime..."; Flags: waituntilterminated skipifdoesntexist
+; Install MSVC runtime silently if needed (administrative installs only)
+Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing Visual C++ Runtime..."; Flags: waituntilterminated skipifdoesntexist; Check: IsAdminInstallMode and not VCRedistInstalled
 #endif
 Filename: "{app}\Macena_CS2_Analyzer.exe"; Description: "{cm:LaunchProgram,Macena CS2 Analyzer}"; Flags: nowait postinstall skipifsilent
 
@@ -72,8 +84,14 @@ function VCRedistInstalled: Boolean;
 var
   Version: String;
 begin
-  { Check for MSVC 2015-2022 x64 runtime (required by PySide6 and Python) }
-  Result := RegQueryStringValue(HKLM,
+  { Check for MSVC 2015-2022 x64 runtime (required by PySide6 and Python).
+    Both registry views: the runtime registers under the 64-bit key and the
+    WOW6432Node mirror, and the first smoke on a machine with v14.51 installed
+    still ran the redistributable. }
+  Result := RegQueryStringValue(HKLM64,
+    'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64',
+    'Version', Version)
+    or RegQueryStringValue(HKLM32,
     'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64',
     'Version', Version);
 end;
@@ -86,8 +104,7 @@ begin
     if not FileExists(ExpandConstant('{src}\vc_redist.x64.exe')) then
     begin
       MsgBox(
-        'This application requires the Microsoft Visual C++ Redistributable.' + #13#10 +
-        #13#10 +
+        'This application requires the Microsoft Visual C++ Redistributable.' + #13#10 + #13#10 +
         'The installer will continue, but if the application fails to start, ' +
         'please download and install vc_redist.x64.exe from:' + #13#10 +
         'https://aka.ms/vs/17/release/vc_redist.x64.exe',
@@ -96,9 +113,10 @@ begin
   end;
 end;
 
-{ The user's data (database, analyzed demos, trained models, logs) lives
-  outside {app}. Uninstalling the program must never delete it silently:
-  ask, default to keeping it. }
+// The user's data (database, analyzed demos, trained models, logs) lives
+// outside the install folder. Uninstalling the program must never delete it
+// silently: ask, default to keeping it. (Line comments on purpose: a brace
+// comment cannot mention the app constant, its closing brace ends the comment.)
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   DataDir: String;
