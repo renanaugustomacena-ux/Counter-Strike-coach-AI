@@ -44,13 +44,14 @@ class NumberedStep(QWidget):
         self._title_label.setFont(Typography.font("body", QFont.Bold))
         text_col.addWidget(self._title_label)
 
-        self._desc_label = QLabel(description)
+        # Always parented and laid out; only visibility follows the text.
+        # (An unparented label shown later by set_description() would be
+        # its own top-level window — see test_no_stray_windows.py.)
+        self._desc_label = QLabel(description, self)
         self._desc_label.setObjectName("numbered_step_desc")
         self._desc_label.setWordWrap(True)
-        if description:
-            text_col.addWidget(self._desc_label)
-        else:
-            self._desc_label.setVisible(False)
+        text_col.addWidget(self._desc_label)
+        self._desc_label.setVisible(bool(description))
         row.addLayout(text_col, 1)
 
     def set_title(self, text: str) -> None:

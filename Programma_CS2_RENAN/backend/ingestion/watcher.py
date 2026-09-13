@@ -214,16 +214,36 @@ class IngestionWatcher:
 
         # C-01 fix: read current paths via get_setting() instead of stale
         # module-level imports that never update after refresh_settings().
-        user_path = get_setting("DEFAULT_DEMO_PATH", os.path.expanduser("~"))
-        pro_path = get_setting("PRO_DEMO_PATH", os.path.expanduser("~"))
+        # Unset folders are skipped, never ``os.makedirs('')`` (the daemon
+        # died on that at every boot while PRO_DEMO_PATH was empty), and
+        # $HOME is never watched (OI-8: it is not a demo root).
+        home = os.path.normcase(os.path.normpath(os.path.expanduser("~")))
+        targets = []
+        for handler, key in (
+            (self.user_handler, "DEFAULT_DEMO_PATH"),
+            (self.pro_handler, "PRO_DEMO_PATH"),
+        ):
+            raw = str(get_setting(key, "") or "").strip()
+            if not raw:
+                logger.info("Watcher: %s is not set — folder not watched", key)
+                continue
+            path = os.path.normpath(os.path.expanduser(raw))
+            if os.path.normcase(path) == home:
+                logger.warning("Watcher: %s is the home directory — not watched (OI-8)", key)
+                continue
+            try:
+                os.makedirs(path, exist_ok=True)
+            except OSError as exc:
+                logger.warning("Watcher: cannot create %s (%s) — not watched", path, exc)
+                continue
+            targets.append((handler, path))
 
-        # Ensure directories exist
-        os.makedirs(user_path, exist_ok=True)
-        os.makedirs(pro_path, exist_ok=True)
+        if not targets:
+            logger.warning("Watcher: no demo folder configured — watchdog not started")
+            return
 
-        # Schedule watchers
-        self.observer.schedule(self.user_handler, user_path, recursive=False)
-        self.observer.schedule(self.pro_handler, pro_path, recursive=False)
+        for handler, path in targets:
+            self.observer.schedule(handler, path, recursive=False)
 
         self.observer.start()
         self.running = True

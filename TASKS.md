@@ -10,6 +10,36 @@ Single source for actionable work items. Bind to AUDIT.md findings via `(AUDIT �
 
 ---
 
+## Sessione 2026-09-12 (bis) — onestà del frontend + installazione
+
+Revisione del frontend richiesta dall'autore: il DB locale contiene SOLO partite pro, ma la
+dashboard presentava quei numeri come statistiche personali; 2 guide su 3 illeggibili; una
+"finestrella" all'avvio; l'installer Inno Setup deve permettere a qualunque utente ingest +
+training locale. Piano approvato in 6 pacchetti (WP3 boot → WP1 dati → WP2 guide → WP4a
+percorsi → WP4b training in-app → WP4c packaging); registro DOCTRINE D-47.. per ogni difetto.
+
+- DONE · D-47 · `widgets/components/empty_state.py`, `numbered_step.py` — figli senza parent
+  aggiunti al layout solo se il testo non era vuoto: `set_description()` li mostrava come
+  finestre top-level (la "finestrella" = "Pick a pro from the comparison screen." dalla
+  schermata pro-detail, ad OGNI avvio). Test: `test_no_stray_windows.py`.
+- DONE · D-48 · `apps/qt_app/app.py`, `core/lifecycle.py`, `backend/ingestion/watcher.py`,
+  nuovi `core/selftest.py`, `apps/qt_app/core/instance_guard.py` — `main(argv)` con
+  `--daemon`/`--selftest`; splash chiusa in `finally`; Console + demone + SBERT sul thread
+  pool DOPO la finestra (al primo avvio: dopo il wizard, o appena l'utente lo salta dalla
+  sidebar); demone `python -m …session_engine` / `<exe> --daemon` con `CREATE_NO_WINDOW`,
+  log in `LOG_DIR`; watcher non muore più su `PRO_DEMO_PATH` vuoto; secondo avvio porta in
+  primo piano la finestra (QLocalServer). Catena post-boot in un `QObject` con slot veri
+  (`_BootCoordinator`): la prima versione con lambda incatenate produceva un access
+  violation nativo 2 s dopo il boot ad ogni avvio senza console (faulthandler). Nota:
+  `Console.boot()` lancia `docker compose up -d` se `ENABLE_HLTV_SYNC` (default True) —
+  su questa macchina >35 s, prima teneva la splash sopra a tutto.
+  Gate: pytest full verde (+35 nuovi), headless 318/319 (manifest rigenerato), portability
+  10/10; avvio reale su Windows (python e pythonw): UNICA finestra visibile nel process
+  tree, demone vivo per 60 s e terminato con la GUI. Doc: `apps/README*.md` sequenza di
+  avvio ×3 lingue.
+- NEXT · WP1 (analytics fallback `(True,)`, coach_vm fallback, contatori personali/pro,
+  match detail pro-view, purge righe test dal DB + tripwire), WP2 guide, WP4a/b/c.
+
 ## Sessione 2026-09-12 — verification round 3 (neural core v2 letto su Windows)
 
 Dopo il merge di PR #102 (repo a UN branch), lettura integrale della trilogia

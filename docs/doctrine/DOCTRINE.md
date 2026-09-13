@@ -397,6 +397,38 @@ Entries from verification round 3 (evidence in note 21; asterisks = fixed):
   misplaced; `jepa.md` has no trilogy pointer; nn/rap READMEs ignore the freeze;
   `train_docker.sh` help stale; §6.3 lists live legacy helpers as dead.
 
+Entries from the frontend-honesty & install round (2026-09-12; asterisks = fixed):
+
+- ***D-47** Parentless-child pattern: `EmptyState` and `NumberedStep` built their
+  description label / CTA buttons / link WITHOUT a parent and added them to the layout
+  only when the text was non-empty; a later `set_description("…")` called
+  `setVisible(True)` on an orphan QLabel, which Qt shows as a top-level window. The
+  pro-player-detail screen does exactly that in `__init__`, so a 133x29 px window
+  reading "Pick a pro from the comparison screen." opened at every launch — the
+  "little weird window" the user reported. Every slot is now parented and laid out
+  unconditionally with visibility toggled; `test_no_stray_windows.py` pins the
+  components and `test_app_boot_lifecycle.py` walks every screen asserting the
+  dashboard is the only visible top-level window.
+- ***D-48** Boot lifecycle: the splash stayed on top through Console boot and a
+  BLOCKING SBERT download with no `finally`; the Session Engine was spawned as a bare
+  `python.exe <script>` (blank console in any windowless launch; in a frozen build
+  `sys.executable` is the GUI, so the "daemon" was a second dashboard tripping the
+  mutex); the watcher died at start on the empty default `PRO_DEMO_PATH`
+  (`os.makedirs('')`, see the author's `daemon_err.log`); a relaunch after
+  close-to-tray was refused with a dialog. Now: `main(argv)` dispatches `--daemon`
+  / `--selftest` before Qt, `_boot_ui` closes the splash in `finally`, backend boot +
+  SBERT run on the thread pool after the window shows (on a first run only once the
+  wizard is finished OR skipped through the sidebar), the daemon is `python -m
+  …session_engine` / `<exe> --daemon` with `CREATE_NO_WINDOW` and logs under `LOG_DIR`,
+  the watcher skips unset/home folders, and a second launch raises the first window
+  over a `QLocalServer`. Two lessons recorded on the way: (1) `Console.boot()` runs
+  `docker compose up -d` whenever `ENABLE_HLTV_SYNC` (default True) — on the author's
+  box that call alone held the old splash for >35 s; (2) the post-boot chain must be a
+  `QObject` with real slots (`_BootCoordinator`): chaining a second Worker with lambda
+  receivers from inside the first worker's result callback produced a native access
+  violation in `app.exec()` two seconds after boot on every real windowless launch
+  (caught with faulthandler; regression test `test_backend_boot_chain_completes_on_the_event_loop`).
+
 ## 4. The AI roadmap (paper-grounded, invariant-filtered)
 
 Ordered by leverage; each item names its paper evidence (note 16) and its guards.

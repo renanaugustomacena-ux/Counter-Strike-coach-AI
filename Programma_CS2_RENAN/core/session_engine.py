@@ -70,7 +70,8 @@ def signal_work_available():
 
 
 def run_session_loop():
-    """Started by main.py, dies when main.py dies (via stdin pipe closure)."""
+    """Started by apps/qt_app/app.py (lifecycle.launch_daemon), dies when the
+    GUI dies (via stdin pipe closure)."""
     from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
     logger.info("Session Engine Starting [PID: %s]", os.getpid())

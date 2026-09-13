@@ -184,20 +184,16 @@ python -m Programma_CS2_RENAN.apps.qt_app.app
 ./launch.sh
 ```
 
-La sequenza di avvio in `app.py`:
-1. Scaling High-DPI configurato
-2. `QApplication` creata, versione letta dai metadati del pacchetto
-3. Guardia a istanza singola (`lifecycle.ensure_single_instance()`) — mostra un dialogo di avviso ed esce se un'altra istanza è già in esecuzione
-4. `ThemeEngine` creato e font personalizzati registrati; viene mostrata una splash screen tematizzata (colori dai design token del tema attivo)
-5. Handler di shutdown controllato connesso (`aboutToQuit`)
-6. Tema e impostazioni font persistite applicati
-7. `MainWindow` creata con navigazione sidebar
-8. Tutte le 15 schermate istanziate e registrate nel `QStackedWidget`; segnali inter-schermata collegati (selezione partita → dettaglio, wizard → home, momenti salienti → visualizzatore tattico, confronto pro → dettaglio pro)
-9. Gate primo avvio: mostra `WizardScreen` se il setup non è completato, altrimenti `HomeScreen`
-10. Console backend avviata (`get_console().boot()`) e demone Session Engine lanciato
-11. Modello linguistico SBERT verificato (download al primo avvio, con progresso nella splash)
-12. System tray costruita (`build_tray`); se disponibile, `setQuitOnLastWindowClosed(False)` abilita il comportamento chiudi-nel-tray
-13. Polling `AppState` avviato (intervallo 10 secondi)
+La sequenza di avvio in `app.py` (`main(argv)`):
+
+1. Smistamento degli argomenti prima di qualsiasi lavoro Qt: `--daemon` esegue il Session Engine in questo processo (è così che la GUI lo lancia — `python -m Programma_CS2_RENAN.core.session_engine` da sorgente, `<exe> --daemon` nel build congelato), `--selftest` esegue la sonda di runtime senza GUI (`core/selftest.py`, report JSON, codice di uscita); qui viene importato `core/frozen_hook` (supporto freeze del multiprocessing)
+2. Scaling High-DPI configurato, `QApplication` creata, versione letta dai metadati del pacchetto
+3. Guardia a istanza singola (`lifecycle.ensure_single_instance()`) — un secondo avvio chiede all'istanza in esecuzione di portare in primo piano la propria finestra tramite un socket locale (`core/instance_guard.py`) ed esce in silenzio; il dialogo di avviso resta solo come ripiego quando nessuno risponde
+4. `ThemeEngine` creato e font personalizzati registrati; handler di shutdown controllato connesso (`aboutToQuit`); a setup già completato viene inizializzato lo schema del database (`init_database`) così nessuna schermata interroga una tabella inesistente
+5. `_boot_ui`: la splash screen tematizzata è visibile SOLO durante la composizione della UI — tema applicato, `MainWindow` creata, tutte le 15 schermate istanziate e registrate nel `QStackedWidget`, segnali inter-schermata collegati (selezione partita → dettaglio, momenti salienti → visualizzatore tattico, confronto pro → dettaglio pro), gate primo avvio (`WizardScreen` se il setup non è completato, altrimenti `HomeScreen`), finestra mostrata. La splash viene chiusa in un `finally`, quindi nessun errore di avvio può lasciarla a schermo; una riga INFO per fase ("boot phase …") registra la cronologia
+6. La guardia di istanza si mette in ascolto; system tray costruita (`build_tray`); se disponibile, `setQuitOnLastWindowClosed(False)` abilita il comportamento chiudi-nel-tray
+7. Avvio del backend sul thread pool DOPO che la finestra è visibile: `get_console().boot()` + demone Session Engine (`lifecycle.launch_daemon()`, lanciato con console nascosta), poi verifica/download del modello linguistico SBERT in background (toast, mai bloccante). Al primo avvio l'intero passo attende `setup_completed` del wizard e poi approda su `HomeScreen`
+8. Polling `AppState` avviato (intervallo 10 secondi)
 
 ### Bundle PyInstaller
 

@@ -2,20 +2,58 @@
 Application entry point — launches the PySide6 Qt frontend.
 
 Usage:
-    python -m Programma_CS2_RENAN.apps.qt_app.app
+    python -m Programma_CS2_RENAN.apps.qt_app.app              # the dashboard
+    python -m Programma_CS2_RENAN.apps.qt_app.app --daemon     # Session Engine (spawned by the GUI)
+    python -m Programma_CS2_RENAN.apps.qt_app.app --selftest   # headless runtime probe (build/CI)
+
+Boot contract (WP3, 2026-09): the splash lives only while the UI is
+composed; the window is shown, the splash is closed in ``finally``, and
+everything slow — Console boot, the daemon spawn, the SBERT model check —
+runs afterwards on the thread pool. On a first run the backend waits for
+the setup wizard so no data is created at a location the user has not
+chosen yet.
 """
 
 import logging
+import os
 import sys
+import time
 from importlib.metadata import PackageNotFoundError, version
+from typing import Callable, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, Qt, QThreadPool, QTimer, Slot
 from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QMessageBox, QSplashScreen
 
 from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine
 from Programma_CS2_RENAN.apps.qt_app.main_window import MainWindow
 from Programma_CS2_RENAN.apps.qt_app.screens.placeholder import create_placeholder_screens
+
+# Local-socket name the first instance listens on; a second launch sends
+# RAISE here instead of showing "already running" (core/instance_guard.py).
+INSTANCE_NAME = "MacenaCS2Analyzer"
+
+from Programma_CS2_RENAN.observability.logger_setup import get_logger  # noqa: E402
+
+_boot_log = get_logger("cs2analyzer.boot")
+
+
+class _PhaseTimer:
+    """Boot timeline: one INFO line per phase so reports carry evidence."""
+
+    def __init__(self) -> None:
+        self._start = time.monotonic()
+        self._last = self._start
+
+    def mark(self, phase: str) -> None:
+        now = time.monotonic()
+        _boot_log.info(
+            "boot phase %-16s %6.0f ms (total %6.0f ms)",
+            phase,
+            (now - self._last) * 1000,
+            (now - self._start) * 1000,
+        )
+        self._last = now
 
 
 def _create_splash(app_version: str) -> QSplashScreen:
@@ -177,8 +215,14 @@ def _create_screens(theme: ThemeEngine) -> dict:
 
 
 def _wire_screen_signals(window: MainWindow, screens: dict) -> None:
-    """Wire cross-screen routing: history/home → match_detail, wizard → home,
-    match_detail moments → tactical_viewer, pro_comparison → pro_player_detail."""
+    """Wire cross-screen routing: history/home → match_detail, match_detail
+    moments → tactical_viewer, pro_comparison → pro_player_detail.
+
+    The wizard → home hop is NOT wired here: on a first run the backend boots
+    only after the wizard, and home is entered once that boot has finished
+    (see ``_run_gui``), so its view-models never query a database whose
+    tables do not exist yet.
+    """
     match_detail = screens["match_detail"]
 
     def _on_match_selected(demo_name: str):
@@ -187,7 +231,6 @@ def _wire_screen_signals(window: MainWindow, screens: dict) -> None:
 
     screens["match_history"].match_selected.connect(_on_match_selected)
     screens["home"].match_selected.connect(_on_match_selected)
-    screens["wizard"].setup_completed.connect(lambda: window.switch_screen("home"))
 
     # Highlights "Open in Tactical Viewer" deep-link: seek (when that demo
     # is loaded) then switch — the viewer logs/toasts the miss otherwise.
@@ -211,24 +254,25 @@ def _wire_screen_signals(window: MainWindow, screens: dict) -> None:
     pro_detail.back_requested.connect(lambda: window.switch_screen("pro_comparison"))
 
 
-def _boot_backend_services(splash: QSplashScreen) -> bool:
+def _boot_backend_services() -> bool:
     """Boot Console + Session Engine daemon. Errors logged, never raised.
 
-    Without the Session Engine daemon, the Pulse thread never writes
-    CoachState.last_heartbeat — the GUI would show "Service offline" and the
-    Coach card would stall at "Idle".
+    Runs on the thread pool AFTER the window is visible (never under the
+    splash). Without the Session Engine daemon, the Pulse thread never
+    writes CoachState.last_heartbeat — the GUI would show "Service offline"
+    and the Coach card would stall at "Idle".
     """
-    _splash_status(splash, "Starting backend services...")
     from Programma_CS2_RENAN.backend.control.console import get_console
 
     boot_ok = True
+    _boot_log.info("backend: starting Console")
     try:
         get_console().boot()
     except Exception:
         logging.exception("Backend boot failed")
         boot_ok = False
 
-    _splash_status(splash, "Starting Session Engine daemon...")
+    _boot_log.info("backend: starting Session Engine daemon")
     try:
         from Programma_CS2_RENAN.core.lifecycle import lifecycle
 
@@ -242,46 +286,44 @@ def _boot_backend_services(splash: QSplashScreen) -> bool:
     return boot_ok
 
 
-def _ensure_sbert_model(splash: QSplashScreen) -> None:
-    """WR-10: pre-download the SBERT RAG model on first run; never block boot."""
-    _splash_status(splash, "Checking AI language model...")
+_SBERT_MODEL = "all-MiniLM-L6-v2"
+
+
+def _sbert_model_cached() -> bool:
+    """Cheap directory probe (WR-10) — safe on the GUI thread."""
+    from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeEmbedder
+
+    return bool(KnowledgeEmbedder.is_model_cached(_SBERT_MODEL))
+
+
+def _download_sbert_model() -> bool:
+    """WR-10: download the SBERT RAG model on first run. Thread-pool job, toasts around it."""
+    from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeEmbedder
+    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+
     try:
-        from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeEmbedder
-
-        if KnowledgeEmbedder.is_model_cached():
-            return
-
-        _splash_status(splash, "Downloading AI language model (~90 MB, first time only)...")
-        splash.repaint()
-        QApplication.processEvents()
-
-        # Download in foreground with splash visible — blocks but shows progress
-        import threading
-
-        download_done = threading.Event()
-        download_ok = [False]
-
-        def _do_download():
-            download_ok[0] = KnowledgeEmbedder.download_model()
-            download_done.set()
-
-        t = threading.Thread(target=_do_download, daemon=True)
-        t.start()
-
-        # Keep splash responsive while downloading
-        while not download_done.wait(timeout=0.1):
-            QApplication.processEvents()
-
-        if download_ok[0]:
-            _splash_status(splash, "AI language model ready!")
-        else:
-            _splash_status(splash, "AI model download failed — using fallback")
-    except Exception:
-        # Don't block app startup over SBERT — coach falls back to dense
-        # similarity. R4 MED: but never swallow silently (repo rule).
-        logging.exception(
-            "SBERT model check/download failed — coach will fall back to dense similarity"
+        get_state_manager().add_notification(
+            "knowledge",
+            "INFO",
+            "Downloading the AI language model (~90 MB, first time only) in the background.",
         )
+    except Exception:  # noqa: BLE001 — a toast must never block the download
+        logging.debug("SBERT start notification skipped", exc_info=True)
+
+    ok = KnowledgeEmbedder.download_model(_SBERT_MODEL)
+    try:
+        get_state_manager().add_notification(
+            "knowledge",
+            "INFO" if ok else "WARNING",
+            (
+                "AI language model ready."
+                if ok
+                else "AI language model download failed — the coach falls back to dense similarity."
+            ),
+        )
+    except Exception:  # noqa: BLE001
+        logging.debug("SBERT finish notification skipped", exc_info=True)
+    return ok
 
 
 def _install_qt_excepthook() -> None:
@@ -315,28 +357,220 @@ def _show_boot_failure_warning_if_needed(window: MainWindow, boot_ok: bool) -> N
         )
 
 
-def main():
-    # High-DPI support
-    QApplication.setHighDpiScaleFactorRoundingPolicy(
-        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-    )
+class _BootCoordinator(QObject):
+    """Owns the post-window boot chain: backend -> landing screen -> SBERT.
 
-    app = QApplication(sys.argv)
+    Every cross-thread signal lands on a real QObject slot, and the SBERT
+    step is scheduled through the event loop rather than started from
+    inside the backend callback. The first version chained a second
+    Worker with lambda receivers from inside that callback; with the
+    model cached the new worker's signals object was created and destroyed
+    on a pool thread while the main thread was still in the callback —
+    a native access violation in ``app.exec()`` two seconds after boot
+    (caught with faulthandler on a real pythonw launch).
+    """
+
+    def __init__(self, window, then: Optional[Callable[[], None]] = None, parent=None):
+        super().__init__(parent)
+        self._window = window
+        self._then = then
+        self.backend_ok: Optional[bool] = None
+        self.sbert_checked = False
+
+    def start(self) -> None:
+        from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
+
+        worker = Worker(_boot_backend_services)
+        worker.signals.result.connect(self._on_backend_result)
+        worker.signals.error.connect(self._on_backend_error)
+        QThreadPool.globalInstance().start(worker)
+
+    @Slot(object)
+    def _on_backend_result(self, ok) -> None:
+        self._finish(bool(ok))
+
+    @Slot(str)
+    def _on_backend_error(self, msg: str) -> None:
+        logging.error("Backend boot crashed: %s", msg)
+        self._finish(False)
+
+    def _finish(self, ok: bool) -> None:
+        self.backend_ok = ok
+        _boot_log.info("backend: boot %s", "complete" if ok else "FAILED")
+        _show_boot_failure_warning_if_needed(self._window, ok)
+        if self._then is not None:
+            self._then()
+        # Next step from the event loop, never nested inside this callback.
+        QTimer.singleShot(0, self._start_sbert)
+
+    @Slot()
+    def _start_sbert(self) -> None:
+        from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
+
+        self.sbert_checked = True
+        try:
+            cached = _sbert_model_cached()
+        except Exception:  # noqa: BLE001 — never let the RAG check hurt boot
+            logging.exception("SBERT cache probe failed — coach falls back to dense similarity")
+            return
+        if cached:
+            return
+        worker = Worker(_download_sbert_model)
+        worker.signals.error.connect(self._on_sbert_error)
+        QThreadPool.globalInstance().start(worker)
+
+    @Slot(str)
+    def _on_sbert_error(self, msg: str) -> None:
+        logging.error(
+            "SBERT model download failed — coach will fall back to dense similarity: %s", msg
+        )
+
+
+def _start_backend_async(
+    window: MainWindow, then: Optional[Callable[[], None]] = None
+) -> _BootCoordinator:
+    """Console boot + daemon spawn on the thread pool, then landing + SBERT check."""
+    coordinator = _BootCoordinator(window, then=then, parent=window)
+    coordinator.start()
+    return coordinator
+
+
+def _schedule_backend_boot(screens: dict, start: Callable[[], None], window=None) -> bool:
+    """Start the backend now, or after the setup wizard on a first run.
+
+    Returns True when ``start`` ran immediately. On a first run nothing is
+    booted (no database, no daemon, no downloads) until the user either
+    finishes the wizard (``setup_completed``) or leaves it through the
+    sidebar (``window.screen_changed`` to any other screen) — skipping the
+    wizard means accepting the default data location. ``start`` runs once.
+    """
+    from Programma_CS2_RENAN.core.config import get_setting
+
+    wizard = screens.get("wizard")
+    if get_setting("SETUP_COMPLETED", False) or wizard is None:
+        start()
+        return True
+
+    fired = {"done": False}
+
+    def _once() -> None:
+        if fired["done"]:
+            return
+        fired["done"] = True
+        start()
+
+    wizard.setup_completed.connect(_once)
+    if window is not None:
+        window.screen_changed.connect(lambda name: name != "wizard" and _once())
+    return False
+
+
+def _init_database_schema() -> None:
+    """Schema-only step (create_all + missing columns) before the UI queries anything."""
+    try:
+        from Programma_CS2_RENAN.backend.storage.database import init_database
+
+        init_database()
+    except Exception:
+        logging.exception("Database schema init failed — screens will show error states")
+
+
+def _boot_ui(app: QApplication, theme: ThemeEngine, app_version: str):
+    """Compose and show the dashboard under the splash. Returns (window, screens).
+
+    The splash is closed in ``finally`` — on the success path via
+    ``finish(window)`` once the window is exposed, on every error path via
+    ``close()`` — so no boot failure can strand it on screen. A half-built
+    MainWindow is destroyed on failure (D-37: no hidden window survives).
+    """
+    phases = _PhaseTimer()
+    splash = _create_splash(app_version)
+    splash.setAttribute(Qt.WA_DeleteOnClose, True)
+    splash.show()
+    QApplication.processEvents()
+    phases.mark("splash")
+
+    window: Optional[MainWindow] = None
+    try:
+        _apply_theme(app, splash, theme)
+        phases.mark("theme")
+
+        _splash_status(splash, "Creating main window...")
+        window = MainWindow()
+        window.apply_wallpaper_state(theme)
+        phases.mark("main window")
+
+        placeholders = create_placeholder_screens()
+        _splash_status(splash, "Initializing screens...")
+        real_screens = _create_screens(theme)
+        placeholders.update(real_screens)
+        _wire_screen_signals(window, real_screens)
+        phases.mark("screens")
+
+        _splash_status(splash, "Registering screens...")
+        for name, widget in placeholders.items():
+            window.register_screen(name, widget)
+
+        # First-run gate
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        window.switch_screen("home" if get_setting("SETUP_COMPLETED", False) else "wizard")
+
+        # Store reference for theme switching from settings later
+        window._theme_engine = theme
+
+        _splash_status(splash, "Ready!")
+        window.show()
+        # DOCK-01: a restored floating window can steal first presentation —
+        # the main window must end up in front and focused on every boot.
+        window.raise_()
+        window.activateWindow()
+        phases.mark("window shown")
+        return window, real_screens
+    except BaseException:
+        if window is not None:
+            window.deleteLater()
+        raise
+    finally:
+        if window is not None and window.isVisible():
+            splash.finish(window)
+        else:
+            splash.close()
+
+
+def _raise_window(window: MainWindow) -> None:
+    window.showNormal()
+    window.raise_()
+    window.activateWindow()
+
+
+def _run_gui(argv: list) -> int:
+    if QApplication.instance() is None:
+        # High-DPI support — must precede QApplication construction.
+        QApplication.setHighDpiScaleFactorRoundingPolicy(
+            Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+        )
+    app = QApplication.instance() or QApplication([sys.argv[0], *argv])
 
     app_version = _resolve_app_version()
     app.setApplicationName(f"Macena CS2 Analyzer v{app_version}")
     app.setApplicationVersion(app_version)
 
-    # Q6-TRAY: the single-instance guard finally has a production caller —
-    # two GUI processes mean two Consoles + two session-engine daemons
-    # writing the same SQLite files (the exact hazard the guard documents).
+    # Q6-TRAY: the single-instance guard — two GUI processes mean two
+    # Consoles + two session-engine daemons writing the same SQLite files.
+    from Programma_CS2_RENAN.apps.qt_app.core import instance_guard
     from Programma_CS2_RENAN.core.lifecycle import lifecycle
 
     if not lifecycle.ensure_single_instance():
+        # Close-to-tray keeps the first instance alive; ask it to come to
+        # the front instead of refusing with a dialog.
+        if instance_guard.notify_running_instance(INSTANCE_NAME):
+            logging.info("Macena is already running — raised the existing window")
+            return 0
         QMessageBox.warning(
             None,
             "Macena CS2 Analyzer",
-            "Macena is already running — check the system tray " "(bottom-right, near the clock).",
+            "Macena is already running — check the system tray (bottom-right, near the clock).",
         )
         return 1
 
@@ -344,43 +578,20 @@ def main():
     theme = ThemeEngine()
     theme.register_fonts()
 
-    splash = _create_splash(app_version)
-    splash.show()
-    QApplication.processEvents()
-
     # Connect graceful shutdown early — active even if boot fails
     _install_quit_handler(app)
 
-    theme = _apply_theme(app, splash, theme)
-
-    _splash_status(splash, "Creating main window...")
-    window = MainWindow()
-    window.apply_wallpaper_state(theme)
-
-    placeholders = create_placeholder_screens()
-
-    _splash_status(splash, "Initializing screens...")
-    real_screens = _create_screens(theme)
-    placeholders.update(real_screens)
-    _wire_screen_signals(window, real_screens)
-
-    _splash_status(splash, "Registering screens...")
-    for name, widget in placeholders.items():
-        window.register_screen(name, widget)
-
-    # First-run gate
     from Programma_CS2_RENAN.core.config import get_setting
 
-    if get_setting("SETUP_COMPLETED", False):
-        window.switch_screen("home")
-    else:
-        window.switch_screen("wizard")
+    first_run = not get_setting("SETUP_COMPLETED", False)
+    if not first_run:
+        _init_database_schema()
 
-    # Store reference for theme switching from settings later
-    window._theme_engine = theme
+    window, screens = _boot_ui(app, theme, app_version)
 
-    boot_ok = _boot_backend_services(splash)
-    _ensure_sbert_model(splash)
+    guard = instance_guard.InstanceGuard(INSTANCE_NAME, parent=window)
+    guard.listen(lambda: _raise_window(window))
+    window._instance_guard = guard
 
     # Q6-TRAY: tray icon + close-to-tray. When a tray exists the app must
     # NOT die with the last hidden window — quit flows only through the
@@ -392,16 +603,19 @@ def main():
         window.attach_tray(tray)
         app.setQuitOnLastWindowClosed(False)
 
-    _splash_status(splash, "Ready!")
-    window.show()
-    # DOCK-01: a restored floating coach dock is its own top-level window
-    # and can steal first presentation — the main window must end up in
-    # front and focused on every boot.
-    window.raise_()
-    window.activateWindow()
-    splash.finish(window)
+    # Backend (Console, daemon, SBERT) after the window is up; on a first
+    # run only once the wizard is finished or skipped, then land on home
+    # (unless the user already navigated elsewhere).
+    def _land_on_home() -> None:
+        if window.current_screen_name() == "wizard":
+            window.switch_screen("home")
 
-    _show_boot_failure_warning_if_needed(window, boot_ok)
+    then = _land_on_home if first_run else None
+
+    def _start_backend() -> None:
+        window._boot_coordinator = _start_backend_async(window, then=then)
+
+    _schedule_backend_boot(screens, start=_start_backend, window=window)
 
     # Background CoachState polling (10s interval)
     from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
@@ -410,8 +624,39 @@ def main():
 
     _install_qt_excepthook()
 
-    sys.exit(app.exec())
+    return app.exec()
+
+
+def _run_daemon() -> int:
+    """``--daemon``: run the Session Engine in this process (spawned by the GUI)."""
+    os.environ.setdefault("CS2_LOG_ROLE", "daemon")
+    from Programma_CS2_RENAN.core.session_engine import run_session_loop
+
+    run_session_loop()
+    return 0
+
+
+def _run_selftest() -> int:
+    """``--selftest``: headless runtime probe for the packaged build."""
+    from Programma_CS2_RENAN.core.selftest import main as selftest_main
+
+    return selftest_main()
+
+
+def main(argv=None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+
+    # Frozen-build hook: multiprocessing.freeze_support() + cwd stabilisation.
+    # The module runs hook() on import; this is its production caller (it was
+    # dead code — the PyInstaller spec declares no runtime hooks).
+    from Programma_CS2_RENAN.core import frozen_hook  # noqa: F401
+
+    if "--daemon" in args:
+        return _run_daemon()
+    if "--selftest" in args:
+        return _run_selftest()
+    return _run_gui([a for a in args if a not in ("--daemon", "--selftest")])
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
