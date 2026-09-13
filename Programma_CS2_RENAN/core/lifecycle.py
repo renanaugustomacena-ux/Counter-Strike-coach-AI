@@ -9,6 +9,17 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.lifecycle")
 
+# The Session Engine runs as its own process (Scanner/Digester/Teacher/Pulse).
+# Source layout: ``python -m <module>``. Frozen build: the exe re-enters
+# itself with ``--daemon`` (app.main dispatches before any Qt work) because
+# ``sys.executable`` IS the GUI and no ``.py`` ships in the bundle.
+DAEMON_MODULE = "Programma_CS2_RENAN.core.session_engine"
+DAEMON_FLAG = "--daemon"
+
+
+def _is_frozen() -> bool:
+    return bool(getattr(sys, "frozen", False))
+
 
 class AppLifecycleManager:
     """
@@ -91,6 +102,39 @@ class AppLifecycleManager:
             # Fail closed to protect DB
             return False
 
+    def daemon_command(self) -> list:
+        """argv that starts the Session Engine in a child process."""
+        if _is_frozen():
+            return [sys.executable, DAEMON_FLAG]
+        return [sys.executable, "-m", DAEMON_MODULE]
+
+    @staticmethod
+    def hidden_console_kwargs() -> dict:
+        """Popen kwargs that keep a Windows child from opening a console window.
+
+        A console-subsystem child of a windowless parent (pythonw, an
+        Explorer shortcut, the packaged exe) gets a brand-new console
+        allocated — the blank black window users saw at launch. Same
+        pattern as ``backend/control/console.py`` ServiceSupervisor.
+        """
+        if os.name != "nt":
+            return {}
+        info = subprocess.STARTUPINFO()
+        info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        info.wShowWindow = subprocess.SW_HIDE
+        return {"creationflags": subprocess.CREATE_NO_WINDOW, "startupinfo": info}
+
+    def daemon_log_dir(self) -> Path:
+        """Daemon stdout/stderr live with the other logs, never in the repo root."""
+        from Programma_CS2_RENAN.core import config
+
+        return Path(config.LOG_DIR)
+
+    def daemon_cwd(self) -> Path:
+        if _is_frozen():
+            return Path(os.path.dirname(sys.executable))
+        return self.project_root
+
     def launch_daemon(self):
         """
         Launches the Session Engine daemon (Scanner/Digester/Teacher).
@@ -99,17 +143,20 @@ class AppLifecycleManager:
         if self._daemon_process and self._daemon_process.poll() is None:
             return self._daemon_process
 
-        script_path = self.project_root / "Programma_CS2_RENAN" / "core" / "session_engine.py"
-        if not script_path.exists():
-            logger.critical("Session Engine not found at %s", script_path)
-            return None
+        frozen = _is_frozen()
+        if not frozen:
+            script_path = self.project_root / "Programma_CS2_RENAN" / "core" / "session_engine.py"
+            if not script_path.exists():
+                logger.critical("Session Engine not found at %s", script_path)
+                return None
 
         try:
-            cmd = [sys.executable, str(script_path)]
+            cmd = self.daemon_command()
 
             # Prepare Environment
             env = os.environ.copy()
-            env["PYTHONPATH"] = str(self.project_root) + os.pathsep + env.get("PYTHONPATH", "")
+            if not frozen:
+                env["PYTHONPATH"] = str(self.project_root) + os.pathsep + env.get("PYTHONPATH", "")
             # F-0011: the daemon process writes its own rotating log file
             # (cs2_analyzer_daemon.log) instead of racing the app's file.
             env["CS2_LOG_ROLE"] = "daemon"
@@ -120,17 +167,20 @@ class AppLifecycleManager:
                     handle.close()
 
             # Redirect Output — keep handles for cleanup
-            self._out_log = open(self.project_root / "daemon_out.log", "w")
-            self._err_log = open(self.project_root / "daemon_err.log", "w")
+            log_dir = self.daemon_log_dir()
+            log_dir.mkdir(parents=True, exist_ok=True)
+            self._out_log = open(log_dir / "daemon_out.log", "w")
+            self._err_log = open(log_dir / "daemon_err.log", "w")
 
             try:
                 self._daemon_process = subprocess.Popen(
                     cmd,
-                    cwd=str(self.project_root),
+                    cwd=str(self.daemon_cwd()),
                     stdin=subprocess.PIPE,  # For IPC signaling capability
                     stdout=self._out_log,
                     stderr=self._err_log,
                     env=env,
+                    **self.hidden_console_kwargs(),
                 )
             except (OSError, ValueError, subprocess.SubprocessError):
                 # OSError: exec target missing / permission denied / fork failure.

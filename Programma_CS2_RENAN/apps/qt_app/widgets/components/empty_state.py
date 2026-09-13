@@ -93,6 +93,13 @@ class EmptyState(QWidget):
                 self._svg.setFixedSize(200, 140)
                 layout.addWidget(self._svg, alignment=Qt.AlignCenter)
 
+        # Every slot below is parented and laid out UNCONDITIONALLY and only
+        # its visibility follows the text. The old "add to the layout only
+        # when the text is non-empty" pattern left empty slots parentless,
+        # and a later set_description("...") turned that orphan QLabel into
+        # its own top-level window (the stray window seen at every launch
+        # from pro_player_detail_screen's empty state).
+
         # Icon (text fallback / companion) — sits centered inside a 64px
         # rounded-square surface_sunken well per frame 20.
         self._icon_label = QLabel(icon_text)
@@ -100,19 +107,17 @@ class EmptyState(QWidget):
         self._icon_label.setFont(Typography.font("display"))
         self._icon_label.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
 
-        self._icon_well = QFrame()
+        self._icon_well = QFrame(self)
         self._icon_well.setObjectName("empty_state_well")
         self._icon_well.setFixedSize(64, 64)
         well_layout = QVBoxLayout(self._icon_well)
         well_layout.setContentsMargins(0, 0, 0, 0)
         well_layout.addWidget(self._icon_label, alignment=Qt.AlignCenter)
-        if icon_text and self._svg is None:
-            layout.addWidget(self._icon_well, alignment=Qt.AlignHCenter)
-        else:
-            self._icon_well.setVisible(False)
+        layout.addWidget(self._icon_well, alignment=Qt.AlignHCenter)
+        self._icon_well.setVisible(bool(icon_text) and self._svg is None)
 
         # Title
-        self._title_label = QLabel(title)
+        self._title_label = QLabel(title, self)
         self._title_label.setAlignment(Qt.AlignCenter)
         self._title_label.setFont(Typography.font("title"))
         self._title_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
@@ -120,18 +125,16 @@ class EmptyState(QWidget):
         layout.addWidget(self._title_label)
 
         # Description
-        self._desc_label = QLabel(description)
+        self._desc_label = QLabel(description, self)
         self._desc_label.setAlignment(Qt.AlignCenter)
         self._desc_label.setFont(Typography.font("body"))
         self._desc_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         self._desc_label.setWordWrap(True)
-        if description:
-            layout.addWidget(self._desc_label)
-        else:
-            self._desc_label.setVisible(False)
+        layout.addWidget(self._desc_label)
+        self._desc_label.setVisible(bool(description))
 
         # CTAs (primary + optional ghost secondary in a single row)
-        self._cta_row = QWidget()
+        self._cta_row = QWidget(self)
         cta_row_layout = QHBoxLayout(self._cta_row)
         cta_row_layout.setContentsMargins(0, 0, 0, 0)
         cta_row_layout.setSpacing(tokens.spacing_md)
@@ -140,37 +143,29 @@ class EmptyState(QWidget):
         self._cta_button = make_button(cta_text, variant="primary")
         self._cta_button.setFixedHeight(36)
         self._cta_button.clicked.connect(self.action_clicked.emit)
-        if cta_text:
-            cta_row_layout.addWidget(self._cta_button)
-        else:
-            self._cta_button.setVisible(False)
+        cta_row_layout.addWidget(self._cta_button)
+        self._cta_button.setVisible(bool(cta_text))
 
         self._secondary_button = make_button(secondary_cta_text, variant="ghost")
         self._secondary_button.setFixedHeight(36)
         self._secondary_button.clicked.connect(self.secondary_action_clicked.emit)
-        if secondary_cta_text:
-            cta_row_layout.addWidget(self._secondary_button)
-        else:
-            self._secondary_button.setVisible(False)
+        cta_row_layout.addWidget(self._secondary_button)
+        self._secondary_button.setVisible(bool(secondary_cta_text))
 
         cta_row_layout.addStretch()
-        if cta_text or secondary_cta_text:
-            layout.addWidget(self._cta_row)
-        else:
-            self._cta_row.setVisible(False)
+        layout.addWidget(self._cta_row)
+        self._cta_row.setVisible(bool(cta_text or secondary_cta_text))
 
         # Ghost link row (frame 20) — info-colored flat text button.
-        self._link_button = QPushButton(link_text)
+        self._link_button = QPushButton(link_text, self)
         self._link_button.setObjectName("empty_state_link")
         self._link_button.setCursor(Qt.PointingHandCursor)
         self._link_button.setFlat(True)
         self._link_button.clicked.connect(self.link_clicked.emit)
         if link_cb is not None:
             self._link_button.clicked.connect(lambda: link_cb())
-        if link_text:
-            layout.addWidget(self._link_button, alignment=Qt.AlignHCenter)
-        else:
-            self._link_button.setVisible(False)
+        layout.addWidget(self._link_button, alignment=Qt.AlignHCenter)
+        self._link_button.setVisible(bool(link_text))
 
         # Skeleton bars for loading mode (built lazily so non-loading
         # callers don't pay the layout cost).
@@ -302,8 +297,7 @@ class EmptyState(QWidget):
             skel_layout.addWidget(bar, alignment=Qt.AlignCenter)
 
         self._skeleton = skeleton
-        # Insert after the icon slot (index 0 if no svg/well, otherwise after it)
+        # Insert right after the icon slot (the well is always laid out now).
         layout = self.layout()
-        insert_at = 1 if (self._svg is not None or self._icon_well.isVisible()) else 0
-        layout.insertWidget(insert_at, skeleton)
+        layout.insertWidget(layout.indexOf(self._icon_well) + 1, skeleton)
         skeleton.setVisible(False)

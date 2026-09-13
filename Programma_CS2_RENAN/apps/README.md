@@ -183,20 +183,16 @@ python -m Programma_CS2_RENAN.apps.qt_app.app
 ./launch.sh
 ```
 
-The boot sequence in `app.py`:
-1. High-DPI scaling configured
-2. `QApplication` created, version read from package metadata
-3. Single-instance guard (`lifecycle.ensure_single_instance()`) — shows a warning dialog and exits if another instance is already running
-4. `ThemeEngine` created and custom fonts registered; a themed splash screen (colors from the active theme's design tokens) is shown
-5. Graceful shutdown handler connected (`aboutToQuit`)
-6. Persisted theme and font settings applied
-7. `MainWindow` created with sidebar navigation
-8. All 15 screens instantiated and registered in the `QStackedWidget`; cross-screen signals wired (match selection → detail, wizard → home, highlight moments → tactical viewer, pro comparison → pro detail)
-9. First-run gate: shows `WizardScreen` if setup not completed, else `HomeScreen`
-10. Backend console booted (`get_console().boot()`) and the Session Engine daemon launched
-11. SBERT language model checked (downloaded on first run, with splash progress)
-12. System tray built (`build_tray`); if a tray is available, `setQuitOnLastWindowClosed(False)` enables close-to-tray behavior
-13. `AppState` polling started (10-second interval)
+The boot sequence in `app.py` (`main(argv)`):
+
+1. argv dispatch before any Qt work: `--daemon` runs the Session Engine in this process (this is how the GUI spawns it — as `python -m Programma_CS2_RENAN.core.session_engine` from source, as `<exe> --daemon` when frozen), `--selftest` runs the headless runtime probe (`core/selftest.py`, JSON report, exit code); `core/frozen_hook` is imported here (multiprocessing freeze support)
+2. High-DPI scaling configured, `QApplication` created, version read from package metadata
+3. Single-instance guard (`lifecycle.ensure_single_instance()`) — a second launch asks the running instance to raise its window over a local socket (`core/instance_guard.py`) and exits silently; the warning dialog is only the fallback when nobody answers
+4. `ThemeEngine` created and custom fonts registered; graceful shutdown handler connected (`aboutToQuit`); when setup is already completed the database schema is initialised (`init_database`) so no screen queries a table that does not exist
+5. `_boot_ui`: a themed splash screen is shown ONLY while the UI is composed — theme applied, `MainWindow` created, all 15 screens instantiated and registered in the `QStackedWidget`, cross-screen signals wired (match selection → detail, highlight moments → tactical viewer, pro comparison → pro detail), first-run gate (`WizardScreen` if setup not completed, else `HomeScreen`), window shown. The splash is closed in `finally`, so no boot error can strand it on screen; one INFO line per phase ("boot phase …") records the timeline
+6. Instance guard starts listening; system tray built (`build_tray`); if a tray is available, `setQuitOnLastWindowClosed(False)` enables close-to-tray behavior
+7. Backend boot on the thread pool AFTER the window is visible: `get_console().boot()` + the Session Engine daemon (`lifecycle.launch_daemon()`, spawned with a hidden console), then the SBERT language model check/download in the background (toasts, never blocking). On a first run this whole step waits for the wizard's `setup_completed` and then lands on `HomeScreen`
+8. `AppState` polling started (10-second interval)
 
 ### PyInstaller Bundle
 

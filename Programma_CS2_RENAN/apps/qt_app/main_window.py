@@ -470,6 +470,14 @@ class MainWindow(QMainWindow):
             self._sound_manager = mgr
         return mgr
 
+    def current_screen_name(self) -> str:
+        """Name of the screen the stack is showing ("" before any switch)."""
+        idx = self._stack.currentIndex()
+        for name, registered in self._screens.items():
+            if registered == idx:
+                return name
+        return ""
+
     def switch_screen(self, name: str):
         """Navigate to a named screen."""
         self._sound().play("click")
