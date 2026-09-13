@@ -25,6 +25,18 @@ def test_build_script_builds_the_spec_directly_and_runs_the_selftest():
     assert "LOCALAPPDATA" in bat
     assert "icacls" in bat
     assert "windows_installer.iss" in bat
+    # Inno Setup installs per-user by default (no admin): look there before Program Files.
+    assert "%LOCALAPPDATA%\\Programs\\Inno Setup 6\\ISCC.exe" in bat
+    assert "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" in bat
+    # Long-path guard: the frozen tree is built into a short folder and handed to
+    # ISCC as /DDistDir (torch license files sit 182 chars below the dist root).
+    assert "--distpath" in bat and "--workpath" in bat
+    assert "/DDistDir=" in bat
+    # 182 chars below the dist root + "\dist\Macena_CS2_Analyzer": the build
+    # root must stay short (%TEMP%\macena_build overflowed at 260 with a
+    # long-form TEMP) and the script must check the length before building.
+    assert 'set "BUILD_ROOT=%TEMP%\\mcb"' in bat
+    assert "MAX_DIST_ROOT" in bat
 
 
 def test_build_pipeline_looks_for_the_spec_under_packaging():

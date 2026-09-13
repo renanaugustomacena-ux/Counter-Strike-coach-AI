@@ -93,6 +93,7 @@ excludes = ['pytest', 'coverage', 'pre_commit', 'black', 'isort',
 
 Crea un eseguibile di setup per Windows (`dist/Macena_CS2_Installer_<versione>.exe`) con:
 - **Versione:** `AppVersion={#AppVersion}` da `version.iss`, generato da `pyproject.toml` con `tools/gen_version_iss.py` (mai modificato a mano)
+- **Sorgenti:** `{#DistDir}\Macena_CS2_Analyzer\*` — lo script di build passa `/DDistDir=%TEMP%\mcb\dist` (percorso corto: i file di licenza annidati di torch stanno 182 caratteri sotto la radice di dist e ISCC non apre percorsi oltre i 260); il default è `..\dist` del repository
 - **Percorso di installazione:** `Program Files\Macena_CS2_Analyzer` — solo 64 bit (`ArchitecturesInstallIn64BitMode=x64compatible`); per macchina di default, per utente su richiesta (`PrivilegesRequiredOverridesAllowed=dialog`)
 - **Dati utente:** mai accanto all'exe — `%LOCALAPPDATA%\MacenaCS2Analyzer` o la cartella scelta nel wizard (D-52); la disinstallazione chiede prima di rimuoverli e di default li conserva
 - **Lingue:** Inglese, Italiano, Portoghese Brasiliano

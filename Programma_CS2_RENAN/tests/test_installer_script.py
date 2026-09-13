@@ -65,7 +65,61 @@ def test_uninstall_asks_before_removing_the_user_data_folder():
     assert re.search(r"MsgBox\([^;]*mbConfirmation", text, re.S)
 
 
+_ISPP_DIRECTIVES = {
+    "#include",
+    "#define",
+    "#ifexist",
+    "#ifnexist",
+    "#if",
+    "#ifdef",
+    "#ifndef",
+    "#else",
+    "#elif",
+    "#endif",
+    "#pragma",
+    "#error",
+}
+
+
+def test_no_code_line_starts_with_a_hash_that_ispp_would_read_as_a_directive():
+    # ISCC 6.7.3: a [Code] continuation line beginning with `#13#10` aborts the
+    # compile with "Unknown preprocessor directive" (line 90 of the first build).
+    for number, line in enumerate(_iss().splitlines(), 1):
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            word = stripped.split()[0]
+            assert word in _ISPP_DIRECTIVES, f"line {number}: {stripped[:40]!r}"
+
+
+def test_the_dist_folder_is_a_preprocessor_parameter_for_short_build_paths():
+    # torch's nested license files sit 182 characters below the dist root;
+    # from a long checkout path they pass 260 and ISCC aborts with "The system
+    # cannot find the path specified". The build script therefore builds into
+    # a short folder and passes it as /DDistDir; the default stays ..\dist.
+    text = _iss()
+    assert "#ifndef DistDir" in text
+    assert '#define DistDir "..\\dist"' in text
+    assert 'Source: "{#DistDir}\\Macena_CS2_Analyzer\\*"' in text
+    assert 'Source: "..\\dist\\Macena_CS2_Analyzer\\*"' not in text
+
+
 def test_no_dem_file_association_and_the_redist_is_optional():
     text = _iss()
     assert ".dem" not in text
     assert "#ifexist" in text and "vc_redist.x64.exe" in text
+
+
+def test_lessons_from_the_first_compiled_installer():
+    text = _iss()
+    # One self-contained exe: the first compile shipped a separate 457 MB
+    # "-1.bin" slice that a user could forget to copy.
+    assert re.search(r"^DiskSpanning=no", text, re.M)
+    assert "DiskClusterSize" not in text
+    # ISCC warning: {userdesktop} under PrivilegesRequired=admin puts the icon
+    # on the administrator's desktop; {autodesktop} follows the install mode.
+    assert "{userdesktop}" not in text and "{autodesktop}" in text
+    # The VC++ redistributable needs elevation: run it only in an admin install
+    # (a per-user install cannot elevate and the first smoke stalled on it).
+    for line in text.splitlines():
+        if "vc_redist.x64.exe" in line and line.startswith(("Source:", "Filename:")):
+            assert "IsAdminInstallMode" in line, line

@@ -36,10 +36,27 @@ if not exist Programma_CS2_RENAN\models\global\*.pt (
     echo [!] No .pt checkpoint in Programma_CS2_RENAN\models\global - the installer ships no factory model.
 )
 
-:: 1.5 Forensic Cleanup
-echo [*] Cleaning previous build artifacts...
+:: 1.5 Forensic Cleanup. The frozen tree is built into a SHORT folder: torch's
+::     nested license files sit 182 characters below the dist root, and from a
+::     long checkout path they pass Windows' 260-character limit (ISCC then
+::     fails with "The system cannot find the path specified").
+set "BUILD_ROOT=%TEMP%\mcb"
+:: The deepest bundled file is 182 characters below <BUILD_ROOT>\dist\Macena_CS2_Analyzer,
+:: so that folder must stay within 77 characters (260 - 182 - 1). Checked here
+:: because a long-form TEMP with a longer user name silently breaks ISCC later.
+set "MAX_DIST_ROOT=77"
+python -c "import sys, os; p = os.path.join(sys.argv[1], 'dist', 'Macena_CS2_Analyzer'); print('[*] dist root: %%s (%%d chars, max %%s)' %% (p, len(p), sys.argv[2])); sys.exit(1 if len(p) > int(sys.argv[2]) else 0)" "%BUILD_ROOT%" "%MAX_DIST_ROOT%"
+if %ERRORLEVEL% neq 0 (
+    echo [!] Build root too long for the bundled torch paths. Set TEMP to a short folder (e.g. C:\t) and retry.
+    pause
+    exit /b 1
+)
+echo [*] Cleaning previous build artifacts (%BUILD_ROOT%, dist\Macena_CS2_Installer_*.exe)...
+if exist "%BUILD_ROOT%" rmdir /s /q "%BUILD_ROOT%"
 if exist build rmdir /s /q build
-if exist dist rmdir /s /q dist
+if not exist dist mkdir dist
+del /q dist\Macena_CS2_Installer_*.exe 2>nul
+mkdir "%BUILD_ROOT%"
 
 echo [*] Synchronizing Database Schema...
 "%VENV%\Scripts\alembic.exe" upgrade head
@@ -68,17 +85,18 @@ if %ERRORLEVEL% neq 0 (
 )
 
 :: 2. Run PyInstaller
-echo [*] Building Executable (PyInstaller, packaging\cs2_analyzer_win.spec)...
-python -m PyInstaller --noconfirm packaging\cs2_analyzer_win.spec --log-level WARN
+echo [*] Building Executable (PyInstaller, packaging\cs2_analyzer_win.spec) into %BUILD_ROOT%...
+python -m PyInstaller --noconfirm packaging\cs2_analyzer_win.spec --log-level WARN --distpath "%BUILD_ROOT%\dist" --workpath "%BUILD_ROOT%\build"
 if %ERRORLEVEL% neq 0 (
     echo [!] Build failed! See the PyInstaller output above.
     pause
     exit /b 1
 )
+set "DIST_APP=%BUILD_ROOT%\dist\Macena_CS2_Analyzer"
 
 :: 2.5 Master Binary Integrity Audit
 echo [*] Executing Master Binary Security Audit...
-python tools\audit_binaries.py
+python tools\audit_binaries.py "%DIST_APP%"
 if %ERRORLEVEL% neq 0 (
     echo [!] Binary audit failed! Distribution is insecure.
     pause
@@ -91,13 +109,13 @@ echo [+] Security Chain locked for all bundled DLLs.
 echo [*] Running the packaged selftest...
 set "SELFTEST_HOME=%TEMP%\macena_selftest_%RANDOM%"
 mkdir "%SELFTEST_HOME%"
-icacls "dist\Macena_CS2_Analyzer" /deny "%USERNAME%:(OI)(CI)(W)" >nul
+icacls "%DIST_APP%" /deny "%USERNAME%:(OI)(CI)(W)" >nul
 set "LOCALAPPDATA_BACKUP=%LOCALAPPDATA%"
 set "LOCALAPPDATA=%SELFTEST_HOME%"
-start /wait "" "dist\Macena_CS2_Analyzer\Macena_CS2_Analyzer.exe" --selftest
+start /wait "" "%DIST_APP%\Macena_CS2_Analyzer.exe" --selftest
 set "SELFTEST_RC=%ERRORLEVEL%"
 set "LOCALAPPDATA=%LOCALAPPDATA_BACKUP%"
-icacls "dist\Macena_CS2_Analyzer" /remove:d "%USERNAME%" >nul
+icacls "%DIST_APP%" /remove:d "%USERNAME%" >nul
 if exist "%SELFTEST_HOME%\MacenaCS2Analyzer\selftest_report.json" type "%SELFTEST_HOME%\MacenaCS2Analyzer\selftest_report.json"
 rmdir /s /q "%SELFTEST_HOME%"
 if not "%SELFTEST_RC%"=="0" (
@@ -108,21 +126,25 @@ if not "%SELFTEST_RC%"=="0" (
 echo [+] Packaged selftest passed.
 
 :: 3. Compile Installer (optional if Inno Setup is installed)
+::    Inno Setup installs per-user by default (%LOCALAPPDATA%\Programs), so look
+::    there first, then the machine-wide locations.
 echo [*] Checking for Inno Setup Compiler...
-set "ISCC=C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+set "ISCC=%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"
+if not exist "!ISCC!" set "ISCC=C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+if not exist "!ISCC!" set "ISCC=C:\Program Files\Inno Setup 6\ISCC.exe"
 if exist "!ISCC!" (
-    echo [*] Compiling Windows Installer...
-    "!ISCC!" packaging\windows_installer.iss
+    echo [*] Compiling Windows Installer (sources from %BUILD_ROOT%\dist, output to dist\)...
+    "!ISCC!" "/DDistDir=%BUILD_ROOT%\dist" packaging\windows_installer.iss
     if !ERRORLEVEL! equ 0 (
         echo [+] PROFESSIONAL INSTALLER CREATED: see dist\Macena_CS2_Installer_*.exe
     ) else (
         echo [!] Inno Setup compilation failed!
     )
 ) else (
-    echo [!] Inno Setup (ISCC.exe) not found at !ISCC!
+    echo [!] Inno Setup (ISCC.exe) not found (looked under %%LOCALAPPDATA%%\Programs and Program Files).
     echo [!] Please install Inno Setup 6 or update the path in this script.
-    echo [!] Portable version available at: dist\Macena_CS2_Analyzer\
 )
+echo [i] Portable (unpacked) version available at: %DIST_APP%\
 
 echo =====================================================================
 echo BUILD PROCESS COMPLETE
