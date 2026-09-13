@@ -7,10 +7,23 @@ on application startup (TASK 2.20.1).
 
 import os
 import sys
+from pathlib import Path
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.db_migrate")
+
+
+def _alembic_paths() -> tuple[str, str]:
+    """``(alembic.ini, alembic/)`` -- the repo root in a checkout, the bundle
+    root (``_MEIPASS``) in a frozen build (WP4a: never the install directory
+    joined with the package dir, which exists in neither layout).
+    """
+    if getattr(sys, "frozen", False):
+        root = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+    else:
+        root = str(Path(__file__).resolve().parents[3])
+    return os.path.join(root, "alembic.ini"), os.path.join(root, "alembic")
 
 
 def ensure_database_current() -> bool:
@@ -30,10 +43,10 @@ def ensure_database_current() -> bool:
         from alembic.config import Config
         from alembic.runtime.migration import MigrationContext
         from alembic.script import ScriptDirectory
-        from Programma_CS2_RENAN.core.config import BASE_DIR, DATABASE_URL
+        from Programma_CS2_RENAN.core.config import DATABASE_URL
 
         # Locate alembic.ini
-        alembic_ini = os.path.join(BASE_DIR, "alembic.ini")
+        alembic_ini, alembic_scripts = _alembic_paths()
         if not os.path.exists(alembic_ini):
             logger.warning("alembic.ini not found at %s. Skipping migration.", alembic_ini)
             return True  # Not an error - development may not have alembic
@@ -41,7 +54,7 @@ def ensure_database_current() -> bool:
         # Create Alembic config
         alembic_cfg = Config(alembic_ini)
         alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
-        alembic_cfg.set_main_option("script_location", os.path.join(BASE_DIR, "alembic"))
+        alembic_cfg.set_main_option("script_location", alembic_scripts)
 
         # Check current vs target revision
         engine = create_engine(DATABASE_URL)
@@ -106,11 +119,10 @@ def get_head_revision() -> str | None:
     try:
         from alembic.config import Config
         from alembic.script import ScriptDirectory
-        from Programma_CS2_RENAN.core.config import BASE_DIR
 
-        alembic_ini = os.path.join(BASE_DIR, "alembic.ini")
+        alembic_ini, alembic_scripts = _alembic_paths()
         alembic_cfg = Config(alembic_ini)
-        alembic_cfg.set_main_option("script_location", os.path.join(BASE_DIR, "alembic"))
+        alembic_cfg.set_main_option("script_location", alembic_scripts)
 
         script = ScriptDirectory.from_config(alembic_cfg)
         return script.get_current_head()

@@ -46,7 +46,12 @@ def _load_dotenv_file() -> None:
     the variable by hand. Stdlib-only parser; real environment variables
     always win (setdefault); values are never logged (may hold secrets).
     """
-    env_path = Path(BASE_DIR).parent / ".env"
+    if IS_FROZEN:
+        # WP4a: the install dir is read-only and has no repo root; the
+        # per-user data folder is the documented place for a packaged .env.
+        env_path = Path(get_writeable_dir()) / ".env"
+    else:
+        env_path = Path(BASE_DIR).parent / ".env"
     if not env_path.is_file():
         return
     try:
@@ -69,9 +74,6 @@ def _load_dotenv_file() -> None:
         app_logger.warning("Could not read .env file: %s", exc)
 
 
-_load_dotenv_file()
-
-
 def get_writeable_dir() -> str:
     """Returns a directory where the application has write permissions."""
     if IS_FROZEN:
@@ -83,6 +85,9 @@ def get_writeable_dir() -> str:
     return BASE_DIR
 
 
+_load_dotenv_file()
+
+
 STORAGE_ROOT = get_writeable_dir()
 # C-02: Compute from get_writeable_dir() directly — not from STORAGE_ROOT which is
 # reassigned later (line ~268). This makes settings path independent of that ordering.
@@ -90,12 +95,16 @@ SETTINGS_PATH = os.path.join(get_writeable_dir(), "user_settings.json")
 
 
 def get_resource_path(relative_path: str) -> str:
-    """Returns absolute path to a read-only resource."""
+    """Returns absolute path to a read-only resource.
+
+    ``relative_path`` is relative to the package dir (``Programma_CS2_RENAN``)
+    in both layouts: the PyInstaller spec bundles every data file under
+    ``_MEIPASS/Programma_CS2_RENAN/<rel>`` (test_spec_datas_contract pins the
+    two sides together -- WP4a, the D-32 class of failure).
+    """
     if IS_FROZEN:
-        # PyInstaller temporary extraction folder
         base_path = getattr(sys, "_MEIPASS", BASE_DIR)
-        return os.path.join(base_path, relative_path)
-    # In source mode, relative_path is already relative to BASE_DIR (Programma_CS2_RENAN)
+        return os.path.join(base_path, "Programma_CS2_RENAN", relative_path)
     return os.path.join(BASE_DIR, relative_path)
 
 
@@ -321,7 +330,9 @@ def _resolve_match_data_path() -> str:
     move the whole corpus to ~/match_data.
     """
     pro_path = str(_settings.get("PRO_DEMO_PATH", ""))
-    in_project = os.path.join(os.path.join(get_base_dir(), "backend", "storage"), "match_data")
+    # "In-project" = beside the databases: the checkout's backend/storage in
+    # dev, <data root>/db when frozen (never the install dir, WP4a).
+    in_project = os.path.join(CORE_DB_DIR, "match_data")
     if not pro_path or not os.path.isdir(pro_path):
         return in_project
     if os.path.normpath(pro_path) == os.path.normpath(os.path.expanduser("~")):
@@ -335,7 +346,6 @@ def _resolve_match_data_path() -> str:
     return os.path.join(pro_path, "match_data")
 
 
-MATCH_DATA_PATH = _resolve_match_data_path()
 CUSTOM_STORAGE_PATH = _settings.get("CUSTOM_STORAGE_PATH", "")
 ACTIVE_THEME = _settings["ACTIVE_THEME"]
 BACKGROUND_IMAGE = _settings["BACKGROUND_IMAGE"]
@@ -345,46 +355,51 @@ LANGUAGE = _settings["LANGUAGE"]
 CURRENT_USER_ID = "default_user"
 
 # --- CRITICAL PATH ARCHITECTURE ---
-# The CORE DATABASE (training data, stats, ticks) ALWAYS lives in the PROJECT folder
-# for portability. Changing BRAIN_DATA_ROOT should NOT break existing training data.
+# Two layouts, one rule: nothing is ever written beside the executable.
 #
-# User-specified BRAIN_DATA_ROOT is used for:
-# - Neural network models (regeneratable)
-# - Logs
-# - Cache
-# - User-specific configs
+# Checkout (dev): the CORE DATABASE (training data, stats, ticks) ALWAYS lives
+# in the project folder for portability -- changing BRAIN_DATA_ROOT must NOT
+# break existing training data.  BRAIN_DATA_ROOT only relocates the
+# regeneratable user data (models, logs, cache, datasets).
 #
-# This ensures: if user changes BRAIN_DATA_ROOT, they only lose models (которые can retrain),
-# but never the raw training data (which is hard to recreate).
+# Frozen (installer, WP4a): the install directory is read-only, so the
+# database moves under the user data root too: LOCALAPPDATA/MacenaCS2Analyzer
+# by default, or the brain root the wizard chose (the whole tree, DB included).
 
-# CORE DB: Always in project folder (Single Source of Truth)
-CORE_DB_DIR = os.path.join(BASE_DIR, "backend", "storage")
-os.makedirs(CORE_DB_DIR, exist_ok=True)
-
-# User data: Uses BRAIN_DATA_ROOT if available, else project folder
+# User data root: BRAIN_DATA_ROOT if available, else the writable default
+# (the project folder in a checkout, the per-user folder when frozen).
 if BRAIN_DATA_ROOT and os.path.exists(BRAIN_DATA_ROOT):
     USER_DATA_ROOT = BRAIN_DATA_ROOT
 elif CUSTOM_STORAGE_PATH and os.path.exists(CUSTOM_STORAGE_PATH):
     USER_DATA_ROOT = CUSTOM_STORAGE_PATH
 else:
-    USER_DATA_ROOT = BASE_DIR
+    USER_DATA_ROOT = get_writeable_dir()
     if BRAIN_DATA_ROOT:
         app_logger.warning(
-            "Brain root path %s not found. Using project folder for user data.", BRAIN_DATA_ROOT
+            "Brain root path %s not found. Using %s for user data.",
+            BRAIN_DATA_ROOT,
+            USER_DATA_ROOT,
         )
     elif CUSTOM_STORAGE_PATH:
         app_logger.warning(
-            "Custom path %s not found. Using project folder for user data.", CUSTOM_STORAGE_PATH
+            "Custom path %s not found. Using %s for user data.",
+            CUSTOM_STORAGE_PATH,
+            USER_DATA_ROOT,
         )
 
+# CORE DB: project folder in a checkout (Single Source of Truth), <root>/db when frozen.
+if IS_FROZEN:
+    CORE_DB_DIR = os.path.join(USER_DATA_ROOT, "db")
+else:
+    CORE_DB_DIR = os.path.join(BASE_DIR, "backend", "storage")
+
 # STORAGE_ROOT re-assigned here to USER_DATA_ROOT for backwards compatibility.
-# NOTE: SETTINGS_PATH (line 51) intentionally used the pre-reassignment value
+# NOTE: SETTINGS_PATH (above) intentionally used the pre-reassignment value
 # (get_writeable_dir()) so settings remain readable even if BRAIN_DATA_ROOT is invalid.
 STORAGE_ROOT = USER_DATA_ROOT
 
-# Core database ALWAYS in project folder
 DB_DIR = CORE_DB_DIR
-# User data directories in user-specified folder
+# User data directories in the user data root
 LOG_DIR = os.path.join(USER_DATA_ROOT, "logs")
 DATA_DIR = os.path.join(USER_DATA_ROOT, "data")
 MODELS_DIR = os.path.join(USER_DATA_ROOT, "models")
@@ -396,13 +411,26 @@ from Programma_CS2_RENAN.observability.logger_setup import configure_log_dir  # 
 
 configure_log_dir(LOG_DIR)
 
-for d in [DB_DIR, LOG_DIR, DATA_DIR, MODELS_DIR, RUNS_DIR]:
-    os.makedirs(d, exist_ok=True)
 
-# SINGLE DATABASE - always in project folder
+def _ensure_dir(path: str) -> None:
+    """Create a data directory at import; a read-only location must never
+    abort the import (the packaged app would die before its first window)."""
+    try:
+        os.makedirs(path, exist_ok=True)
+    except OSError as exc:
+        app_logger.warning("Cannot create data directory %s: %s", path, exc)
+
+
+for d in [DB_DIR, LOG_DIR, DATA_DIR, MODELS_DIR, RUNS_DIR]:
+    _ensure_dir(d)
+
+# SINGLE DATABASE -- in CORE_DB_DIR in both layouts
 DATABASE_URL = f"sqlite:///{os.path.join(CORE_DB_DIR, 'database.db')}"
 KNOWLEDGE_DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'knowledge_base.db')}"
 HLTV_DATABASE_URL = f"sqlite:///{os.path.join(CORE_DB_DIR, 'hltv_metadata.db')}"
+
+# Per-match shard root: PRO_DEMO_PATH/match_data when configured, else beside the DB.
+MATCH_DATA_PATH = _resolve_match_data_path()
 
 
 def get_setting(key: str, default: Any = None) -> Any:
@@ -474,7 +502,7 @@ def get_pro_demo_base() -> Path:
     # default is the sanctioned IN-PROJECT storage dir: every DEMO_BASE
     # composition stays valid, and accidental sweeps touch a small
     # project-local tree instead of the user profile.
-    fallback = Path(__file__).resolve().parent.parent / "backend" / "storage"
+    fallback = Path(CORE_DB_DIR)
     app_logger.warning(
         "PRO_DEMO_PATH not configured/found — falling back to in-project %s "
         "(set PRO_DEMO_PATH in settings for a real pro-demo pool)",

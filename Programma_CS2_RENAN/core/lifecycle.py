@@ -14,6 +14,7 @@ logger = get_logger("cs2analyzer.lifecycle")
 # itself with ``--daemon`` (app.main dispatches before any Qt work) because
 # ``sys.executable`` IS the GUI and no ``.py`` ships in the bundle.
 DAEMON_MODULE = "Programma_CS2_RENAN.core.session_engine"
+GUI_MODULE = "Programma_CS2_RENAN.apps.qt_app.app"
 DAEMON_FLAG = "--daemon"
 
 
@@ -107,6 +108,13 @@ class AppLifecycleManager:
         if _is_frozen():
             return [sys.executable, DAEMON_FLAG]
         return [sys.executable, "-m", DAEMON_MODULE]
+
+    def relaunch_command(self) -> list:
+        """argv that starts a fresh GUI process (WP4a: applied after the wizard
+        picks a data root other than the one config resolved at import)."""
+        if _is_frozen():
+            return [sys.executable]
+        return [sys.executable, "-m", GUI_MODULE]
 
     @staticmethod
     def hidden_console_kwargs() -> dict:

@@ -17,6 +17,8 @@ import json
 import logging
 import logging.handlers
 import os
+import sys
+import tempfile
 import threading
 import uuid
 from datetime import datetime
@@ -121,6 +123,22 @@ def _resolve_log_level() -> int:
 # ---------------------------------------------------------------------------
 
 
+def _default_log_dir() -> str:
+    """Log directory before (or without) configure_log_dir().
+
+    A checkout keeps the historical relative ``logs``.  A frozen build must
+    never write beside the executable (Program Files is read-only and the
+    first ``get_logger`` call happens at config import, before LOG_DIR is
+    known), so it starts under the per-user data root instead (WP4a).
+    """
+    if _log_dir:
+        return _log_dir
+    if getattr(sys, "frozen", False):
+        base = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
+        return os.path.join(base, "MacenaCS2Analyzer", "logs")
+    return "logs"
+
+
 def configure_log_dir(log_dir: str) -> None:
     """Set the log directory.  Called by config.py after LOG_DIR is resolved.
 
@@ -212,9 +230,15 @@ def _ensure_root_handlers() -> logging.Logger:
 
     formatter = JSONFormatter()
 
-    # Use log directory set by configure_log_dir(), fall back to relative "logs"
-    log_dir = _log_dir or "logs"
-    os.makedirs(log_dir, exist_ok=True)
+    # Use log directory set by configure_log_dir(), else the mode's default.
+    log_dir = _default_log_dir()
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+    except OSError:
+        # Read-only location (install dir, locked-down profile): logging must
+        # never abort startup -- fall back to the temp dir.
+        log_dir = os.path.join(tempfile.gettempdir(), "MacenaCS2Analyzer", "logs")
+        os.makedirs(log_dir, exist_ok=True)
 
     file_handler = _create_file_handler(os.path.join(log_dir, _process_log_filename()), formatter)
 

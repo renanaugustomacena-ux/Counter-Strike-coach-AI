@@ -333,7 +333,9 @@ Entries from aesthetic round 1 (evidence in note 20; asterisks = fixed):
   hltv_metadata.db, no FAISS index, no coach-book dir — persistence.load_nn's
   factory-bundle fallback points at paths the bundle never contains, so neural
   features silently no-op on fresh installs; database.db is a pro+user monolith with
-  an unwired .empty_backup. Decide at packaging time.
+  an unwired .empty_backup. Decide at packaging time. PARTIAL 2026-09-13 (WP4a, D-52):
+  resource-path contract fixed and `hltv_metadata.db` seeded from the bundle on first
+  boot; the .pt / book / alembic.ini bundling itself is WP4c.
 - **D-33** Coaching chain unwired end-to-end (extends D-26): run_ml_pipeline /
   CoachingService / ExperienceBank.extract_experiences_from_demo /
   RoleThresholdStore.learn_from_pro_data / CSVMigrator seeding all lack production
@@ -384,8 +386,11 @@ Entries from verification round 3 (evidence in note 21; asterisks = fixed):
   `SummaryWriter`; `JEPA_V2_DATA_DIR` has no registered default.
 - **D-42** Exporter stamps `tick_rate="64"` literally and `patch_ticks=8` is fixed
   (Law III; Parte I §7.3 wants `P = round(rate/8)`). Re-export is the operator's call.
-- **D-43** `checkpoint_hashes.json` keyed by absolute path → CTF-1 inert off the
-  training box; file both tracked and gitignored.
+- ***D-43** `checkpoint_hashes.json` keyed by absolute path → CTF-1 inert off the
+  training box; file both tracked and gitignored. FIXED 2026-09-13 (WP4a): keys are
+  POSIX paths relative to the models root (`global/<name>.pt`), so a models folder that
+  moves with its registry keeps verifying; absolute keys written by older builds still
+  verify (`test_persistence_relative_hash_keys.py`).
 - **D-44** The step-0 freeze guards only `TrainingOrchestrator`; `jepa_train.py
   __main__`, `train.py`, Phase 2/3 `latest.pt`, `role_head`, `win_probability_trainer`
   still train.
@@ -464,6 +469,28 @@ Entries from the frontend-honesty & install round (2026-09-12; asterisks = fixed
   English fallback, the three guides are rewritten to the program that exists and
   shipped in en/it/pt, the callout path follows the platform, and
   `test_help_docs_truthful.py` forbids the phantom features from returning.
+- ***D-52** Installed layout (WP4a): `core/config.py` pinned `CORE_DB_DIR` under
+  `BASE_DIR` (= the install directory when frozen) and `makedirs` it at import —
+  `PermissionError` under Program Files, silent non-launch with `console=False`;
+  `get_resource_path` frozen resolved to `_MEIPASS/<rel>` while the spec bundles every
+  data file under `Programma_CS2_RENAN/<rel>` (help docs, both i18n loaders, themes,
+  fonts, map zones unreachable — the D-32 class); the first `get_logger` call created
+  `<cwd>/logs`, which after `frozen_hook`'s `chdir` is `_internal/logs`;
+  `observability/rasp.py` raised at import in any frozen build without
+  `CS2_MANIFEST_KEY`; `db_migrate` looked for `alembic.ini` beside the package (exists in
+  neither layout); `base_features`, `pro_baseline` and `storage_manager` composed paths
+  from `BASE_DIR`; the wizard's brain-root choice could not take effect (paths are
+  import-time constants). Fixed: frozen `USER_DATA_ROOT` = `%LOCALAPPDATA%\MacenaCS2Analyzer`
+  or the wizard's brain root, DB included (`CORE_DB_DIR = <root>/db`, `.env` there too,
+  guarded `makedirs`), applied by a relaunch when the chosen root differs
+  (`_relaunch_for_new_data_root`, before any backend boot); `get_resource_path` →
+  `_MEIPASS/Programma_CS2_RENAN/<rel>`, pinned to the spec by
+  `test_spec_datas_contract.py`; logger default dir per mode with a temp fallback; RASP
+  fail-closed moved into `run_rasp_audit`; alembic paths per layout; learned heuristics
+  beside the DB; bundled `hltv_metadata.db` seeded on first boot; the wizard's demo step
+  offers the pro demo folder (`PRO_DEMO_PATH`). The dev checkout is unchanged
+  (`test_config_frozen_paths.py`: the frozen import runs in a subprocess inside a fake
+  install dir that must stay byte-identical). D-43 fixed in the same round.
 
 ## 4. The AI roadmap (paper-grounded, invariant-filtered)
 

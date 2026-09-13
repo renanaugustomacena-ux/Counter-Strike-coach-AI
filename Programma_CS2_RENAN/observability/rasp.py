@@ -10,25 +10,20 @@ from typing import Dict, List, Tuple
 # injected at build time via environment variable. The fallback is a static key
 # which still detects casual tampering (not a motivated attacker with source).
 _MANIFEST_HMAC_KEY_RAW = os.environ.get("CS2_MANIFEST_KEY", "")
-if not _MANIFEST_HMAC_KEY_RAW:
-    # RP-01: Warn when using the static fallback key. Builds targeting
-    # end-users should set CS2_MANIFEST_KEY in the environment.
-    import logging as _log
-    import sys as _sys
-
-    if getattr(_sys, "frozen", False):
-        # R4 LOW: fail CLOSED in shipped builds — the public fallback
-        # constant lets anyone with source forge a valid signature, which
-        # voids the integrity protection exactly where it matters.
-        raise RuntimeError(
-            "[RP-01] CS2_MANIFEST_KEY is required in frozen builds — "
-            "refusing to fall back to the public development HMAC key."
-        )
-    _log.getLogger("cs2analyzer.rasp").warning(
-        "[RP-01] CS2_MANIFEST_KEY not set — using static fallback HMAC key "
-        "(DEV ONLY; frozen builds refuse to start without the env key)."
-    )
+# WP4a: whether the key came from the environment. Importing this module
+# never raises — a frozen build without the key fails CLOSED inside
+# run_rasp_audit (RP-01 / R4 LOW) instead of at import, so bundling the
+# module cannot brick startup on its own.
+_KEY_FROM_ENV = bool(_MANIFEST_HMAC_KEY_RAW)
+if not _KEY_FROM_ENV:
     _MANIFEST_HMAC_KEY_RAW = "macena-cs2-integrity-v1"
+    if not getattr(sys, "frozen", False):
+        import logging as _log
+
+        _log.getLogger("cs2analyzer.rasp").warning(
+            "[RP-01] CS2_MANIFEST_KEY not set — using static fallback HMAC key "
+            "(DEV ONLY; frozen builds refuse the audit without the env key)."
+        )
 _MANIFEST_HMAC_KEY = _MANIFEST_HMAC_KEY_RAW.encode("utf-8")
 
 
@@ -183,6 +178,15 @@ def run_rasp_audit(project_root: Path) -> bool:
     from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
     rasp_logger = get_logger("cs2analyzer.rasp")
+
+    if getattr(sys, "frozen", False) and not _KEY_FROM_ENV:
+        # R4 LOW: the public fallback constant lets anyone with source forge a
+        # valid signature, which voids the protection exactly where it matters.
+        rasp_logger.critical(
+            "[RP-01] CS2_MANIFEST_KEY is required in frozen builds — refusing to "
+            "audit with the public development HMAC key."
+        )
+        return False
 
     guard = RASPGuard(project_root)
 

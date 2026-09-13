@@ -60,7 +60,7 @@ apps/
     │   ├── tactical_viewer_screen.py # 2D map viewer with playback controls
     │   ├── pro_comparison_screen.py # Side-by-side user vs pro player analysis
     │   ├── pro_player_detail_screen.py # Pro player profile view
-    │   ├── wizard_screen.py         # First-run setup (Steam path, player name)
+    │   ├── wizard_screen.py         # First-run setup (player name, data root, own + pro demo folders)
     │   ├── settings_screen.py       # App settings (theme, font, language, paths)
     │   ├── user_profile_screen.py   # User profile editor
     │   ├── profile_screen.py        # Player profile overview
@@ -191,7 +191,7 @@ The boot sequence in `app.py` (`main(argv)`):
 4. `ThemeEngine` created and custom fonts registered; graceful shutdown handler connected (`aboutToQuit`); when setup is already completed the database schema is initialised (`init_database`) so no screen queries a table that does not exist
 5. `_boot_ui`: a themed splash screen is shown ONLY while the UI is composed — theme applied, `MainWindow` created, all 15 screens instantiated and registered in the `QStackedWidget`, cross-screen signals wired (match selection → detail, highlight moments → tactical viewer, pro comparison → pro detail), first-run gate (`WizardScreen` if setup not completed, else `HomeScreen`), window shown. The splash is closed in `finally`, so no boot error can strand it on screen; one INFO line per phase ("boot phase …") records the timeline
 6. Instance guard starts listening; system tray built (`build_tray`); if a tray is available, `setQuitOnLastWindowClosed(False)` enables close-to-tray behavior
-7. Backend boot on the thread pool AFTER the window is visible: `get_console().boot()` + the Session Engine daemon (`lifecycle.launch_daemon()`, spawned with a hidden console), then the SBERT language model check/download in the background (toasts, never blocking). On a first run this whole step waits for the wizard's `setup_completed` and then lands on `HomeScreen`
+7. Backend boot on the thread pool AFTER the window is visible: `get_console().boot()` + the Session Engine daemon (`lifecycle.launch_daemon()`, spawned with a hidden console), then the SBERT language model check/download in the background (toasts, never blocking). On a first run this whole step waits for the wizard's `setup_completed` and then lands on `HomeScreen`. If the wizard chose a data root other than the one `config` resolved at import, the app relaunches itself instead (`_relaunch_for_new_data_root`: lock released, fresh process started, this one quits) — paths are import-time constants, so the choice can only take effect in a new process
 8. `AppState` polling started (10-second interval)
 
 ### PyInstaller Bundle

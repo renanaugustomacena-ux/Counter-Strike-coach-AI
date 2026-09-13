@@ -755,6 +755,20 @@ def inject_wizard(screen: Any) -> None:
     screen._go_to(2)
 
 
+def inject_wizard_demo(screen: Any) -> None:
+    """WP4a: the Demo Path step with both optional folders filled in (own
+    demos + the pro reference pool) so the two pickers render with values."""
+    import os
+    import tempfile
+
+    root = tempfile.mkdtemp(prefix="macena_demos_")
+    screen._name_input.setText("macena")
+    screen._brain_input.setText(root)
+    screen._demo_input.setText(os.path.join(root, "replays"))
+    screen._pro_demo_input.setText(os.path.join(root, "pro_pool"))
+    screen._go_to(3)
+
+
 def inject_performance(screen: Any) -> None:
     # Context BEFORE data — the VM's R4 MED emission order: the data slot
     # rebuilds the UI synchronously and reads the cached context strip.

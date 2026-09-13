@@ -58,8 +58,27 @@ percorsi → WP4b training in-app → WP4c packaging); registro DOCTRINE D-47.. 
   fallback all'inglese, percorso demo per piattaforma. Test: `test_markdown_article.py`,
   `test_help_screen_topics.py`, `test_help_system_language.py`, `test_help_docs_truthful.py`;
   render harness `help`, `help_features`, `help_troubleshooting`.
-- NEXT · WP4a percorsi (config frozen, get_resource_path vs spec, rasp, D-43), WP4b
-  training in-app (jepa_v2), WP4c packaging (spec/iss/build/selftest).
+- DONE · D-52 (+ D-43) · `core/config.py`, `observability/{rasp,logger_setup}.py`,
+  `backend/nn/persistence.py`, `backend/storage/{database,db_migrate,storage_manager}.py`,
+  `backend/processing/{feature_engineering/base_features,baselines/pro_baseline}.py`,
+  `core/lifecycle.py`, `apps/qt_app/app.py`, `screens/wizard_screen.py` — layout
+  installato: DB e `makedirs` sotto `BASE_DIR` (= cartella di installazione nel build
+  congelato → `PermissionError` sotto Program Files), `get_resource_path` non allineato
+  allo spec (docs/i18n/temi/font/zone mappa irraggiungibili), `logs/` creata nella cwd
+  (= `_internal`), `rasp` che sollevava all'import senza `CS2_MANIFEST_KEY`, registro hash
+  per percorso assoluto (D-43). Ora: root dati `%LOCALAPPDATA%\MacenaCS2Analyzer` o brain
+  root del wizard (DB compreso) applicata con un rilancio del processo;
+  `get_resource_path` → `_MEIPASS/Programma_CS2_RENAN/<rel>` vincolato allo spec da
+  `test_spec_datas_contract.py`; rasp fail-closed in `run_rasp_audit`; chiavi hash
+  relative; `hltv_metadata.db` seminato dal bundle; wizard con cartella demo pro.
+  Checkout dev invariato. Test: `test_config_frozen_paths.py` (import congelato in un
+  sottoprocesso dentro una finta cartella di installazione che deve restare identica),
+  `test_spec_datas_contract.py`, `test_rasp_frozen_lazy.py`,
+  `test_persistence_relative_hash_keys.py`, `test_wizard_relaunch.py`,
+  `test_db_seed_from_bundle.py`, `test_install_paths_consumers.py`; render harness
+  `wizard`, `wizard_demo`.
+- NEXT · WP4b training in-app (jepa_v2, stesso flusso del run di sviluppo), WP4c
+  packaging (spec datas .pt/book/alembic.ini, iss, build script, selftest in CI).
 
 ## Sessione 2026-09-12 — verification round 3 (neural core v2 letto su Windows)
 
