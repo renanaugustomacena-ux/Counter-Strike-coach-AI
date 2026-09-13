@@ -11,6 +11,8 @@ Topics come from ``help_system`` (``Programma_CS2_RENAN/data/docs/*.md``)
 with a built-in fallback set when the knowledge base is unavailable.
 """
 
+import sys
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
@@ -25,6 +27,7 @@ from PySide6.QtWidgets import (
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.markdown_article import MarkdownArticle
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.mini_link_card import MiniLinkCard
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.numbered_step import NumberedStep
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.tip_box import TipBox
@@ -204,6 +207,28 @@ _KEYBOARD_HINTS = (
 )
 
 
+def _steam_replays_path() -> str:
+    """Where CS2 writes the player's own demos, per platform."""
+    if sys.platform == "win32":
+        return (
+            "C:\\Program Files (x86)\\Steam\\steamapps\\common\\"
+            "Counter-Strike Global Offensive\\game\\csgo\\replays\\"
+        )
+    return "~/.steam/steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/replays/"
+
+
+def _strip_title(markdown: str) -> str:
+    """Drop the leading ``# Title`` line — the article header already shows it."""
+    lines = (markdown or "").splitlines()
+    for index, line in enumerate(lines):
+        if not line.strip():
+            continue
+        if line.startswith("# "):
+            return "\n".join(lines[index + 1 :]).lstrip("\n")
+        break
+    return markdown or ""
+
+
 def _repolish(widget: QWidget) -> None:
     style = widget.style()
     if style is not None:
@@ -287,8 +312,9 @@ class HelpScreen(QWidget):
         for step, (stem, title, desc) in zip(self._step_rows, _GETTING_STARTED_STEPS):
             step.set_title(i18n.get_text(f"{stem}_title", title))
             step.set_description(i18n.get_text(f"{stem}_desc", desc))
-        # Rebuild the rail (captions + TOPICS · n) and re-render the article
-        self._populate_list(self._visible_topics())
+        # Reload the guides in the new language (localized copies win,
+        # English is the fallback), rebuild the rail and re-render.
+        self._load_topics()
 
     # ── UI ──
 
@@ -398,7 +424,7 @@ class HelpScreen(QWidget):
             self._step_rows.append(step)
             structured.addWidget(step)
 
-        # DEMO FOLDER mono callout. Path per frame (Linux/Steam target);
+        # DEMO FOLDER mono callout, path per platform (Steam's replay dir);
         # the ≥10 MB guard is real: MIN_DEMO_SIZE (DS-12) in
         # backend/data_sources/demo_format_adapter.py.
         callout = QFrame()
@@ -414,18 +440,23 @@ class HelpScreen(QWidget):
         self._callout_title.setObjectName("demo_folder_title")
         callout_lay.addWidget(self._callout_title)
         self._callout_body = QLabel(
-            i18n.get_text("demo_folder_body", "Typical path on Linux / Steam:")
+            i18n.get_text(
+                "demo_folder_body_win" if sys.platform == "win32" else "demo_folder_body",
+                (
+                    "Typical path on Windows / Steam:"
+                    if sys.platform == "win32"
+                    else "Typical path on Linux / Steam:"
+                ),
+            )
         )
         self._callout_body.setStyleSheet(
             f"color: {tokens.text_secondary}; background: transparent;"
         )
         callout_lay.addWidget(self._callout_body)
-        callout_path = QLabel(
-            "~/.steam/steam/steamapps/common/Counter-Strike Global Offensive" "/game/csgo/replays/"
-        )
-        callout_path.setObjectName("demo_folder_path")
-        callout_path.setWordWrap(True)
-        callout_lay.addWidget(callout_path)
+        self._callout_path = QLabel(_steam_replays_path())
+        self._callout_path.setObjectName("demo_folder_path")
+        self._callout_path.setWordWrap(True)
+        callout_lay.addWidget(self._callout_path)
         self._callout_caption = QLabel(
             i18n.get_text(
                 "demo_folder_caption",
@@ -440,16 +471,10 @@ class HelpScreen(QWidget):
         structured.addWidget(callout)
         article_layout.addWidget(self._structured_box)
 
-        # Plain content body (non-structured topics keep their doc text)
-        self._content_label = QLabel(i18n.get_text("select_topic"))
-        self._content_label.setWordWrap(True)
-        self._content_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        self._content_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self._content_label.setFont(Typography.font("body"))
-        self._content_label.setStyleSheet(
-            f"color: {get_tokens().text_primary}; background: transparent;"
-        )
-        article_layout.addWidget(self._content_label)
+        # Article body: every topic's markdown rendered as token-styled rich
+        # text (the old QLabel showed raw '#', '**' and fences).
+        self._article = MarkdownArticle()
+        article_layout.addWidget(self._article)
 
         # RELATED — other topics as mini navigation cards
         self._related_header = QLabel(i18n.get_text("related_header", "RELATED"))
@@ -500,7 +525,7 @@ class HelpScreen(QWidget):
         if _HELP_AVAILABLE:
             try:
                 hs = get_help_system()
-                real_topics = hs.get_all_topics()
+                real_topics = hs.get_all_topics(lang=i18n.lang)
                 if real_topics:
                     self._topics = real_topics
                     logger.info("Loaded %d help topics from knowledge base", len(real_topics))
@@ -567,13 +592,10 @@ class HelpScreen(QWidget):
             return
         self._article_title.setText(topic.get("title", ""))
 
-        # Getting Started renders the structured frame-19 article; other
-        # topics render their doc content verbatim (richer than frame).
-        structured = topic_id == "getting_started"
-        self._structured_box.setVisible(structured)
-        self._content_label.setVisible(not structured)
-        if not structured:
-            self._content_label.setText(topic.get("content", ""))
+        # Getting Started keeps the structured frame-19 steps + callout above
+        # its article body; every topic's markdown renders below.
+        self._structured_box.setVisible(topic_id == "getting_started")
+        self._article.set_markdown(_strip_title(topic.get("content", "")))
 
         self._rebuild_related(topic_id)
 

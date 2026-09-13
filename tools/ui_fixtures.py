@@ -688,6 +688,18 @@ def inject_coach(screen: Any) -> None:
     screen._render_messages([dict(m) for m in COACH_CHAT])
 
 
+def inject_help_features(screen: Any) -> None:
+    """``--variant features``: the Feature Guide rendered as rich text (WP2)."""
+    screen.on_enter()
+    screen._select_topic("features")
+
+
+def inject_help_troubleshooting(screen: Any) -> None:
+    """``--variant troubleshooting``: the Troubleshooting Guide as rich text (WP2)."""
+    screen.on_enter()
+    screen._select_topic("troubleshooting")
+
+
 def inject_coach_empty(screen: Any) -> None:
     """``--variant empty`` (D-49): no personal demos, no insights — the Coach
     screen must say so instead of serving other players' insights."""

@@ -518,6 +518,7 @@
   "help_step5_desc": "Requer Ollama + modelo gemma4:e2b — veja a seção Coach de IA",
   "demo_folder_title": "PASTA DE DEMOS · ONDE O CS2 SALVA OS .DEM",
   "demo_folder_body": "Caminho típico no Linux / Steam:",
+  "demo_folder_body_win": "Caminho típico no Windows / Steam:",
   "demo_folder_caption": "O analisador espera arquivos .dem ≥ 10 MB (guarda DS-12).",
   "hint_collapse": "Clique no hambúrguer ≡ (topo da barra lateral) para recolhê-la de 220 → 60 px",
   "hint_keys": "Enter no chat envia a mensagem · Esc fecha os diálogos · O botão Voltar nas telas de detalhe retorna",

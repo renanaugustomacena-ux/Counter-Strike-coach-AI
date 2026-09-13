@@ -1,31 +1,33 @@
 # Feature Guide
 
-## Dashboard & Skill Radar
-The Dashboard provides a high-level view of your competitive DNA.
-- **Skill Radar (6-Axis)**: Compares your performance against the Professional Baseline across six dimensions:
-    - **Rating**: Overall impact based on HLTV 2.0 formulas.
-    - **Damage (ADR)**: Your ability to consistently deal damage.
-    - **KAST**: Your consistency (Kill, Assist, Survive, Trade).
-    - **Impact**: Multi-kill rounds, entry kills, and high-pressure wins.
-    - **Accuracy**: Pure mechanical aim and headshot precision.
-    - **Economy**: How efficiently you manage and generate value from your loadout.
-- **Trend Graph**: Visualizes your Rating and ADR over the last 20 matches to identify slumps or improvement peaks.
+## Dashboard
 
-## RAP AI Coach
-The **Recursive Analysis & Pedagogy (RAP)** coach is a multi-layered neural system:
-- **Mental State Analysis**: Uses Bayesian belief models to estimate your confidence, aggression, and tactical focus.
-- **Insight Cards**: Generates "Clinical Advice" on positioning, utility timing, and aim mechanics.
-- **Coaching Chat**: An interactive interface where you can ask specific questions like "How can I improve my positioning?" or "Analyze my utility usage."
-- **Maturity-Scaled Advice**: The precision of advice scales with your demo count (50% precision at 10 demos, 100% at 200+ demos).
+The status strip shows **Coach** (idle or analyzing), **Service** (the background Session Engine — *Online* while its heartbeat is fresh, *Offline* otherwise) and **Matches** (your analyzed demos). Below it: your last match with a rating sparkline, the focus card, the recent-matches strip, the **Demo Analysis** and **Pro Demo Ingestion** cards with their folder pickers and Analyze buttons, Connectivity shortcuts (Profile, Steam Config, FaceIt Config), the Tactical Analysis shortcuts and a **Training Status** card that appears while a training run reports progress.
 
-## Tactical Viewer (2D Replay)
-More than just a replay, the Tactical Viewer is an AI-enhanced review tool:
-- **Professional Correction (Ghost Overlay)**: When in "Mature" mode, the AI renders a "Ghost" on the map showing where a professional player would have positioned themselves at that exact tick.
-- **Advantage Estimate**: A real-time graph showing the "Win Probability" or "Advantage" shift throughout the round based on player positions and utility.
-- **Interactive Scrubbing**: Quickly jump to "Critical Moments" identified by the scanner (e.g., failed trades or wasted utility).
+## AI Coach
+
+**Belief State Confidence** with its drivers (the sample count is your analyzed demos), **Recent Insights** (your own coaching insights, ranked by severity, top three first) and the chat dock. Chat answers come from a local Ollama model (default `gemma4:e2b`) that receives your analytics and the pro library as context and is instructed never to describe other players' numbers as yours.
+
+## Match History
+
+Every analyzed match. The header caption separates *N personal · M pro reference*; each row carries rating, K/D, ADR, KAST and headshot percentage. Opening a row goes to Match Detail.
+
+## Match Detail
+
+Four tabs: **Overview** (hero tiles, round strip, HLTV 2.0 components, kill enrichment, utility per round), **Rounds**, **Economy** and **Highlights**. A pro match you did not play in is titled *Pro demo · player — not you* and shows that player's rows.
 
 ## Advanced Analytics
-- **Strengths & Weaknesses**: Uses Z-score statistical deviations to tell you exactly where you outperform the pro average and where you are falling behind.
-- **Utility Breakdown**: Detailed analysis of your HE damage, Molotov efficiency, Smoke coverage, and "Unused Utility" per death.
-- **Map Mastery**: Per-map performance breakdown (Rating/ADR/KD) to help you decide which maps to focus on or veto.
-- **HLTV 2.0 Components**: See exactly how your rating is calculated via Kill, Survival, KAST, Impact, and Damage sub-scores.
+
+Your averages (rating, matches, K/D, ADR, KAST), your percentile rank against the pro cohort, the rating trend, strengths and weaknesses versus the pro average, per-map tiles and utility effectiveness. With no personal demos it shows an empty state plus a *Pro reference* block that averages other players' matches — reference material, not your performance.
+
+## Tactical Analyzer
+
+A 2D replay of a demo: players, utility, the bomb, round scrubbing and critical moments. Ghost overlays from a trained model appear only when that model is enabled in the settings.
+
+## Pro Comparison
+
+Compare two pro players' stat cards from the HLTV metadata; the Details button opens the pro player page.
+
+## Settings
+
+**Appearance** (theme, font, wallpaper), **Analysis & Paths** (demo folder, pro demo folder, ingestion mode, Start Ingestion) and **Language** (English, Italiano, Português).

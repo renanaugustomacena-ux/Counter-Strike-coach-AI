@@ -518,6 +518,7 @@
   "help_step5_desc": "Requires Ollama + gemma4:e2b model — see AI Coach section",
   "demo_folder_title": "DEMO FOLDER · WHERE CS2 SAVES .DEM FILES",
   "demo_folder_body": "Typical path on Linux / Steam:",
+  "demo_folder_body_win": "Typical path on Windows / Steam:",
   "demo_folder_caption": "The analyzer expects .dem files ≥ 10 MB (DS-12 guard).",
   "hint_collapse": "Click hamburger ≡ (top of sidebar) to collapse the nav sidebar 220 → 60 px",
   "hint_keys": "Return in chat input sends the message · Esc closes dialogs · Back button on drill-down screens returns",

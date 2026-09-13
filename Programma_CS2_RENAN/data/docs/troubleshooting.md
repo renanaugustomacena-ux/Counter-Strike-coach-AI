@@ -1,36 +1,36 @@
 # Troubleshooting Guide
 
-## Neural & Data Issues
+## "No personal demos analyzed yet"
 
-### 1. "Neural Stall: Connect IDs"
-- **Cause**: You have ingested demos, but the AI doesn't know which player is YOU.
-- **Solution**: Go to **Profile** and ensure both **Steam ID** and **FACEIT ID** are connected and saved. The AI requires these IDs to filter your specific "Tick States" from the match.
+- Your in-game name must match the name inside the demo (case does not matter). Check it on the Profile screen.
+- The demo folder must be set and contain complete `.dem` files (10 MB or more).
+- Press **Analyze Demos** on the Dashboard and watch the caption under the button.
+- Pro matches never count as personal, even when a pro uses your nickname.
 
-### 2. "Coach is Idle" / No Insights
-- **The 10/10 Rule**: Ensure you have at least 10 Professional demos and 10 Personal demos processed.
-- **Maturity Gate**: If you have fewer than 50 demos, the Coach is in "Calibrating" mode. Insights will be sparse and a watermark will appear over the analytics.
-- **Nickname Sync**: If your IDs are connected but the system still fails, verify your **Game Nickname** exactly matches your in-game name (casing matters).
+## Service: Offline
 
-### 3. "No Demos Found"
-- **Path Validation**: Double-check the **Default Demo Path** in Settings. Use the "Test Path" button if available.
-- **Integrity Check**: The scanner ignores corrupted demos or those without a valid header. Ensure your files are complete `.dem` files.
-- **Processing Queue**: If you just added 50+ demos, the scanner may take a few minutes to index them before they appear in the history.
+The background Session Engine is not running or has not sent a heartbeat in the last five minutes. Restart the application; if it stays offline, read `cs2_analyzer_daemon.log` in the logs folder. Automatic folder watching needs the service; the Analyze buttons work without it.
 
-## UI & Launch Issues
+## "Backend Startup Error"
 
-### 6. "ModuleNotFoundError: No module named 'PySide6'"
-- **Cause**: The Qt UI framework is not installed.
-- **Solution**: Run `pip install PySide6` in your virtual environment.
+The console failed to initialize (database or paths). The window stays usable; check `cs2_analyzer.log` in the logs folder for the cause — a demo folder that no longer exists is the usual one.
 
-### 7. App Opens but Shows Blank Screen
-- Ensure you are running from the project root directory. Launch with: `python -m Programma_CS2_RENAN.apps.qt_app.app`
+## Coach chat offline
 
-## Performance & System
+Chat needs Ollama running on this machine with the selected model pulled: `ollama pull gemma4:e2b`, then `ollama serve`. The model combo on the Coach screen lists what Ollama has.
 
-### 4. Application Lag / High CPU
-- **Turbo Mode**: If "Turbo Mode" is ON, the ingestion process will consume significant CPU resources, potentially lagging the UI or your game. Switch to **Standard** or **Eco** for background processing.
-- **Database Locks**: If you see "Database Locked" errors, avoid opening the `database.db` file in external SQLite browsers while the app is running. The system will auto-retry, but heavy ingestion can cause temporary contention.
+## "AI language model" download
 
-### 5. Scraper / HLTV Sync Issues
-- **Playwright Dependency**: HLTV synchronization requires the Playwright browser. If sync fails, run `playwright install chromium` in your terminal or use the "Fix Dependencies" button in the Wizard.
-- **Network Blocks**: Ensure the application has access to `hltv.org`. Some VPNs or Firewalls may block the scraper.
+The coach's knowledge search uses a small language model (about 90 MB) downloaded once, in the background, after the window opens. Without it the coach falls back to a simpler similarity search; nothing else is blocked.
+
+## Database is locked
+
+Do not open `database.db` in an external SQLite tool while the app runs. Heavy ingestion can cause short retries; they resolve on their own.
+
+## HLTV sync / Docker
+
+Live HLTV scraping is optional and needs Docker. When Docker is unavailable the app uses the cached pro baselines and continues; the `ENABLE_HLTV_SYNC` setting turns the sync off entirely.
+
+## Where the logs are
+
+`cs2_analyzer.log` (application) and `cs2_analyzer_daemon.log` (background service) live in the `logs` folder of your data location — the project folder in a source install, or the brain folder chosen in the wizard.

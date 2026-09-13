@@ -518,6 +518,7 @@
   "help_step5_desc": "Richiede Ollama + modello gemma4:e2b — vedi la sezione Coach AI",
   "demo_folder_title": "CARTELLA DEMO · DOVE CS2 SALVA I FILE .DEM",
   "demo_folder_body": "Percorso tipico su Linux / Steam:",
+  "demo_folder_body_win": "Percorso tipico su Windows / Steam:",
   "demo_folder_caption": "L'analizzatore si aspetta file .dem ≥ 10 MB (guardia DS-12).",
   "hint_collapse": "Clicca l'hamburger ≡ (in cima alla sidebar) per comprimerla da 220 → 60 px",
   "hint_keys": "Invio nella chat invia il messaggio · Esc chiude i dialoghi · Il pulsante Indietro nelle schermate di dettaglio torna indietro",

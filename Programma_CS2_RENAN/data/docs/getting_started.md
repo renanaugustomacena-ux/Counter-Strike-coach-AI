@@ -1,35 +1,33 @@
 # Getting Started with Macena CS2 Analyzer
 
-## 0. Launching the Application
-Launch the primary Qt interface from the project root:
+## 1. Who you are in the data
+
+The analyzer identifies you by your **in-game name** — the nickname CS2 shows on the scoreboard. Set it in the setup wizard or later on the **Profile** screen (Dashboard → Connectivity → Profile). Matching is exact but not case-sensitive, and it has to be the same name that appears inside your demo files. No account linking is needed: the Steam Config screen is an optional extra for Steam profile stats and plays no part in telling your rounds apart from the other nine players.
+
+## 2. Two folders, two kinds of demos
+
+- **Demo folder** (wizard, or Settings → Analysis & Paths): your own matches. Everything ingested from here is *yours* and feeds Match History, Advanced Analytics and the coach.
+- **Pro demo folder** (Settings → Analysis & Paths): professional matches you downloaded. They build the reference library the analyzer compares you against and are never shown as your performance.
+
+CS2 saves your own demos in Steam's replay folder — `...\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\replays\` on Windows, `~/.steam/steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/replays/` on Linux. Files under 10 MB are skipped as incomplete.
+
+## 3. Analyze
+
+On the Dashboard press **Analyze Demos** (your folder) or **Analyze Pro Demos** (the pro folder). Every new `.dem` is parsed tick by tick and its per-match stats, rounds and positions are written to the local database; a full match takes a few minutes. The caption under each button reports how many demos are analyzed. Once the background service is online (the **Service** chip), it also watches both folders and queues new files on its own.
+
+## 4. What unlocks when
+
+- **Match History** lists your matches and, separately, the pro matches in your library.
+- **Advanced Analytics** and the **AI Coach** use your own demos only. With none analyzed they show an honest empty state; Advanced Analytics adds a clearly labelled *Pro reference* block built from other players' matches.
+- **Coach chat** needs [Ollama](https://ollama.com/download) running on this machine with the `gemma4:e2b` model pulled; the Coach screen shows whether it is online.
+- **Belief confidence** grows with your analyzed demos: 50% up to 49 demos, 80% from 50, 100% from 200.
+
+## 5. Training the coach
+
+The neural coach learns from the analyzed matches in the database — yours and the pro library. Training currently starts from the command line in the project folder:
+
 ```bash
-python -m Programma_CS2_RENAN.apps.qt_app.app
+python run_full_training_cycle.py --model-type jepa_v2
 ```
-> *Legacy fallback:* `python Programma_CS2_RENAN/main.py` (requires Kivy/KivyMD)
 
-## 1. Initial Setup & Requirements
-The setup wizard guides you through the core configuration. For the analyzer to function at peak precision, ensure:
-- **Default Demo Path**: Points to your CS2 demo folder (e.g., `...\game\csgo\demos`).
-- **Profile Connection**: You MUST link your **Steam ID** and **FACEIT ID**. The system uses these to isolate your specific performance data from the other 9 players in a demo.
-- **Game Nickname**: Enter your exact in-game name (case-sensitive) to assist the legacy identification system.
-
-## 2. The "10/10 Rule"
-The AI Coach (RAP) requires a baseline before it can provide reliable advice:
-- **10 Professional Demos**: Ingest at least 10 HLTV pro demos to establish the "Gold Standard".
-- **10 Personal Demos**: Ingest 10 of your own matches to allow the AI to identify your patterns.
-- *Note: The coach will remain in "Idle" or "Calibrating" status until these thresholds are met.*
-
-## 3. Ingestion & Training Service
-The **Coach Dashboard** is your command center.
-- **Start Service (Play Button)**: This launches the background worker which handles both **Ingestion** (parsing raw demos) and **Neural Training** (learning from the data).
-- **Ingestion Speeds**:
-    - **Eco**: Low CPU impact, suitable for background use.
-    - **Standard**: Balanced performance.
-    - **Turbo**: Maximum speed, recommended only for initial bulk ingestion.
-- **Temporal Split**: The system automatically splits your data (70% Train, 15% Val, 15% Test) chronologically to ensure the AI learns from your growth over time without "cheating" by seeing future matches.
-
-## 4. Understanding Data Maturity
-As you add more demos, the AI's confidence increases:
-- **CALIBRATING (0-49 demos)**: 50% confidence. Insights are experimental.
-- **LEARNING (50-199 demos)**: 80% confidence. Professional corrections become available in the 2D Viewer.
-- **MATURE (200+ demos)**: 100% confidence. Full tactical optimization and role-specific coaching.
+A training button inside the app is planned; this page will change when it ships.
