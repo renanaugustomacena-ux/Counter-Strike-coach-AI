@@ -39,23 +39,20 @@ class CoachViewModel(QObject):
         from Programma_CS2_RENAN.core.config import get_setting
 
         player = get_setting("CS2_PLAYER_NAME", "")
+        if not player:
+            return []
 
+        # The user's own insights ONLY. The previous fallback served the last
+        # ten CoachingInsight rows of anyone (second-person template text
+        # about other players — on the author's DB, 48 rows written by a unit
+        # test) and guessed provenance with ``player_name != player`` (D-49).
         with get_db_manager().get_session() as session:
-            # Try user's own insights first
-            results = []
-            if player:
-                results = session.exec(
-                    select(CoachingInsight)
-                    .where(CoachingInsight.player_name == player)
-                    .order_by(CoachingInsight.created_at.desc())
-                    .limit(10)
-                ).all()
-
-            # Fall back to all insights (pro match analysis) if user has none
-            if not results:
-                results = session.exec(
-                    select(CoachingInsight).order_by(CoachingInsight.created_at.desc()).limit(10)
-                ).all()
+            results = session.exec(
+                select(CoachingInsight)
+                .where(CoachingInsight.player_name == player)
+                .order_by(CoachingInsight.created_at.desc())
+                .limit(10)
+            ).all()
 
             return [
                 {
@@ -66,7 +63,7 @@ class CoachViewModel(QObject):
                     "created_at": str(r.created_at)[:16],
                     "player_name": r.player_name,
                     "demo_name": r.demo_name,
-                    "is_pro": r.player_name != player,
+                    "is_pro": False,
                 }
                 for r in results
             ]

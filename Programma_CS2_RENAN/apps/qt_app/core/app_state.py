@@ -28,6 +28,43 @@ def get_app_state() -> "AppState":
     return _instance
 
 
+def count_personal_and_pro_demos(session, player: str) -> tuple[int, int]:
+    """(distinct personal demos, distinct pro demos) — never mixed (D-49).
+
+    Personal = rows with the configured nickname AND ``is_pro=False``; a pro
+    row that happens to carry the same nickname is still pro. Pro = distinct
+    ``demo_name`` over ``is_pro=True`` rows (one row per player per demo, so
+    raw rows would inflate ~10x). An unset nickname has zero personal demos.
+    """
+    from sqlalchemy import func as sa_func
+    from sqlmodel import select
+
+    from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
+
+    def _scalar(row):
+        if row is None:
+            return 0
+        if hasattr(row, "__getitem__") and not isinstance(row, (int, float)):
+            return row[0]
+        return row
+
+    pro_row = session.exec(
+        select(sa_func.count(sa_func.distinct(PlayerMatchStats.demo_name))).where(
+            PlayerMatchStats.is_pro == True  # noqa: E712
+        )
+    ).one()
+    personal = 0
+    if player:
+        personal_row = session.exec(
+            select(sa_func.count(sa_func.distinct(PlayerMatchStats.demo_name))).where(
+                PlayerMatchStats.player_name == player,
+                PlayerMatchStats.is_pro == False,  # noqa: E712
+            )
+        ).one()
+        personal = int(_scalar(personal_row) or 0)
+    return personal, int(_scalar(pro_row) or 0)
+
+
 class AppState(QObject):
     """Polls CoachState DB row (id=1) and emits change signals."""
 
@@ -35,7 +72,11 @@ class AppState(QObject):
     coach_status_changed = Signal(str)
     parsing_progress_changed = Signal(float)
     belief_confidence_changed = Signal(float)
+    # Personal distinct demos (the configured nickname, is_pro=False). Kept
+    # under its historical name — every consumer treats it as "my demos".
     total_matches_changed = Signal(int)
+    # Distinct pro demos in the library (is_pro=True) — reference material.
+    pro_matches_changed = Signal(int)
     training_changed = Signal(dict)
     notification_received = Signal(str, str)  # (severity, message)
 
@@ -149,29 +190,26 @@ class AppState(QObject):
                 except Exception as exc:
                     logger.debug("Notification poll skipped: %s", exc)
 
-                # Count actual analyzed demos (distinct demo files in PlayerMatchStats)
-                from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
-
+                # Personal and pro demo counts, never mixed: the old single
+                # count(distinct demo_name) over every row was rendered as
+                # "N personal demos analyzed" on Coach and Home (D-49).
                 try:
-                    from sqlalchemy import func as sa_func
+                    from Programma_CS2_RENAN.core.config import get_setting
 
-                    # SQLModel Session.exec(...).one() returns a Row; index [0] works
-                    # for both sqlalchemy Row and plain tuple. Fall back to 0 on NULL.
-                    row = session.exec(
-                        select(sa_func.count(sa_func.distinct(PlayerMatchStats.demo_name)))
-                    ).one()
-                    raw = row[0] if hasattr(row, "__getitem__") else row
-                    demo_count = int(raw or 0)
+                    personal_count, pro_count = count_personal_and_pro_demos(
+                        session, get_setting("CS2_PLAYER_NAME", "")
+                    )
                 except Exception as exc:
                     logger.debug("AppState: demo_count query failed: %s", exc)
-                    demo_count = int(state.total_matches_processed)
+                    personal_count, pro_count = 0, 0
 
                 return {
                     "service_active": delta < 300,
                     "coach_status": state.ingest_status or "Idle",
                     "parsing_progress": float(state.parsing_progress),
                     "belief_confidence": float(state.belief_confidence),
-                    "total_matches": int(demo_count),
+                    "total_matches": int(personal_count),
+                    "pro_matches": int(pro_count),
                     "current_epoch": int(state.current_epoch),
                     "total_epochs": int(state.total_epochs),
                     "train_loss": float(state.train_loss),
@@ -203,6 +241,9 @@ class AppState(QObject):
 
         if data.get("total_matches") != prev.get("total_matches"):
             self.total_matches_changed.emit(data["total_matches"])
+
+        if data.get("pro_matches") != prev.get("pro_matches"):
+            self.pro_matches_changed.emit(int(data.get("pro_matches") or 0))
 
         # Training bundle — emit if any training field changed
         t_keys = ("current_epoch", "total_epochs", "train_loss", "val_loss", "eta_seconds")

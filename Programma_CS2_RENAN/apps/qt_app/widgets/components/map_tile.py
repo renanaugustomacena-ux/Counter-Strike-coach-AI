@@ -39,24 +39,41 @@ class MapTile(QFrame):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._map_name: str = ""
-        self._rating: float = 0.0
+        # None = no rating recorded for this map (absent beats fabricated:
+        # analytics no longer invents a neutral 1.0) — painted as "—".
+        self._rating: float | None = None
         self._adr: float = 0.0
-        self._kd: float = 0.0
+        self._kd: float | None = None
         self._matches: int = 0
         # 4 text lines + paddings + the 4px bar: 112 made the matches
         # caption collide with the bar at current token font sizes.
         self.setMinimumSize(150, 132)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-    def set_data(self, map_name: str, rating: float, adr: float, kd: float, matches: int) -> None:
+    def set_data(
+        self,
+        map_name: str,
+        rating: float | None,
+        adr: float,
+        kd: float | None,
+        matches: int,
+    ) -> None:
         self._map_name = str(map_name)
-        self._rating = float(rating)
-        self._adr = float(adr)
-        self._kd = float(kd)
+        self._rating = None if rating is None else float(rating)
+        self._adr = float(adr or 0.0)
+        self._kd = None if kd is None else float(kd)
         self._matches = int(matches)
         self.update()
 
+    def rating_text(self) -> str:
+        """The rating line's value part: ``1.23 (Good)`` or ``—`` when absent."""
+        if self._rating is None:
+            return "—"
+        return f"{self._rating:.2f} ({rating_label(self._rating)})"
+
     def _fill_frac(self) -> float:
+        if self._rating is None:
+            return 0.0
         return min(max(self._rating, 0.0) / _FILL_CAP, 1.0)
 
     def paintEvent(self, event):  # noqa: ARG002 — Qt signature
@@ -74,7 +91,9 @@ class MapTile(QFrame):
         x = panel.left() + pad
         width = panel.width() - 2 * pad
         y = panel.top() + pad
-        r_color = rating_color(self._rating)
+        r_color = (
+            QColor(tokens.text_tertiary) if self._rating is None else rating_color(self._rating)
+        )
 
         # Map name.
         name_font = Typography.font("subtitle")
@@ -93,7 +112,7 @@ class MapTile(QFrame):
         painter.drawText(
             QRectF(x, y, width, line_h),
             Qt.AlignLeft,
-            f"{rating_word}: {self._rating:.2f} ({rating_label(self._rating)})",
+            f"{rating_word}: {self.rating_text()}",
         )
         y += line_h + 4.0
 
@@ -104,10 +123,11 @@ class MapTile(QFrame):
         small_h = QFontMetricsF(small).height()
         adr_word = i18n.get_text("stat_adr", "ADR")
         kd_word = i18n.get_text("stat_kd", "K/D")
+        kd_text = "—" if self._kd is None else f"{self._kd:.2f}"
         painter.drawText(
             QRectF(x, y, width, small_h),
             Qt.AlignLeft,
-            f"{adr_word}: {self._adr:g} {kd_word}: {self._kd:.2f}",
+            f"{adr_word}: {self._adr:g} {kd_word}: {kd_text}",
         )
         y += small_h + 4.0
 

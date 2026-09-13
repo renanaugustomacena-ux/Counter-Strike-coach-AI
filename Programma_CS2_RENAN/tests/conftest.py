@@ -44,6 +44,47 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "integration: tests that read/write production database.db")
 
 
+# --- Real-database tripwire (D-50) ---
+# tests/test_services.py once ran the real CoachingService against database.db
+# and left 48 second-person insight rows the Coach screen then served to the
+# user. Snapshot the production DB's row counts at session start; any change
+# by session end fails the run (integration runs opt out explicitly).
+_REAL_DB_PATH = PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db"
+
+
+def pytest_sessionstart(session):
+    if os.environ.get("CS2_INTEGRATION_TESTS") == "1":
+        return
+    from Programma_CS2_RENAN.tests._db_tripwire import snapshot_counts
+
+    session.config._real_db_counts_before = snapshot_counts(_REAL_DB_PATH)
+
+
+def pytest_sessionfinish(session, exitstatus):
+    before = getattr(session.config, "_real_db_counts_before", None)
+    if not before:
+        return
+    from Programma_CS2_RENAN.tests._db_tripwire import changed_tables, snapshot_counts
+
+    delta = changed_tables(before, snapshot_counts(_REAL_DB_PATH))
+    if not delta:
+        return
+    lines = [f"  {table}: {old} -> {new}" for table, (old, new) in delta.items()]
+    message = (
+        "REAL DATABASE MODIFIED BY THIS TEST RUN (tripwire, D-50)\n"
+        + "\n".join(lines)
+        + "\n  A test wrote into Programma_CS2_RENAN/backend/storage/database.db."
+        " Isolate it (tests/_memory_db.py) or run with CS2_INTEGRATION_TESTS=1."
+    )
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is not None:
+        reporter.write_sep("!", "real-db tripwire")
+        reporter.write_line(message)
+    else:
+        print(message)
+    session.exitstatus = 1
+
+
 def pytest_collection_modifyitems(config, items):
     """Skip integration tests unless CS2_INTEGRATION_TESTS=1 is set."""
     if os.environ.get("CS2_INTEGRATION_TESTS") == "1":

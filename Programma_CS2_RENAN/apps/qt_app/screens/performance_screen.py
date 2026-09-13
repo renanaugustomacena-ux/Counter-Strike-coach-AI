@@ -123,9 +123,11 @@ class PerformanceScreen(QWidget):
 
         # Provenance banner — visible only when surfacing pro data as ref
         self._pro_banner = QLabel(
-            "No personal demos analyzed yet. Showing aggregated stats from "
-            "all parsed pro matches (multiple players across multiple teams). "
-            "Analyze your own demos to see your personal analytics."
+            i18n.get_text(
+                "perf.pro_banner",
+                "No personal demos analyzed yet. The numbers below are a reference "
+                "from the pro matches in your library — other players, not you.",
+            )
         )
         self._pro_banner.setWordWrap(True)
         self._pro_banner.setFont(Typography.font("body"))
@@ -212,13 +214,25 @@ class PerformanceScreen(QWidget):
         sw: dict,
         utility: dict,
         is_pro_overview: bool = False,
+        meta: dict | None = None,
     ) -> None:
+        """Render the payload. ``meta`` carries the honest counts
+        (``personal_demos`` / ``pro_matches`` / ``pro_players``); the older
+        five-argument form (fixtures, screenshot harness) still works.
+        """
         self._clear_content()
+        meta = dict(meta or {})
 
         if not history and not map_stats:
-            self._empty_state.set_title("No performance data yet")
+            self._empty_state.set_title(
+                i18n.get_text("perf.no_personal_title", "No personal demos analyzed yet")
+            )
             self._empty_state.set_description(
-                "Analyze a demo to start seeing your aggregate trends."
+                i18n.get_text(
+                    "perf.no_personal_desc",
+                    "Your stats appear here only from your own demos. "
+                    "Analyze your matches to unlock personal analytics.",
+                )
             )
             self._body_stack.setCurrentIndex(self._page_empty)
             self._update_count_caption(0)
@@ -226,7 +240,26 @@ class PerformanceScreen(QWidget):
             return
 
         self._pro_banner.setVisible(is_pro_overview)
-        self._update_count_caption(len(history) if history else 0)
+
+        if is_pro_overview:
+            # D-49: zero personal demos — an honest empty state, then pro
+            # reference material in the third person. No hero strip, no
+            # percentile strip, no strengths/weaknesses, no utility rows:
+            # none of those may render a pro average as the user's number.
+            self._update_count_caption(0)
+            for widget in (
+                self._build_overview_empty(),
+                self._build_pro_reference(history, map_stats, meta),
+            ):
+                self._content_layout.insertWidget(self._content_layout.count() - 1, widget)
+            self._body_stack.setCurrentIndex(self._page_content)
+            return
+
+        if "personal_demos" in meta:
+            personal_demos = int(meta.get("personal_demos") or 0)
+        else:
+            personal_demos = len({h.get("demo_name") for h in history if h.get("demo_name")})
+        self._update_count_caption(personal_demos)
 
         # Hero strip — top-of-page snapshot.
         self._content_layout.insertWidget(
@@ -288,6 +321,62 @@ class PerformanceScreen(QWidget):
         self._body_stack.setCurrentIndex(self._page_content)
 
     # ── Section builders ──
+
+    def _build_overview_empty(self) -> QWidget:
+        """The honest state for zero personal demos, with the way out."""
+        state = EmptyState(
+            icon_text="◎",
+            title=i18n.get_text("perf.no_personal_title", "No personal demos analyzed yet"),
+            description=i18n.get_text(
+                "perf.no_personal_desc",
+                "Your stats appear here only from your own demos. "
+                "Analyze your matches to unlock personal analytics.",
+            ),
+            cta_text=i18n.get_text("perf.analyze_cta", "Analyze demos"),
+        )
+        state.action_clicked.connect(lambda: self._navigate("home"))
+        return state
+
+    def _build_pro_reference(self, history: list, map_stats: dict, meta: dict) -> QWidget:
+        """Third-person pro reference block: labelled counts, then the
+        trend + per-map cards in their '— pro reference' variants."""
+        tokens = get_tokens()
+        wrap = QWidget()
+        col = QVBoxLayout(wrap)
+        col.setContentsMargins(0, 0, 0, 0)
+        col.setSpacing(tokens.spacing_lg)
+
+        pro_demos = {h.get("demo_name") for h in history if h.get("demo_name")}
+        matches = int(meta.get("pro_matches") or len(pro_demos))
+        players = int(meta.get("pro_players") or 0)
+        header = Card(
+            title=i18n.get_text(
+                "perf.pro_reference_title",
+                "Pro reference · {matches} matches · {players} players",
+            ).format(matches=matches, players=players),
+            depth="raised",
+        )
+        self._add_body_label(
+            header.content_layout,
+            i18n.get_text(
+                "perf.pro_reference_desc",
+                "Averages over other players' matches in your pro library. "
+                "This is not your performance.",
+            ),
+            muted=True,
+        )
+        col.addWidget(header)
+
+        try:
+            col.addWidget(self._build_trend(history, True))
+        except Exception as e:  # noqa: BLE001 — one failed card must not blank the page
+            logger.error("pro reference trend failed: %s", e)
+        if map_stats:
+            try:
+                col.addWidget(self._build_map_grid(map_stats, True))
+            except Exception as e:  # noqa: BLE001
+                logger.error("pro reference map grid failed: %s", e)
+        return wrap
 
     def _build_hero(self, history: list, utility: dict) -> QWidget:
         ratings = [
@@ -423,6 +512,9 @@ class PerformanceScreen(QWidget):
         else:
             arrow, trend_color = "─", tokens.text_secondary
             trend_word = i18n.get_text("perf.stable", "Stable")
+        if is_pro_overview:
+            # Reference material: no judgement colours on other players' numbers.
+            trend_color = tokens.text_secondary
 
         # Frame-12 rows. The average is an informational value (tokens.info):
         # the frame's green fill would break the >1.10 rating-color contract.
@@ -435,7 +527,9 @@ class PerformanceScreen(QWidget):
             (
                 i18n.get_text("perf.average_rating", "Average rating:"),
                 f"{avg_r:.2f}",
-                tokens.accent_primary,  # Q3: the player's headline stat speaks the accent
+                # Q3: the player's headline stat speaks the accent — a pro
+                # reference average is plain text.
+                tokens.text_primary if is_pro_overview else tokens.accent_primary,
             ),
             (
                 i18n.get_text("perf.range", "Range:"),
@@ -492,11 +586,13 @@ class PerformanceScreen(QWidget):
             # Payload keys are demo-style ("de_mirage") — frame shows "Mirage".
             display = map_short_name(str(map_name)).title()
             tile = MapTile()
+            rating = stats.get("rating")
+            kd = stats.get("kd")
             tile.set_data(
                 display,
-                float(stats.get("rating") or 0),
+                None if rating is None else float(rating),
                 float(stats.get("adr") or 0),
-                float(stats.get("kd") or 0),
+                None if kd is None else float(kd),
                 int(stats.get("matches") or 0),
             )
             grid.addWidget(tile, idx // cols, idx % cols)
