@@ -3,11 +3,11 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from Programma_CS2_RENAN.core.config import BASE_DIR as PROJECT_ROOT
 from Programma_CS2_RENAN.core.config import (
     DATA_DIR,
     MAX_DEMOS_PER_MONTH,
     MAX_TOTAL_DEMOS_PER_USER,
+    USER_DATA_ROOT,
     get_setting,
 )
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -47,8 +47,9 @@ class StorageManager:
             self.archive_dir = self.brain_dir / "datasets" / "user_archive"
             self.pro_archive_dir = self.brain_dir / "datasets" / "pro_archive"
         else:
-            # Fallback
-            self.brain_dir = Path(PROJECT_ROOT) / "data"
+            # Fallback: the writable data root (the checkout in dev, the
+            # per-user folder when frozen -- never the install dir, WP4a).
+            self.brain_dir = Path(USER_DATA_ROOT) / "data"
             self.archive_dir = self.brain_dir / "archive"
             self.pro_archive_dir = self.brain_dir / "pro_archive"
 

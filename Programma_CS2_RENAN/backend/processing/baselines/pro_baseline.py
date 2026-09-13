@@ -7,12 +7,14 @@ from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import ProPlayerStatCard
-from Programma_CS2_RENAN.core.config import BASE_DIR
+from Programma_CS2_RENAN.core.config import get_resource_path
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.pro_baseline")
 
-EXTERNAL_DATA_DIR = os.path.join(BASE_DIR, "data", "external")
+# Bundled read-only CSVs: resolved through get_resource_path so the frozen
+# build finds them under _MEIPASS/Programma_CS2_RENAN/data/external (WP4a).
+EXTERNAL_DATA_DIR = get_resource_path(os.path.join("data", "external"))
 
 # OI-7: the demo-stats layer used to activate at 10 rows = exactly ONE 5v5
 # match — per-metric stds collapse and z-scores inflate on thin local

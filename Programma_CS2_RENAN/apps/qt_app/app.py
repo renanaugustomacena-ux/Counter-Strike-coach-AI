@@ -21,7 +21,7 @@ import time
 from importlib.metadata import PackageNotFoundError, version
 from typing import Callable, Optional
 
-from PySide6.QtCore import QObject, Qt, QThreadPool, QTimer, Slot
+from PySide6.QtCore import QObject, QProcess, Qt, QThreadPool, QTimer, Slot
 from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QMessageBox, QSplashScreen
 
@@ -465,6 +465,51 @@ def _schedule_backend_boot(screens: dict, start: Callable[[], None], window=None
     return False
 
 
+def _data_root_changed() -> bool:
+    """True when the wizard saved a brain root other than the one config
+    resolved at import (WP4a).  Paths are import-time constants, so the
+    choice can only take effect in a fresh process."""
+    from Programma_CS2_RENAN.core import config
+
+    chosen = str(config.get_setting("BRAIN_DATA_ROOT", "") or "").strip()
+    if not chosen:
+        return False
+
+    def _norm(path: str) -> str:
+        return os.path.normcase(os.path.normpath(os.path.expanduser(path)))
+
+    return _norm(chosen) != _norm(config.USER_DATA_ROOT)
+
+
+def _start_detached(program: str, args: list) -> bool:
+    result = QProcess.startDetached(program, list(args))
+    return bool(result[0]) if isinstance(result, tuple) else bool(result)
+
+
+def _relaunch_for_new_data_root(app, spawn=None) -> bool:
+    """Apply a brain root chosen in the wizard by restarting the GUI.
+
+    Returns False, and changes nothing, when the root is unchanged.  Otherwise
+    the single-instance lock is released, a fresh GUI process is started and
+    this one quits; nothing has been booted yet at this point (backend boot
+    waits for the wizard, D-48).  If the new process cannot be started the
+    lock is re-armed and the current process carries on with the root it has.
+    """
+    if not _data_root_changed():
+        return False
+    from Programma_CS2_RENAN.core.lifecycle import lifecycle
+
+    argv = lifecycle.relaunch_command()
+    lifecycle.shutdown()
+    if not (spawn or _start_detached)(argv[0], argv[1:]):
+        _boot_log.error("relaunch failed, keeping this process: %s", argv)
+        lifecycle.ensure_single_instance()
+        return False
+    _boot_log.info("boot phase relaunch          data root changed: %s", argv)
+    app.quit()
+    return True
+
+
 def _init_database_schema() -> None:
     """Schema-only step (create_all + missing columns) before the UI queries anything."""
     try:
@@ -613,6 +658,8 @@ def _run_gui(argv: list) -> int:
     then = _land_on_home if first_run else None
 
     def _start_backend() -> None:
+        if first_run and _relaunch_for_new_data_root(app):
+            return
         window._boot_coordinator = _start_backend_async(window, then=then)
 
     _schedule_backend_boot(screens, start=_start_backend, window=window)

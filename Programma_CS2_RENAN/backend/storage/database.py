@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 import threading
 from contextlib import contextmanager
 from pathlib import Path
@@ -10,7 +11,7 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy import event
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from Programma_CS2_RENAN.core.config import DATABASE_URL, HLTV_DATABASE_URL
+from Programma_CS2_RENAN.core.config import DATABASE_URL, HLTV_DATABASE_URL, get_resource_path
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.database")
@@ -614,7 +615,28 @@ def _restrict_db_permissions(url: str) -> None:
                 )
 
 
+def seed_hltv_metadata_if_absent(target: Path, seed: Path) -> bool:
+    """Copy the bundled HLTV metadata database to the user's db folder when no
+    copy exists there yet (WP4a).  A user copy is never overwritten; in a
+    checkout the bundle IS the user copy, so nothing happens.
+    Returns True when a copy was made.
+    """
+    target, seed = Path(target), Path(seed)
+    if target.exists() or not seed.is_file():
+        return False
+    if target.resolve() == seed.resolve():
+        return False
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(seed, target)
+    logger.info("Seeded HLTV metadata database from the bundle: %s -> %s", seed, target)
+    return True
+
+
 def init_database():
+    seed_hltv_metadata_if_absent(
+        Path(HLTV_DATABASE_URL.replace("sqlite:///", "")),
+        Path(get_resource_path(os.path.join("backend", "storage", "hltv_metadata.db"))),
+    )
     get_db_manager().create_db_and_tables()
     get_hltv_db_manager().create_db_and_tables()
     _restrict_db_permissions(DATABASE_URL)

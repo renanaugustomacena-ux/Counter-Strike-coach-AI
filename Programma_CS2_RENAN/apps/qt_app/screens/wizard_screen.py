@@ -48,6 +48,15 @@ _TREE_CAPTIONS = {
     "datasets": "cached tensors · parsed demos · train/val/test splits",
 }
 
+_DEMO_DESC_FALLBACK = (
+    "Your own CS2 demos (optional). Point this at the folder where your .dem "
+    "replays land: the Scanner watches it. You can set it later in Settings."
+)
+_PRO_DEMO_DESC_FALLBACK = (
+    "Downloaded professional demos. They are analyzed as reference material, "
+    "never as your own matches."
+)
+
 # The only safely-skippable step: Demo Path is optional by design (name
 # and brain path block Next until valid; intro/finish have no skip).
 _SKIPPABLE_STEPS = frozenset({3})
@@ -66,6 +75,7 @@ class WizardScreen(QWidget):
         super().__init__(parent)
         self._brain_path = ""
         self._demo_path = ""
+        self._pro_demo_path = ""
         self._player_name = ""
 
         self._build_ui()
@@ -89,7 +99,8 @@ class WizardScreen(QWidget):
         self._brain_desc.setText(
             i18n.get_text(
                 "wizard_brain_desc",
-                "This is where models, knowledge base, and datasets will be stored.",
+                "Models, logs, knowledge base and training data live here. "
+                "The installed app keeps its database here too.",
             )
         )
         self._tree_header.setText(
@@ -147,6 +158,14 @@ class WizardScreen(QWidget):
                 "you'll see the exact % on the Coach screen.",
             )
         )
+        # Demo-page copy
+        self._demo_desc.setText(i18n.get_text("wizard_demo_desc", _DEMO_DESC_FALLBACK))
+        self._demo_browse_btn.setText(i18n.get_text("wizard_select_folder", "Select Folder"))
+        self._pro_demo_label.setText(
+            i18n.get_text("wizard_pro_demo_label", "Pro demo folder (optional)")
+        )
+        self._pro_demo_desc.setText(i18n.get_text("wizard_pro_demo_desc", _PRO_DEMO_DESC_FALLBACK))
+        self._pro_demo_browse_btn.setText(i18n.get_text("wizard_select_folder", "Select Folder"))
         self._refresh_brain_validation()
         # Step caption + Next label depend on the current index
         step = self._stack.currentIndex()
@@ -316,7 +335,8 @@ class WizardScreen(QWidget):
         self._brain_desc = QLabel(
             i18n.get_text(
                 "wizard_brain_desc",
-                "This is where models, knowledge base, and datasets will be stored.",
+                "Models, logs, knowledge base and training data live here. "
+                "The installed app keeps its database here too.",
             )
         )
         self._brain_desc.setWordWrap(True)
@@ -506,16 +526,13 @@ class WizardScreen(QWidget):
         lay = QVBoxLayout(page)
         lay.setSpacing(12)
 
-        desc = QLabel(
-            "Select your CS2 demo folder (optional).\n"
-            "This is where your .dem replay files are located.\n"
-            "You can skip this step and set it later in Settings."
+        tokens = get_tokens()
+        self._demo_desc = QLabel(i18n.get_text("wizard_demo_desc", _DEMO_DESC_FALLBACK))
+        self._demo_desc.setWordWrap(True)
+        self._demo_desc.setStyleSheet(
+            f"color: {tokens.text_secondary}; font-size: {tokens.font_size_body}px;"
         )
-        desc.setWordWrap(True)
-        desc.setStyleSheet(
-            f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_body}px;"
-        )
-        lay.addWidget(desc)
+        lay.addWidget(self._demo_desc)
 
         input_row = QHBoxLayout()
         input_row.setSpacing(8)
@@ -523,25 +540,61 @@ class WizardScreen(QWidget):
         self._demo_input.setPlaceholderText("Enter path or use Select Folder...")
         self._demo_input.returnPressed.connect(self._on_next)
         input_row.addWidget(self._demo_input, 1)
-        browse_btn = QPushButton("Select Folder")
-        browse_btn.clicked.connect(self._pick_demo_folder)
-        input_row.addWidget(browse_btn)
+        self._demo_browse_btn = QPushButton(i18n.get_text("wizard_select_folder", "Select Folder"))
+        self._demo_browse_btn.clicked.connect(self._pick_demo_folder)
+        input_row.addWidget(self._demo_browse_btn)
         lay.addLayout(input_row)
 
         self._demo_path_label = QLabel("")
         self._demo_path_label.setStyleSheet(
-            f"color: {get_tokens().text_primary}; font-size: {get_tokens().font_size_caption}px;"
+            f"color: {tokens.text_primary}; font-size: {tokens.font_size_caption}px;"
         )
         self._demo_path_label.setWordWrap(True)
         lay.addWidget(self._demo_path_label)
 
         self._demo_error = QLabel("")
         self._demo_error.setStyleSheet(
-            f"color: {get_tokens().error}; font-size: {get_tokens().font_size_caption}px;"
+            f"color: {tokens.error}; font-size: {tokens.font_size_caption}px;"
         )
         self._demo_error.setWordWrap(True)
         self._demo_error.setVisible(False)
         lay.addWidget(self._demo_error)
+
+        # Optional pro demo pool (PRO_DEMO_PATH): downloaded professional
+        # demos are reference material, never the user's own matches (D-49).
+        lay.addSpacing(tokens.spacing_md)
+        self._pro_demo_label = QLabel(
+            i18n.get_text("wizard_pro_demo_label", "Pro demo folder (optional)")
+        )
+        Typography.apply(self._pro_demo_label, "h3")
+        self._pro_demo_label.setStyleSheet(f"color: {tokens.text_primary};")
+        lay.addWidget(self._pro_demo_label)
+        self._pro_demo_desc = QLabel(i18n.get_text("wizard_pro_demo_desc", _PRO_DEMO_DESC_FALLBACK))
+        self._pro_demo_desc.setWordWrap(True)
+        self._pro_demo_desc.setStyleSheet(
+            f"color: {tokens.text_secondary}; font-size: {tokens.font_size_body}px;"
+        )
+        lay.addWidget(self._pro_demo_desc)
+
+        pro_row = QHBoxLayout()
+        pro_row.setSpacing(8)
+        self._pro_demo_input = QLineEdit()
+        self._pro_demo_input.setPlaceholderText("Enter path or use Select Folder...")
+        self._pro_demo_input.returnPressed.connect(self._on_next)
+        pro_row.addWidget(self._pro_demo_input, 1)
+        self._pro_demo_browse_btn = QPushButton(
+            i18n.get_text("wizard_select_folder", "Select Folder")
+        )
+        self._pro_demo_browse_btn.clicked.connect(self._pick_pro_demo_folder)
+        pro_row.addWidget(self._pro_demo_browse_btn)
+        lay.addLayout(pro_row)
+
+        self._pro_demo_path_label = QLabel("")
+        self._pro_demo_path_label.setStyleSheet(
+            f"color: {tokens.text_primary}; font-size: {tokens.font_size_caption}px;"
+        )
+        self._pro_demo_path_label.setWordWrap(True)
+        lay.addWidget(self._pro_demo_path_label)
 
         lay.addStretch()
         return page
@@ -705,6 +758,15 @@ class WizardScreen(QWidget):
             self._demo_path = path
             self._demo_path_label.setText(f"Selected: {path}")
 
+    def _pick_pro_demo_folder(self):
+        path = QFileDialog.getExistingDirectory(
+            self, "Select Pro Demo Folder", os.path.expanduser("~")
+        )
+        if path:
+            self._pro_demo_input.setText(path)
+            self._pro_demo_path = path
+            self._pro_demo_path_label.setText(f"Selected: {path}")
+
     # ── Validation ──
 
     def _validate_name(self) -> bool:
@@ -766,26 +828,35 @@ class WizardScreen(QWidget):
         return True
 
     def _validate_demo(self):
-        """Validate demo path (optional). Non-blocking on error."""
+        """Validate the optional demo folders. Non-blocking on error."""
         self._demo_error.setVisible(False)
         text = self._demo_input.text().strip()
-        if not text:
-            return  # Optional — skip
+        if text:
+            # WZ-01: normalize
+            path = os.path.normpath(os.path.expanduser(text))
 
-        # WZ-01: normalize
-        path = os.path.normpath(os.path.expanduser(text))
+            # WZ-03: non-blocking directory creation
+            try:
+                os.makedirs(path, exist_ok=True)
+            except OSError as e:
+                logger.warning("Could not create demo path %s: %s", path, e)
+                self._demo_error.setText(
+                    f"Warning: could not create folder ({e}). Path saved anyway."
+                )
+                self._demo_error.setVisible(True)
 
-        # WZ-03: non-blocking directory creation
-        try:
-            os.makedirs(path, exist_ok=True)
-        except OSError as e:
-            logger.warning("Could not create demo path %s: %s", path, e)
-            self._demo_error.setText(f"Warning: could not create folder ({e}). Path saved anyway.")
-            self._demo_error.setVisible(True)
+            self._demo_path = path
+            save_user_setting("DEFAULT_DEMO_PATH", path)
+            logger.info("Demo path set to %s", path)
 
-        self._demo_path = path
-        save_user_setting("DEFAULT_DEMO_PATH", path)
-        logger.info("Demo path set to %s", path)
+        # The pro pool is an existing download folder: saved as given, never
+        # created (the watcher skips paths that are not directories).
+        pro_text = self._pro_demo_input.text().strip()
+        if pro_text:
+            pro_path = os.path.normpath(os.path.expanduser(pro_text))
+            self._pro_demo_path = pro_path
+            save_user_setting("PRO_DEMO_PATH", pro_path)
+            logger.info("Pro demo path set to %s", pro_path)
 
     def _find_writable_fallback(self) -> str:
         """WZ-04: find a writable fallback path for brain data."""

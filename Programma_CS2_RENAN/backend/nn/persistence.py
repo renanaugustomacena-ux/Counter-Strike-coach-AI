@@ -54,6 +54,18 @@ def _hash_registry_path() -> Path:
     return BASE_NN_DIR / "checkpoint_hashes.json"
 
 
+def _registry_key(path: Path) -> str:
+    """Registry key for a checkpoint (D-43): the POSIX path relative to the
+    models root (``global/jepa_v2_encoder.pt``), so a models folder that moves
+    with its registry — installer, brain-root change — keeps verifying.
+    Checkpoints outside the root keep an absolute key.
+    """
+    try:
+        return Path(path).resolve().relative_to(Path(BASE_NN_DIR).resolve()).as_posix()
+    except ValueError:
+        return str(path)
+
+
 def _compute_file_hash(path: Path) -> str:
     """Compute SHA-256 hash of a checkpoint file."""
     h = hashlib.sha256()
@@ -88,7 +100,10 @@ def _register_checkpoint_hash(path: Path) -> None:
                 e,
                 corrupt_backup,
             )
-    registry[str(path)] = _compute_file_hash(path)
+    key = _registry_key(path)
+    if key != str(path):
+        registry.pop(str(path), None)  # absolute key written by an older build
+    registry[key] = _compute_file_hash(path)
     # Trailing newline: the registry is committed to git, and a POSIX-final
     # newline keeps every runtime refresh lint-clean (end-of-file-fixer).
     registry_path.write_text(json.dumps(registry, indent=2) + "\n")
@@ -103,7 +118,9 @@ def _verify_checkpoint_hash(path: Path) -> bool:
         registry = json.loads(registry_path.read_text())
     except (json.JSONDecodeError, OSError):
         return True
-    expected = registry.get(str(path))
+    expected = registry.get(_registry_key(path))
+    if expected is None:
+        expected = registry.get(str(path))  # absolute key written by an older build
     if expected is None:
         return True  # checkpoint not in registry (e.g., factory-bundled) — allow
     actual = _compute_file_hash(path)

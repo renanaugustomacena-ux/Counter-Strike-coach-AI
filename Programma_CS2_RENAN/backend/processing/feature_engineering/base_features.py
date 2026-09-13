@@ -63,6 +63,15 @@ class HeuristicConfig:
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
+def _default_config_path() -> Path:
+    """Learned calibration is user data: it lives beside the database
+    (``CORE_DB_DIR`` -- in-project in a checkout, ``<data root>/db`` when
+    frozen), never in the install directory (WP4a)."""
+    from Programma_CS2_RENAN.core import config
+
+    return Path(config.CORE_DB_DIR) / "heuristic_config.json"
+
+
 def load_learned_heuristics(config_path: Optional[Path] = None) -> HeuristicConfig:
     """
     Load heuristic configuration from JSON file.
@@ -74,9 +83,7 @@ def load_learned_heuristics(config_path: Optional[Path] = None) -> HeuristicConf
         HeuristicConfig instance. Falls back to defaults if file doesn't exist.
     """
     if config_path is None:
-        from Programma_CS2_RENAN.core.config import BASE_DIR
-
-        config_path = Path(BASE_DIR) / "backend" / "storage" / "heuristic_config.json"
+        config_path = _default_config_path()
 
     if config_path.exists():
         try:
@@ -100,9 +107,7 @@ def save_heuristic_config(config: HeuristicConfig, config_path: Optional[Path] =
         config_path: Optional path override.
     """
     if config_path is None:
-        from Programma_CS2_RENAN.core.config import BASE_DIR
-
-        config_path = Path(BASE_DIR) / "backend" / "storage" / "heuristic_config.json"
+        config_path = _default_config_path()
 
     config_path.parent.mkdir(parents=True, exist_ok=True)
     with open(config_path, "w", encoding="utf-8") as f:

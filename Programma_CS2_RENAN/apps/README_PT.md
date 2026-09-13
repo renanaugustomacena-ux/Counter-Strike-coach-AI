@@ -62,7 +62,7 @@ apps/
     │   ├── tactical_viewer_screen.py # Visualizador de mapa 2D com controles de playback
     │   ├── pro_comparison_screen.py # Analise comparativa usuario vs jogador pro
     │   ├── pro_player_detail_screen.py # Vista de perfil do jogador pro
-    │   ├── wizard_screen.py         # Configuracao inicial (caminho Steam, nome do jogador)
+    │   ├── wizard_screen.py         # Configuracao inicial (nome do jogador, raiz de dados, pastas de demos proprias + pro)
     │   ├── settings_screen.py       # Configuracoes do app (tema, fonte, idioma, caminhos)
     │   ├── user_profile_screen.py   # Editor de perfil do usuario
     │   ├── profile_screen.py        # Visao geral do perfil do jogador
@@ -193,7 +193,7 @@ A sequencia de inicializacao em `app.py` (`main(argv)`):
 4. `ThemeEngine` criado e fontes customizadas registradas; handler de encerramento controlado conectado (`aboutToQuit`); com o setup ja concluido o esquema do banco e inicializado (`init_database`) para que nenhuma tela consulte uma tabela inexistente
 5. `_boot_ui`: a tela de splash tematizada fica visivel APENAS enquanto a UI e composta — tema aplicado, `MainWindow` criada, todas as 15 telas instanciadas e registradas no `QStackedWidget`, signals entre telas conectados (selecao de partida → detalhe, momentos de destaque → visualizador tatico, comparacao pro → detalhe pro), gate de primeiro uso (`WizardScreen` se o setup nao foi concluido, senao `HomeScreen`), janela exibida. O splash e fechado em um `finally`, portanto nenhum erro de inicializacao pode deixa-lo na tela; uma linha INFO por fase ("boot phase …") registra a cronologia
 6. A guarda de instancia comeca a escutar; bandeja do sistema construida (`build_tray`); se uma bandeja esta disponivel, `setQuitOnLastWindowClosed(False)` habilita o comportamento de fechar-para-bandeja
-7. Inicializacao do backend no thread pool DEPOIS que a janela esta visivel: `get_console().boot()` + daemon do Session Engine (`lifecycle.launch_daemon()`, lancado com console oculto), depois verificacao/download do modelo de linguagem SBERT em segundo plano (toasts, nunca bloqueante). No primeiro uso este passo inteiro aguarda o `setup_completed` do wizard e entao chega a `HomeScreen`
+7. Inicializacao do backend no thread pool DEPOIS que a janela esta visivel: `get_console().boot()` + daemon do Session Engine (`lifecycle.launch_daemon()`, lancado com console oculto), depois verificacao/download do modelo de linguagem SBERT em segundo plano (toasts, nunca bloqueante). No primeiro uso este passo inteiro aguarda o `setup_completed` do wizard e entao chega a `HomeScreen`. Se o wizard escolheu uma raiz de dados diferente da que `config` resolveu na importacao, o app se relanca (`_relaunch_for_new_data_root`: lock liberado, novo processo iniciado, este encerra) — os caminhos sao constantes calculadas na importacao, entao a escolha so tem efeito em um novo processo
 8. Polling do `AppState` iniciado (intervalo de 10 segundos)
 
 ### Bundle PyInstaller
