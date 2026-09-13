@@ -24,10 +24,14 @@ Nella Dashboard premi **Analizza demo** (la tua cartella) oppure **Analizza demo
 
 ## 5. Allenare il coach
 
-Il coach neurale impara dalle partite analizzate nel database, le tue e la libreria pro. Oggi l'addestramento parte dalla riga di comando nella cartella del progetto:
+Il coach neurale impara dalle partite analizzate nel database, le tue e la libreria pro. Nella Dashboard la scheda **Stato addestramento** offre **Addestra il coach**: scegli un preset di passi (200 per un controllo rapido, 2 000 standard, 20 000 per l'esecuzione completa, che su CPU richiede ore) e premi il pulsante. Lo stesso pulsante è nelle Impostazioni accanto ad Avvia ingestione.
+
+L'addestramento non gira mai dentro la finestra: la richiesta va al servizio in background (il chip **Servizio** deve essere *Online*), che assegna la divisione train/validazione, esporta gli shard degli episodi nella tua cartella dati, addestra l'encoder JEPA v2 e registra l'esecuzione. La scheda mostra l'avanzamento dei passi, le loss e una stima del tempo; **Ferma** termina l'esecuzione a un checkpoint ripristinabile. Alla fine la scheda indica il modello attivo con numero di passi, data e numero di demo. Con troppo poche demo analizzate l'esecuzione viene saltata e la scheda spiega perché.
+
+Cosa l'addestramento non fa ancora: il testo dei consigli del coach non usa l'encoder addestrato finché non arrivano i prossimi passi del piano del nucleo neurale, quindi la formulazione degli insight non cambia dopo un'esecuzione.
+
+Da una copia del sorgente la riga di comando funziona ancora:
 
 ```bash
 python run_full_training_cycle.py --model-type jepa_v2
 ```
-
-Un pulsante di addestramento dentro l'app è in programma; questa pagina cambierà quando arriverà.

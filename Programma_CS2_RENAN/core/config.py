@@ -229,6 +229,9 @@ def load_user_settings() -> dict:
             # W2.5/DR-17 — opt-in train-vs-val drift telemetry in the epoch
             # loop (training_orchestrator). Off by default: telemetry only.
             "DRIFT_RETRAIN_ENABLED": False,
+            # D-41 / WP4b: jepa_v2 episode-shard root; empty = DATA_DIR/cs2_v2
+            # under the user data root (see jepa_v2_data_dir()).
+            "JEPA_V2_DATA_DIR": "",
             "INGEST_INTERVAL_MINUTES": 30,
             "INGEST_MODE_AUTO": True,
             "LOCAL_QUOTA_GB": 10.0,
@@ -437,6 +440,17 @@ def get_setting(key: str, default: Any = None) -> Any:
     """Thread-safe dynamic setting lookup. Safe for daemon/background threads."""
     with _settings_lock:
         return _settings.get(key, default)
+
+
+def jepa_v2_data_dir() -> str:
+    """Root of the jepa_v2 episode shards (D-41: a registered default at last).
+
+    ``JEPA_V2_DATA_DIR`` when the operator set one (the Linux training box
+    keeps its corpus elsewhere), otherwise ``DATA_DIR/cs2_v2`` under the user
+    data root — where the in-app Train action exports and trains (WP4b).
+    """
+    configured = str(get_setting("JEPA_V2_DATA_DIR", "") or "").strip()
+    return configured or os.path.join(DATA_DIR, "cs2_v2")
 
 
 def get_pro_demo_base() -> Path:

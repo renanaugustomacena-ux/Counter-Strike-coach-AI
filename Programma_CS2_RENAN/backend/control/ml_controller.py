@@ -165,11 +165,22 @@ class MLController:
         get_state_manager().update_status("teacher", "Running", "Resuming training cycle...")
 
     def _run_wrapper(self):
-        from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
+        from Programma_CS2_RENAN.core import config
 
         try:
-            manager = CoachTrainingManager()
-            manager.run_full_cycle(context=self.context)
+            if config.get_setting("ALLOW_LEGACY_NEURAL_TRAINING", False):
+                from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
+
+                CoachTrainingManager().run_full_cycle(context=self.context)
+            else:
+                # WP4b: the jepa_v2 pipeline (the developer's flow); the
+                # operator's soft-stop is the trainer's stop hook.
+                from Programma_CS2_RENAN.backend.nn import training_pipeline
+
+                result = training_pipeline.run_v2_training_cycle(
+                    stop=lambda: bool(self.context.stop_requested)
+                )
+                logger.info("MLController: jepa_v2 run -> %s %s", result.status, result.reason)
         except TrainingStopRequested:
             logger.info("MLController: Training stopped gracefully by operator.")
             get_state_manager().update_status("teacher", "Stopped", "Manually terminated.")

@@ -217,7 +217,24 @@ include esplicitamente i checkpoint.
 - Il percorso `MODELS_DIR` viene risolto da `core/config.py` e predefinito a questa directory
 - Quando `BRAIN_DATA_ROOT` (o, come fallback, `CUSTOM_STORAGE_PATH`) è impostato ed esiste,
   i modelli vengono scritti in `{BRAIN_DATA_ROOT}/models/`
-- `checkpoint_hashes.json` è indicizzato per percorso assoluto del checkpoint; le voci sono
-  state registrate durante le run di addestramento su vari volumi di storage locali
+- `checkpoint_hashes.json` è indicizzato per percorso del checkpoint relativo alla root dei
+  modelli (`global/jepa_v2_encoder.pt`, D-43), così una cartella modelli che si sposta con il
+  suo registro continua a verificare; le chiavi assolute scritte da build precedenti restano valide
 - Usare sempre `save_nn()` / `load_nn()` da `persistence.py` -- mai chiamare `torch.save()` direttamente
 - Dopo modifiche all'architettura del modello, eliminare i checkpoint obsoleti e ri-addestrare da zero
+
+## Registro dei Modelli Addestrati (addestramento in-app)
+
+L'azione **Addestra il coach** dell'app (scheda "Stato addestramento" della Dashboard,
+Impostazioni) chiede una run al servizio in background: `CoachState.training_requested` →
+demone Teacher → `backend/nn/training_pipeline.run_v2_training_cycle` (assegna gli split →
+esporta gli shard degli episodi in `DATA_DIR/cs2_v2` → `jepa_v2.cli.run_jepa_v2` → riga di
+registro). Ogni run finisce nella tabella `trainedmodel`
+(`backend/storage/db_models.TrainedModel`): tipo di modello, percorso del checkpoint relativo a
+`MODELS_DIR`, sha256, passi, conteggio demo train/val, fingerprint di export e schema,
+device, versione app, timestamp, stato (`success` / `stopped` / `failed`) e `metrics_json`.
+`is_active` marca l'ultima run riuscita per tipo di modello; la Dashboard la legge tramite
+`training_registry.active_model_summary`. La scala di fallback di `load_nn` non cambia: il
+registro è il verbale, non il loader. L'addestramento gira solo nel processo demone; il testo
+dei consigli del coach non usa l'encoder finché non arrivano i prossimi passi del piano del
+nucleo neurale (D-33).

@@ -419,6 +419,64 @@ def _digester_daemon_loop():
     logger.info("Digester Daemon Stopped")
 
 
+# WP4b: the Teacher polls the GUI's training request every few seconds and
+# keeps its historical five-minute cadence for the automatic retrain trigger.
+_TEACHER_POLL_SECONDS = 5
+_TEACHER_AUTO_INTERVAL_SECONDS = 300
+
+
+def _run_training_cycle(reason: str, steps=None, state=None) -> bool:
+    """One training run under the module-level training lock.
+
+    Routes to the jepa_v2 pipeline (the developer's flow, WP4b); the legacy
+    ``CoachTrainingManager.run_full_cycle`` only when
+    ``ALLOW_LEGACY_NEURAL_TRAINING`` is on (D-01 freeze).  Returns False when
+    another session holds the lock — the caller retries on its next poll.
+    """
+    from Programma_CS2_RENAN.backend.control.ml_controller import _TRAINING_LOCK
+    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+    from Programma_CS2_RENAN.core import config
+
+    sm = state if state is not None else get_state_manager()
+    if not _TRAINING_LOCK.acquire(blocking=False):
+        logger.warning("Teacher daemon: training skipped — another session active.")
+        return False
+    try:
+        # A stop request only means something during a run: a stale flag
+        # (Stop pressed after the previous run ended) must not kill this one.
+        sm.clear_stop_request()
+        sm.update_status("teacher", "Learning")
+        if config.get_setting("ALLOW_LEGACY_NEURAL_TRAINING", False):
+            from Programma_CS2_RENAN.backend.nn import coach_manager
+
+            coach_manager.CoachTrainingManager().run_full_cycle()
+        else:
+            from Programma_CS2_RENAN.backend.nn import training_pipeline
+
+            last = {"t": 0.0, "v": False}
+
+            def _stop() -> bool:
+                # The stop flag lives in CoachState: poll it at most every 2 s.
+                now = time.monotonic()
+                if now - last["t"] >= 2.0:
+                    last["t"] = now
+                    last["v"] = bool(sm.stop_requested())
+                return last["v"]
+
+            result = training_pipeline.run_v2_training_cycle(steps=steps, stop=_stop, state=sm)
+            logger.info(
+                "Teacher: %s training run (steps=%s) -> %s %s",
+                reason,
+                steps,
+                result.status,
+                result.reason,
+            )
+    finally:
+        sm.clear_stop_request()
+        _TRAINING_LOCK.release()
+    return True
+
+
 def _teacher_daemon_loop():
     """DAEMON C: Cognitive ML Trainer"""
     from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
@@ -430,6 +488,7 @@ def _teacher_daemon_loop():
     _last_baseline = _get_current_baseline_snapshot()
 
     _backup_warned = False
+    _last_auto_check = 0.0
 
     while not _shutdown_event.is_set():
         try:
@@ -453,25 +512,29 @@ def _teacher_daemon_loop():
                 except OSError as e:
                     logger.warning("Failed to send backup warning notification: %s", e)
 
+            sm = get_state_manager()
+            request = sm.pop_training_request()
+            if request is not None:
+                # WP4b: the app's Train action (Home / Settings) — runs here,
+                # in the daemon process, never in the GUI.
+                logger.info(
+                    "Teacher: training requested from the app (%s, steps=%s)",
+                    request.get("model_type"),
+                    request.get("steps"),
+                )
+                _run_training_cycle("request", steps=request.get("steps") or None, state=sm)
+                continue
+
+            if time.monotonic() - _last_auto_check < _TEACHER_AUTO_INTERVAL_SECONDS:
+                continue
+            _last_auto_check = time.monotonic()
+
             trigger_count = _check_retraining_trigger()
             if trigger_count > 0:
-                # NN-02: Acquire module-level training lock to prevent
-                # concurrent training with Console-triggered MLController.
-                from Programma_CS2_RENAN.backend.control.ml_controller import _TRAINING_LOCK
-
-                if not _TRAINING_LOCK.acquire(blocking=False):
-                    logger.warning("Teacher daemon: training skipped — another session active.")
-                    # SE-06: Short wait (5s) instead of 60s for faster shutdown response
-                    _shutdown_event.wait(5)
+                # NN-02: the module-level training lock (shared with the
+                # console's MLController) is taken inside _run_training_cycle.
+                if not _run_training_cycle("auto", state=sm):
                     continue
-
-                try:
-                    get_state_manager().update_status("teacher", "Learning")
-                    from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
-
-                    CoachTrainingManager().run_full_cycle()
-                finally:
-                    _TRAINING_LOCK.release()
 
                 # Update sample count AFTER successful training (not before)
                 _commit_trained_sample_count(trigger_count)
@@ -502,8 +565,8 @@ def _teacher_daemon_loop():
             get_state_manager().set_error("teacher", str(e))
             get_state_manager().update_status("teacher", "Error", str(e))
 
-        # Wait up to 300s; returns immediately if shutdown is signaled
-        _shutdown_event.wait(300)
+        # Poll the request channel every few seconds; returns immediately on shutdown
+        _shutdown_event.wait(_TEACHER_POLL_SECONDS)
 
     logger.info("Teacher Daemon Stopped")
 

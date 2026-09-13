@@ -50,6 +50,7 @@ from .db_models import (
     RoundStats,
     ServiceNotification,
     TacticalKnowledge,
+    TrainedModel,
 )
 
 # All tables that belong exclusively to the monolith database (database.db).
@@ -75,6 +76,7 @@ _MONOLITH_TABLES = [
     RoundStats.__table__,
     ServiceNotification.__table__,
     TacticalKnowledge.__table__,
+    TrainedModel.__table__,
 ]
 
 # Tables that belong exclusively to the HLTV metadata database (hltv_metadata.db).

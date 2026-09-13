@@ -24,10 +24,14 @@ No Painel pressione **Analisar demos** (a sua pasta) ou **Analisar demos pro** (
 
 ## 5. Treinar o coach
 
-O coach neural aprende com as partidas analisadas no banco de dados, as suas e a biblioteca pro. Hoje o treinamento começa pela linha de comando na pasta do projeto:
+O coach neural aprende com as partidas analisadas no banco de dados, as suas e a biblioteca pro. No Painel, o card **Status do treinamento** oferece **Treinar o coach**: escolha um preset de passos (200 para uma verificação rápida, 2 000 padrão, 20 000 para a execução completa, que leva horas na CPU) e pressione o botão. O mesmo botão fica nas Configurações ao lado de Iniciar ingestão.
+
+O treinamento nunca roda dentro da janela: o pedido vai para o serviço em segundo plano (o chip **Serviço** precisa estar *Online*), que atribui a divisão treino/validação, exporta os shards de episódios na sua pasta de dados, treina o encoder JEPA v2 e registra a execução. O card mostra o progresso dos passos, as losses e uma estimativa de tempo; **Parar** encerra a execução em um checkpoint retomável. Ao terminar, o card indica o modelo ativo com o número de passos, a data e o número de demos. Com poucas demos analisadas a execução é pulada e o card explica o motivo.
+
+O que o treinamento ainda não faz: o texto dos conselhos do coach não usa o encoder treinado até os próximos passos do plano do núcleo neural chegarem, então a redação dos insights não muda depois de uma execução.
+
+A partir de uma cópia do código-fonte a linha de comando continua funcionando:
 
 ```bash
 python run_full_training_cycle.py --model-type jepa_v2
 ```
-
-Um botão de treinamento dentro do app está planejado; esta página mudará quando ele chegar.

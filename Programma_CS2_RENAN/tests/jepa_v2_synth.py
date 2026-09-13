@@ -19,6 +19,31 @@ HEALTH_COL = 0
 ENEMIES_COL = 8
 SIDE_COL = 2  # x_cat column of the side categorical (CT=0, T=1, unknown=2)
 
+# WP4b: ``JepaV2Config`` overrides small enough for CPU smoke runs of the
+# in-app training pipeline (valid under ``JepaV2Config.validate``).
+TINY_CONFIG_OVERRIDES: Dict[str, Any] = {
+    "tokens_per_window": 16,
+    "patch_ticks": 4,
+    "horizons": (1, 2, 4),
+    "d_model": 32,
+    "n_heads": 4,
+    "n_layers": 2,
+    "served_tap": 1,
+    "sigreg_taps": (0, -1),
+    "proj_hidden": 32,
+    "proj_out": 16,
+    "predictor_layers": 1,
+    "sigreg_num_proj": 64,
+    "batch_size": 32,
+    "warmup_steps": 2,
+    "lr_max": 1e-3,
+    "lr_min": 1e-5,
+    "probe_windows": 64,
+    "abort_rankme_below": 1.5,
+    "abort_std_min_below": 1e-6,
+    "seed": 42,
+}
+
 
 def episode_spec(
     length: int,

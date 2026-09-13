@@ -24,6 +24,7 @@ from typing import Any
 
 from PySide6.QtCore import Qt, QThreadPool, Signal
 from PySide6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QFrame,
     QHBoxLayout,
@@ -44,6 +45,10 @@ from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.focus_insight_vm import FocusInsightViewModel
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_history_vm import MatchHistoryViewModel
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.training_vm import (
+    TRAINING_CAPTION,
+    TrainingViewModel,
+)
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.focus_insight import FocusInsightCard
@@ -55,6 +60,16 @@ from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_home")
+
+
+# WP4b: Train presets (steps, i18n key, fallback). The full run is the
+# developer's 20k-step budget — hours on a CPU-only install.
+_STEP_PRESETS = (
+    (200, "home.preset_quick", "quick check"),
+    (2000, "home.preset_standard", "standard"),
+    (20000, "home.preset_full", "full run (hours on CPU)"),
+)
+_DEFAULT_PRESET_INDEX = 1
 
 
 class HomeScreen(QWidget):
@@ -81,14 +96,18 @@ class HomeScreen(QWidget):
         self._matches_count: int | None = None
         self._pro_demos_count: int | None = None
         self._training_data: dict[str, Any] = {}
+        self._ml_status = "Idle"
+        self._trained_model: dict[str, Any] = {}
 
         self._match_history_vm = MatchHistoryViewModel(self)
         self._focus_insight_vm = FocusInsightViewModel(self)
+        self._training_vm = TrainingViewModel(self)
 
         self._build_ui()
 
         self._match_history_vm.matches_changed.connect(self._on_matches_changed)
         self._focus_insight_vm.insight_changed.connect(self._on_insight_changed)
+        self._training_vm.message.connect(self._on_training_message)
 
     # ── Lifecycle ──
 
@@ -103,6 +122,8 @@ class HomeScreen(QWidget):
             state.training_changed.connect(self._on_training)
             state.total_matches_changed.connect(self._on_total_matches)
             state.pro_matches_changed.connect(self._on_pro_matches)
+            state.ml_status_changed.connect(self._on_ml_status)
+            state.trained_model_changed.connect(self._on_trained_model)
             self._connected = True
 
         prev = get_app_state().cached_state
@@ -112,6 +133,10 @@ class HomeScreen(QWidget):
             self._on_total_matches(prev["total_matches"])
         if "pro_matches" in prev:
             self._on_pro_matches(int(prev["pro_matches"] or 0))
+        if "ml_status" in prev:
+            self._on_ml_status(str(prev["ml_status"] or "Idle"))
+        if "trained_model" in prev:
+            self._on_trained_model(dict(prev["trained_model"] or {}))
 
         # Kick off async loads — both VMs marshal results back via signals.
         self._match_history_vm.load_matches()
@@ -512,21 +537,79 @@ class HomeScreen(QWidget):
             title=i18n.get_text("training_status", "Training Status"),
             depth="highlighted",
         )
-        card.setVisible(False)  # hidden until training is active
         layout = card.content_layout
         layout.setSpacing(tokens.spacing_sm)
 
-        self._epoch_label = QLabel(f"{i18n.get_text('home.epoch', 'Epoch')}: — / —")
+        # WP4b: the Train action is always offered; what it does — and does
+        # not do yet (D-33) — is stated in the caption.
+        self._training_caption = QLabel(i18n.get_text("home.training_caption", TRAINING_CAPTION))
+        self._training_caption.setWordWrap(True)
+        self._training_caption.setFont(Typography.font("body"))
+        self._training_caption.setStyleSheet(
+            f"color: {tokens.text_secondary}; background: transparent;"
+        )
+        layout.addWidget(self._training_caption)
+
+        # Active model: read from the TrainedModel registry, never inferred.
+        self._active_model_label = QLabel("")
+        self._active_model_label.setWordWrap(True)
+        self._active_model_label.setFont(Typography.font("body"))
+        self._active_model_label.setStyleSheet(
+            f"color: {tokens.text_primary}; background: transparent;"
+        )
+        layout.addWidget(self._active_model_label)
+
+        train_row = QHBoxLayout()
+        train_row.setContentsMargins(0, 0, 0, 0)
+        train_row.setSpacing(tokens.spacing_sm)
+        self._train_steps_label = QLabel(f"{i18n.get_text('home.train_steps', 'Steps')}:")
+        self._train_steps_label.setStyleSheet(
+            f"color: {tokens.text_secondary}; background: transparent;"
+        )
+        train_row.addWidget(self._train_steps_label)
+        self._train_steps_combo = QComboBox()
+        self._train_steps_combo.setCursor(Qt.PointingHandCursor)
+        self._populate_step_presets()
+        train_row.addWidget(self._train_steps_combo)
+        self._train_btn = make_button(
+            i18n.get_text("home.train_button", "Train coach"), variant="primary"
+        )
+        self._train_btn.clicked.connect(self._on_train_clicked)
+        train_row.addWidget(self._train_btn)
+        self._train_stop_btn = make_button(
+            i18n.get_text("home.train_stop", "Stop"), variant="danger"
+        )
+        self._train_stop_btn.clicked.connect(self._on_train_stop_clicked)
+        self._train_stop_btn.setVisible(False)
+        train_row.addWidget(self._train_stop_btn)
+        train_row.addStretch(1)
+        layout.addLayout(train_row)
+
+        self._train_message = QLabel("")
+        self._train_message.setWordWrap(True)
+        self._train_message.setStyleSheet(
+            f"color: {tokens.text_tertiary}; background: transparent; "
+            f"font-size: {tokens.font_size_caption}px;"
+        )
+        layout.addWidget(self._train_message)
+
+        # Progress block — visible only while the Teacher is training.
+        self._training_progress_box = QWidget()
+        progress = QVBoxLayout(self._training_progress_box)
+        progress.setContentsMargins(0, 0, 0, 0)
+        progress.setSpacing(tokens.spacing_sm)
+
+        self._epoch_label = QLabel(f"{i18n.get_text('home.step', 'Step')}: — / —")
         self._epoch_label.setFont(Typography.font("body"))
         self._epoch_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
-        layout.addWidget(self._epoch_label)
+        progress.addWidget(self._epoch_label)
 
         self._train_progress_bar = QProgressBar()
         self._train_progress_bar.setRange(0, 100)
         self._train_progress_bar.setValue(0)
         self._train_progress_bar.setFixedHeight(6)
         self._train_progress_bar.setTextVisible(False)
-        layout.addWidget(self._train_progress_bar)
+        progress.addWidget(self._train_progress_bar)
 
         loss_row = QHBoxLayout()
         loss_row.setContentsMargins(0, 0, 0, 0)
@@ -552,14 +635,84 @@ class HomeScreen(QWidget):
         loss_row.addWidget(self._eta_label)
 
         loss_row.addStretch(1)
-        layout.addLayout(loss_row)
+        progress.addLayout(loss_row)
+        self._training_progress_box.setVisible(False)
+        layout.addWidget(self._training_progress_box)
 
-        # Static source annotation; batch progress appended defensively in
-        # _on_training when the payload carries batch fields.
         self._training_footer = MonoFooter(self._training_footer_text())
         layout.addWidget(self._training_footer)
 
+        self._on_trained_model({})
+        self._on_ml_status("Idle")
         return card
+
+    def _populate_step_presets(self) -> None:
+        current = self._train_steps_combo.currentData()
+        self._train_steps_combo.blockSignals(True)
+        self._train_steps_combo.clear()
+        for steps, key, fallback in _STEP_PRESETS:
+            self._train_steps_combo.addItem(f"{steps:,} · {i18n.get_text(key, fallback)}", steps)
+        index = self._train_steps_combo.findData(current) if current else -1
+        self._train_steps_combo.setCurrentIndex(index if index >= 0 else _DEFAULT_PRESET_INDEX)
+        self._train_steps_combo.blockSignals(False)
+
+    # ── Train action (WP4b) ──
+
+    def _on_train_clicked(self) -> None:
+        steps = int(self._train_steps_combo.currentData() or 0)
+        self._train_message.setText(i18n.get_text("home.train_sending", "Sending request…"))
+        self._training_vm.request_training(steps)
+
+    def _on_train_stop_clicked(self) -> None:
+        self._training_vm.request_stop()
+
+    def _on_training_message(self, severity: str, text: str) -> None:
+        tokens = get_tokens()
+        color = {
+            "success": tokens.success,
+            "warning": tokens.warning,
+            "error": tokens.error,
+        }.get(severity, tokens.text_secondary)
+        self._train_message.setText(text)
+        self._train_message.setStyleSheet(
+            f"color: {color}; background: transparent; font-size: {tokens.font_size_caption}px;"
+        )
+
+    def _on_ml_status(self, status: str) -> None:
+        self._ml_status = (status or "Idle").strip() or "Idle"
+        key = self._ml_status.lower()
+        learning = key == "learning"
+        queued = key == "queued"
+        self._train_btn.setEnabled(not (learning or queued))
+        self._train_steps_combo.setEnabled(not (learning or queued))
+        self._train_stop_btn.setVisible(learning)
+        if queued:
+            self._train_message.setText(
+                i18n.get_text(
+                    "home.train_queued_short", "Queued — waiting for the background service"
+                )
+            )
+        elif learning:
+            self._train_message.setText(
+                i18n.get_text("home.train_running", "Training in the background service…")
+            )
+
+    def _on_trained_model(self, info: dict) -> None:
+        self._trained_model = dict(info or {})
+        self._active_model_label.setText(self._active_model_text())
+
+    def _active_model_text(self) -> str:
+        info = self._trained_model
+        if not info:
+            return i18n.get_text("home.no_model", "No model trained on this machine yet")
+        prefix = i18n.get_text("home.active_model", "Active model")
+        trained = i18n.get_text("home.trained", "trained")
+        demos = i18n.get_text("home.demos", "demos")
+        when = str(info.get("finished_at") or "")[:10] or "—"
+        return (
+            f"{prefix}: {info.get('version_name') or '—'} · {int(info.get('steps') or 0)} steps"
+            f" · {trained} {when} · {int(info.get('demos_train') or 0)} {demos}"
+        )
 
     # ── State helpers ──
 
@@ -625,11 +778,11 @@ class HomeScreen(QWidget):
             self._pro_analyze_status.setText(self._pro_status_text())
 
     def _training_footer_text(self) -> str:
-        static = i18n.get_text("home.training_footer", "teacher daemon · jepa_train.py")
-        batch = self._training_data.get("batch")
-        total_batches = self._training_data.get("total_batches")
-        if batch is not None and total_batches is not None:
-            return f"{static} · batch {batch}/{total_batches}"
+        static = i18n.get_text("home.training_footer", "jepa_v2 · Teacher daemon")
+        step = self._training_data.get("current_epoch")
+        total = self._training_data.get("total_epochs")
+        if step is not None and total:
+            return f"{static} · step {int(step)}/{int(total)}"
         return static
 
     # ── i18n ──
@@ -682,6 +835,12 @@ class HomeScreen(QWidget):
         self._compare_btn.setText(i18n.get_text("home.compare_pro_players", "Compare Pro Players"))
         # Training card
         self._training_card.set_title(i18n.get_text("training_status", "Training Status"))
+        self._training_caption.setText(i18n.get_text("home.training_caption", TRAINING_CAPTION))
+        self._train_steps_label.setText(f"{i18n.get_text('home.train_steps', 'Steps')}:")
+        self._populate_step_presets()
+        self._train_btn.setText(i18n.get_text("home.train_button", "Train coach"))
+        self._train_stop_btn.setText(i18n.get_text("home.train_stop", "Stop"))
+        self._active_model_label.setText(self._active_model_text())
         self._training_footer.setText(self._training_footer_text())
         if self._training_data:
             self._apply_training_labels(self._training_data)
@@ -954,9 +1113,12 @@ class HomeScreen(QWidget):
     def _on_training(self, data: dict) -> None:
         total = int(data.get("total_epochs", 0))
         active = total > 0
-        self._training_card.setVisible(active)
+        # The card is always offered (Train action); only the progress block
+        # follows the Teacher's run.
+        self._training_progress_box.setVisible(active)
         if not active:
             self._training_data = {}
+            self._training_footer.setText(self._training_footer_text())
             return
         self._training_data = dict(data)
         self._apply_training_labels(data)
@@ -964,7 +1126,7 @@ class HomeScreen(QWidget):
     def _apply_training_labels(self, data: dict) -> None:
         epoch = int(data.get("current_epoch", 0))
         total = int(data.get("total_epochs", 0))
-        self._epoch_label.setText(f"{i18n.get_text('home.epoch', 'Epoch')}: {epoch} / {total}")
+        self._epoch_label.setText(f"{i18n.get_text('home.step', 'Step')}: {epoch} / {total}")
         pct = int((epoch / total) * 100) if total > 0 else 0
         self._train_progress_bar.setValue(max(0, min(100, pct)))
         train_loss = float(data.get("train_loss", 0.0))

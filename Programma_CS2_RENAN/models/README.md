@@ -209,7 +209,23 @@ tiers only resolve when a build explicitly bundles checkpoints.
 - The `MODELS_DIR` path is resolved from `core/config.py` and defaults to this directory
 - When `BRAIN_DATA_ROOT` (or, as fallback, `CUSTOM_STORAGE_PATH`) is set and exists,
   models are written to `{BRAIN_DATA_ROOT}/models/` instead
-- `checkpoint_hashes.json` is keyed by absolute checkpoint path; entries were
-  recorded during training runs across various local storage volumes
+- `checkpoint_hashes.json` is keyed by the checkpoint path relative to the models root
+  (`global/jepa_v2_encoder.pt`, D-43) so a models folder that moves with its registry keeps
+  verifying; absolute keys written by older builds still verify
 - Always use `save_nn()` / `load_nn()` from `persistence.py` — never call `torch.save()` directly
 - After changing model architecture, delete stale checkpoints and retrain from scratch
+
+## Trained Model Registry (in-app training)
+
+The app's **Train coach** action (Dashboard "Training Status" card, Settings) asks the
+background service for a run: `CoachState.training_requested` → the Teacher daemon →
+`backend/nn/training_pipeline.run_v2_training_cycle` (assign splits → export episode shards
+to `DATA_DIR/cs2_v2` → `jepa_v2.cli.run_jepa_v2` → registry row). Every run lands in the
+`trainedmodel` table (`backend/storage/db_models.TrainedModel`): model type, checkpoint
+path relative to `MODELS_DIR`, sha256, steps, train/val demo counts, export and schema
+fingerprints, device, app version, timestamps, status (`success` / `stopped` / `failed`)
+and `metrics_json`. `is_active` marks the latest successful run per model type; the
+Dashboard reads it through `training_registry.active_model_summary`. `load_nn`'s filename
+ladder is unchanged — the registry is the record, not the loader. Training runs in the
+daemon process only; the coach's advice text does not consume the encoder until the next
+steps of the neural-core plan (D-33).

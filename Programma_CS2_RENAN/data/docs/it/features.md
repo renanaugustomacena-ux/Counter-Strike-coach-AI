@@ -2,7 +2,7 @@
 
 ## Dashboard
 
-La barra di stato mostra **Coach** (inattivo o in analisi), **Servizio** (il Session Engine in background: *Online* finché il suo heartbeat è recente, *Offline* altrimenti) e **Partite** (le tue demo analizzate). Sotto: la tua ultima partita con la sparkline del rating, la scheda focus, la striscia delle partite recenti, le schede **Analisi demo** e **Ingestione demo pro** con i selettori di cartella e i pulsanti Analizza, le scorciatoie Connettività (Profilo, Steam Config, FaceIt Config), le scorciatoie di Analisi tattica e una scheda **Stato addestramento** che compare mentre un addestramento riporta progressi.
+La barra di stato mostra **Coach** (inattivo o in analisi), **Servizio** (il Session Engine in background: *Online* finché il suo heartbeat è recente, *Offline* altrimenti) e **Partite** (le tue demo analizzate). Sotto: la tua ultima partita con la sparkline del rating, la scheda focus, la striscia delle partite recenti, le schede **Analisi demo** e **Ingestione demo pro** con i selettori di cartella e i pulsanti Analizza, le scorciatoie Connettività (Profilo, Steam Config, FaceIt Config), le scorciatoie di Analisi tattica e la scheda **Stato addestramento**: l'azione **Addestra il coach** con i preset di passi, un pulsante **Ferma** mentre un'esecuzione è in corso, il modello attivo addestrato su questa macchina (oppure "Nessun modello addestrato su questa macchina finora") e l'avanzamento in tempo reale dei passi, le loss e la stima del tempo dell'esecuzione corrente.
 
 ## AI Coach
 
