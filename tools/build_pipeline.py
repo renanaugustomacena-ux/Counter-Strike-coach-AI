@@ -194,7 +194,9 @@ class IndustrialBuildPipeline:
                 console.print(f"[warning]Cleanup warning: {e}[/warning]")
 
         # 6. Compilation
-        spec_file = self.project_root / "cs2_analyzer_win.spec"
+        spec_file = self.project_root / "packaging" / "cs2_analyzer_win.spec"
+        if not spec_file.exists():
+            spec_file = self.project_root / "cs2_analyzer_win.spec"
         if not spec_file.exists():
             spec_file = self.project_root / "cs2_analyzer.spec"
 

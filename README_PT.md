@@ -138,6 +138,14 @@ dossies por arquivo estao em `docs/audit/`.
 
 ## Inicio Rapido
 
+### 0. App instalado (instalador Windows)
+
+`scripts\build_production.bat` gera `dist\Macena_CS2_Installer_<versao>.exe` (veja `packaging/`).
+Uma copia instalada mantem todos os dados fora da pasta do programa — `%LOCALAPPDATA%\MacenaCS2Analyzer`
+ou a pasta escolhida no wizard inicial — e faz tudo o que uma copia do codigo-fonte faz: analisa suas
+demos e um pool de demos pro baixadas (cards do Painel) e treina o coach no servico em segundo plano
+(Painel → Status do treinamento → **Treinar o coach**; a execucao fica no registro de modelos).
+
 ### 1. Clone
 
 ```bash

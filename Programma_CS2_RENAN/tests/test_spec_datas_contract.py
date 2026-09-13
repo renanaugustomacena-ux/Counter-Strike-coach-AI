@@ -54,8 +54,12 @@ def test_every_bundled_entry_lands_where_get_resource_path_looks(
     base, rel, dest, monkeypatch, tmp_path
 ):
     if base == "PROJECT_ROOT":
-        # Root-level alembic files are resolved by db_migrate, not get_resource_path.
-        assert rel[0].startswith("alembic"), rel
+        # Root-level entries (alembic, the design sprite) are resolved from
+        # _MEIPASS itself, so they land at their own repo-relative path.
+        src = PROJECT_ROOT.joinpath(*rel)
+        src_is_dir = src.is_dir() if src.exists() else not Path(rel[-1]).suffix
+        expected = "/".join(rel if src_is_dir else rel[:-1]) or "."
+        assert dest == expected, (rel, dest)
         return
 
     src = APP_DIR.joinpath(*rel)

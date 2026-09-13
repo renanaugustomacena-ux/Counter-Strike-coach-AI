@@ -138,6 +138,14 @@ dossier per file sono in `docs/audit/`.
 
 ## Avvio Rapido
 
+### 0. App installata (installer Windows)
+
+`scripts\build_production.bat` produce `dist\Macena_CS2_Installer_<versione>.exe` (vedi `packaging/`).
+Una copia installata tiene tutti i dati fuori dalla cartella del programma — `%LOCALAPPDATA%\MacenaCS2Analyzer`
+o la cartella scelta nel wizard iniziale — e fa tutto ciò che fa una copia del sorgente: analizza i tuoi
+demo e un pool di demo pro scaricati (schede della Dashboard) e addestra il coach nel servizio in
+background (Dashboard → Stato addestramento → **Addestra il coach**; l'esecuzione finisce nel registro dei modelli).
+
 ### 1. Clona
 
 ```bash

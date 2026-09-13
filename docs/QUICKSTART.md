@@ -30,17 +30,24 @@ python -m Programma_CS2_RENAN.apps.qt_app.app
 
 1. The 5-step setup wizard launches automatically on first run.
 2. Enter your **CS2 in-game name** (must match the name in your demo files).
-3. Choose a folder for AI brain data (models, knowledge base, datasets).
-4. Optionally point to your CS2 demo folder.
+3. Choose a data folder (models, logs, knowledge base, training data; the installed app keeps its database there too).
+4. Optionally point to your CS2 demo folder and to a folder of downloaded pro demos.
 5. Click **Launch App**.
 
 ## Analyze a Demo
 
-1. On the Home dashboard, find the **Ingest** card and click **Change** to set your demo folder if you didn't during setup.
-2. Click **Analyze** (or **Analyze pro** for professional demos).
+1. On the Dashboard, the **Demo Analysis** card shows your demo folder — **Select Demo Folder** changes it.
+2. Click **Analyze Demos** (or **Analyze Pro Demos** on the **Pro Demo Ingestion** card for a downloaded pro pool — reference material, never counted as your matches).
 3. Wait for the progress indicator to finish.
-4. Open **Match History** from the sidebar to see ingested demos.
-5. Click a match to view coaching insights, stats, and highlights.
+4. Open **Match History** from the sidebar to see analyzed demos.
+5. Click a match to view its stats, rounds and highlights.
+
+## Train the Coach
+
+1. The **Service** chip on the Dashboard must read *Online* (the background service does the training).
+2. In the **Training Status** card pick a step preset (200 quick check · 2 000 standard · 20 000 full, hours on CPU) and click **Train coach**.
+3. The card shows step progress, losses and an ETA; **Stop** ends the run at a resumable checkpoint.
+4. When done, the card names the active model (steps, date, demos). The coach's advice text does not use it until the next neural-core steps land.
 
 ## Validate Installation
 
